@@ -1,0 +1,188 @@
+/* Step pages: the build notes, one page per roadmap step.
+   Look copied from effects-collection/index.html (copied in, not linked). */
+
+:root {
+  --bg: #f7f7f5;
+  --ink: #101010;
+  --muted: #6b6b68;
+  --line: #d9d9d4;
+  --card: #ffffff;
+  --code-bg: #efefeb;
+  --gutter: clamp(1.25rem, 4vw, 3.5rem);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c0c0d;
+    --ink: #f2f2f0;
+    --muted: #8f8f8c;
+    --line: #232325;
+    --card: #141416;
+    --code-bg: #1b1b1e;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  padding: var(--gutter);
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-underline-offset: 0.2em; }
+
+.nsc-step {
+  max-width: 46rem;
+  margin: 0 auto;
+
+  .eyebrow {
+    margin: 0 0 0.75rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .eyebrow a { text-decoration: none; }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(2rem, 7vw, 3.25rem);
+    line-height: 1.04;
+    letter-spacing: -0.035em;
+    font-weight: 800;
+  }
+
+  .intro {
+    margin: 1rem 0 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--line);
+    font-size: 1.125rem;
+    color: var(--muted);
+  }
+
+  h2 {
+    margin: 2.5rem 0 0.75rem;
+    font-size: 1.375rem;
+    letter-spacing: -0.02em;
+  }
+
+  h3 {
+    margin: 1.75rem 0 0.5rem;
+    font-size: 1.0625rem;
+  }
+
+  li { margin: 0.35rem 0; }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.875em;
+    background: var(--code-bg);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+
+  pre {
+    overflow-x: auto;
+    padding: 1rem 1.125rem;
+    background: var(--code-bg);
+    border-radius: 8px;
+    line-height: 1.5;
+  }
+
+  pre code { padding: 0; background: none; }
+
+  .file {
+    margin: 1.25rem 0 -0.5rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .table-wrap { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9375rem;
+  }
+
+  th,
+  td {
+    text-align: left;
+    vertical-align: top;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  th { color: var(--muted); font-weight: 600; }
+
+  .note {
+    margin: 1.25rem 0;
+    padding: 0.875rem 1.125rem;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+
+  .checklist {
+    padding-left: 0;
+    list-style: none;
+  }
+
+  .checklist li::before { content: "\2610\00a0\00a0"; color: var(--muted); }
+
+  .pager {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.9375rem;
+  }
+
+  .steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--line);
+  }
+
+  .steps li {
+    display: flex;
+    gap: 1rem;
+    margin: 0;
+    padding: 0.625rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .steps .num {
+    flex: 0 0 2rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--muted);
+  }
+
+  .steps .part {
+    display: block;
+    padding-top: 1.5rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .steps .is-planned { color: var(--muted); }
+}

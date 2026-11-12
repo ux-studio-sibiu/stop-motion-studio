@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>01 Studio shell · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 01 of 28 · Part 1 Foundations</p>
+  <h1>Studio shell and design tokens</h1>
+  <p class="intro">The studio screen exists: toolbar, camera panel, stage, picture panel, playback bar and timeline, laid out for a tablet in landscape and adapting down to a phone. Every area is a placeholder that names the step that fills it. Colours, sizes and the font are now tokens.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><strong>Tokens</strong> in <code>src/styles/globals.scss</code>: <code>--color-*</code> on <code>:root</code> with the same names redefined for dark mode, touch sizes (<code>--hit</code> 56 px, <code>--hit-big</code> 88 px), radii, a 4-step spacing scale, the timeline height.</li>
+    <li><strong>Breakpoints</strong> in <code>src/styles/_breakpoints.scss</code>: <code>respond-to()</code> / <code>respond-to-max()</code> mixins and the <code>.desktop-only</code> / <code>.mobile-only</code> utilities from the workspace style guide.</li>
+    <li><strong>Button classes</strong> in <code>src/styles/_controls.scss</code>: <code>.icon-button</code> and <code>.big-button</code> with <code>is-capture</code> / <code>is-play</code> variants.</li>
+    <li><strong>Font:</strong> Nunito through <code>next/font/google</code>, exposed as <code>--font-ui</code>.</li>
+    <li><strong><code>/studio</code></strong>: <code>src/app/studio/page.tsx</code> (server component with a <code>&lt;Suspense&gt;</code>) renders <code>src/studio/Studio.tsx</code> (client component) and <code>studio.scss</code>.</li>
+    <li><strong>Home</strong> (<code>/</code>): a "Start animating" button to the studio and a link to these notes. It becomes the projects list in step 08.</li>
+    <li><code>lucide-react</code> for icons.</li>
+  </ul>
+
+  <h3>The three layouts</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Width</th><th>Layout</th></tr></thead>
+    <tbody>
+      <tr><td>1024 px and up (tablet landscape, laptop)</td><td>Camera panel · stage · picture panel in three columns; playback bar and timeline full width below</td></tr>
+      <tr><td>768-1023 px (tablet portrait)</td><td>Stage full width, the two panels side by side under it</td></tr>
+      <tr><td>Under 768 px (phone)</td><td>Toolbar, stage, playback, timeline. Panels hidden; button labels become icons</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p class="file">src/studio/studio.scss</p>
+  <pre><code>@include respond-to("desktop") {
+  grid-template-columns: 15rem minmax(0, 1fr) 15rem;
+  grid-template-rows: auto minmax(0, 1fr) auto var(--timeline-height);
+  grid-template-areas: "toolbar toolbar toolbar" "side stage properties" "playback playback playback" "timeline timeline timeline";
+}</code></pre>
+
+  <h2>Decisions</h2>
+
+  <h3>One client boundary at the studio root</h3>
+  <p><code>Studio.tsx</code> starts with <code>"use client"</code>; the route file stays a server component that only wraps it in <code>&lt;Suspense&gt;</code>. Almost everything in the studio is interactive and browser-only (camera, canvas, IndexedDB), so splitting server and client components inside it would gain nothing.</p>
+
+  <h3>The project id is a query param, read in the client</h3>
+  <p><code>/studio?project=abc</code>, read with <code>useSearchParams()</code>. A static export can't pre-render a <code>/studio/[id]</code> page for ids that only exist in the user's browser. Reading search params forces that component to render on the client, and Next requires a <code>&lt;Suspense&gt;</code> boundary above it; the fallback is <code>null</code> because the shell appears almost instantly anyway.</p>
+
+  <h3>Markup stays in one file for now</h3>
+  <p>The six areas are plain markup inside <code>Studio.tsx</code>, not six components. They have no behaviour yet, and the workspace rule is "no abstraction layers": each area becomes its own component in the step that gives it state (<code>CameraPanel</code> in 03, <code>Timeline</code> in 05/09, and so on). The two side panels repeat their few lines of markup instead of sharing a <code>Panel</code> wrapper.</p>
+
+  <h3>Buttons are classes, not components</h3>
+  <p><code>.icon-button</code> and <code>.big-button</code> only style a <code>&lt;button&gt;</code> or <code>&lt;Link&gt;</code>; they add no markup or behaviour. Per the style guide, that makes them drop-in classes, so they work on any element without a polymorphic <code>as</code> prop.</p>
+
+  <h3>The stage keeps 16:9 with container units</h3>
+  <p>The stage cell is a size container (<code>container-type: size</code>), and the frame inside is <code>width: min(100cqw, 100cqh * 16 / 9)</code> with <code>aspect-ratio: 16 / 9</code>. That's "fit inside, keep the ratio" in one line, at every layout, with no resize listener. When projects get other sizes, the ratio becomes a custom property.</p>
+
+  <h3>Kid-sized and kid-worded</h3>
+  <ul>
+    <li>Smallest touch target 56 px, capture and play 88 px, with a "pressable" shadow that moves on <code>:active</code>.</li>
+    <li>One loud colour (red, for capture), green for play, everything else calm.</li>
+    <li>Plain words in the UI: "Pictures", "Speed", "See-through", "Save as video".</li>
+    <li>Nunito: rounded and friendly, but still clear at small sizes. <code>next/font</code> downloads it at build time and serves it from the app, so there's no request to Google when a child uses it, and it works offline later.</li>
+  </ul>
+
+  <h3>The stage is dark in both themes</h3>
+  <p>Photos read best on a neutral dark backdrop, the way photo and video editors do it. In dark mode the stage is darker than the page and has an outline, so the frame still stands out.</p>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Grids and long content.</strong> A plain <code>1fr</code> column grows to fit its widest child, so the scrolling timeline strip pushed the phone layout to twice the screen width. Columns are <code>minmax(0, 1fr)</code>, which lets them shrink and makes the strip scroll inside its box instead.</li>
+    <li><strong><code>useSearchParams</code> without <code>&lt;Suspense&gt;</code></strong> fails <code>next build</code> with a static export. Keep the boundary in <code>page.tsx</code>.</li>
+    <li><strong>Icon-only buttons need a name.</strong> When a label is hidden on phones (<code>desktop-only</code>), the button keeps an <code>aria-label</code> so screen readers still announce it.</li>
+    <li><strong>Sass modules.</strong> Use <code>@use "@/styles/breakpoints" as *;</code> (not <code>@import</code>), and <code>map.get</code> from <code>sass:map</code> (not the deprecated global <code>map-get</code>).</li>
+    <li><strong>Global CSS per area.</strong> <code>studio.scss</code> is a global stylesheet imported by <code>Studio.tsx</code>; the <code>nsc-studio</code> root is what scopes it. Don't add top-level selectors to it.</li>
+    <li><strong>Vitest's native binary disappeared again</strong> when <code>lucide-react</code> was installed, so the step 00 workaround (clean reinstall) wasn't enough. <code>@rolldown/binding-win32-x64-msvc</code> is now pinned in <code>optionalDependencies</code> at rolldown's exact version (1.2.19); see step 00's notes.</li>
+    <li><strong>On a phone the project name truncates</strong> ("My ...") next to four toolbar buttons. Fine for a placeholder; step 25 revisits phone toolbars.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm run dev</code></pre>
+  <ul>
+    <li><code>/</code> shows the start button; it opens <code>/studio</code>.</li>
+    <li><code>/studio?project=abc</code> says "My animation", <code>/studio</code> says "New animation".</li>
+    <li>Resize from desktop to 768 px to phone width: three columns, then panels under the stage, then panels hidden. No sideways scroll at any width.</li>
+    <li>Switch the OS to dark mode: everything follows, and the stage still stands out.</li>
+    <li><code>npm run build</code> lists <code>/studio</code> as static (○).</li>
+  </ul>
+
+  <h2>Files in this step</h2>
+  <p><code>src/styles/globals.scss</code>, <code>src/styles/_breakpoints.scss</code>, <code>src/styles/_controls.scss</code>, <code>src/app/layout.tsx</code>, <code>src/app/page.tsx</code>, <code>src/app/home.scss</code>, <code>src/app/studio/page.tsx</code>, <code>src/studio/Studio.tsx</code>, <code>src/studio/studio.scss</code>, <code>package.json</code>, <code>package-lock.json</code>, <code>.claude/launch.json</code> (dev server for the preview pane), <code>public/steps/01-studio-shell.html</code>, <code>public/steps/index.html</code>, <code>public/steps/00-setup.html</code> (next link), <code>ROADMAP.md</code>.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>no hex colours in component SCSS; everything goes through <code>--color-*</code></li>
+    <li><code>nsc-</code> only on roots (<code>nsc-studio</code>, <code>#nsc--home</code>), no <code>__</code> or <code>x--y</code> classes</li>
+    <li>every icon-only button has an <code>aria-label</code></li>
+    <li>layout works at 1280, 820 and 375 px wide, light and dark</li>
+    <li><code>npm run lint</code>, <code>npm run typecheck</code>, <code>npm run build</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="00-setup.html">Previous: 00 · Setup</a>
+    <span>Next: 02 · Core model</span>
+  </nav>
+</main>
+</body>
+</html>

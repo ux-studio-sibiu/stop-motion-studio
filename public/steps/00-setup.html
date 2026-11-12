@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>00 Setup · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 00 of 28 · Part 1 Foundations</p>
+  <h1>Setup</h1>
+  <p class="intro">An empty Next.js project that builds to a static site, lints its own layering rules and runs tests, before any feature exists.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>create-next-app@16.4.6</code> with TypeScript, App Router, ESLint and <code>src/</code>, <strong>no Tailwind</strong>. The demo page, its CSS module, the Geist fonts and the sample SVGs were removed.</li>
+    <li><code>next.config.ts</code>: <code>output: "export"</code> and <code>images.unoptimized</code>.</li>
+    <li><code>sass</code> for SCSS; <code>src/styles/globals.scss</code> with a minimal reset and two colour tokens (the real tokens come in step 01).</li>
+    <li>Empty layer folders, each with a one-paragraph <code>README.md</code> saying what belongs there (git doesn't track empty folders, and the note is the rule): <code>core/</code>, <code>adapters/</code>, <code>store/</code>, <code>studio/</code>, <code>features/</code>, <code>styles/</code>.</li>
+    <li>ESLint <code>no-restricted-imports</code> rules in <code>eslint.config.mjs</code>: <code>src/core/**</code> may not import React, Next, Dexie, Zustand or any other layer; <code>src/adapters/**</code> may import only from <code>core/</code>.</li>
+    <li>Vitest (<code>vitest.config.mts</code>) with the <code>@/</code> alias, and one smoke test in <code>src/core/setup.test.ts</code>.</li>
+    <li><code>serve</code> to preview the exported site with <code>npm start</code>.</li>
+    <li>These build notes: plain HTML in <code>public/steps/</code>, one page per step, served by the app at <code>/steps/index.html</code>.</li>
+    <li><code>STYLE_GUIDE.md</code> (via <code>scripts/sync-style-guide.ps1</code>, with this repo added to its targets) and <code>COMPONENT_PATTERNS.md</code> copied in for standalone clones.</li>
+  </ul>
+
+  <p class="file">eslint.config.mjs</p>
+  <pre><code>const coreRules = {
+  files: ["src/core/**/*.{ts,tsx}"],
+  rules: {
+    "no-restricted-imports": ["error", {
+      patterns: [
+        { group: ["react", "react-dom", "react/*", "next", "next/*"], message: "core/ is framework-free: no React or Next." },
+        { group: ["dexie", "dexie-*", "zustand", "zustand/*"], message: "core/ defines interfaces; ..." },
+        { group: ["@/adapters/*", "@/store/*", "@/studio/*", "@/features/*", "@/app/*"], message: "..." },
+      ],
+    }],
+  },
+};</code></pre>
+
+  <h2>Decisions</h2>
+
+  <h3>Static export from day one</h3>
+  <p>Everything this app does (camera, canvas, IndexedDB, encoding) happens in the browser. With <code>output: "export"</code>, <code>next build</code> writes plain HTML/JS to <code>out/</code>, which any static host can serve. Turning it on now means anything server-only (API routes, server actions, reading cookies, dynamic routes without <code>generateStaticParams</code>) fails the build immediately instead of in step 28.</p>
+  <ul>
+    <li><code>next start</code> doesn't work with a static export, so <code>npm start</code> serves <code>out/</code> with <code>serve</code> instead.</li>
+    <li><code>images.unoptimized</code>: <code>next/image</code>'s optimiser needs a server. Our images are Blobs from IndexedDB anyway, drawn with <code>&lt;img&gt;</code> or canvas.</li>
+  </ul>
+
+  <h3>Cache Components off</h3>
+  <p><code>create-next-app</code> 16.4 turns on <code>cacheComponents</code> and <code>partialPrefetching</code>. Both are about caching and streaming <strong>server-rendered</strong> data. This app renders no server data, so they were removed rather than carried as unused configuration.</p>
+
+  <h3>Layering enforced by lint</h3>
+  <p>PLAN.md §2 says <code>core/</code> is framework-free. A rule in the README would erode the first time an import is convenient; an ESLint error doesn't. The rule is cheap to relax later if a layer needs it, and the message says why it exists.</p>
+
+  <h3>Vitest, not Jest</h3>
+  <p>Same <code>describe</code> / <code>it</code> / <code>expect</code> API, but it uses the Vite toolchain, understands TypeScript and ESM without configuration, and is fast. Tests run in Node for now: <code>core/</code> has no DOM. Dexie tests in step 06 add <code>fake-indexeddb</code>; UI is checked in the browser.</p>
+
+  <h3>Build notes as static HTML</h3>
+  <p>Each step's notes are a hand-written HTML page in <code>public/steps/</code>, not a Next route or a Markdown file. Next copies <code>public/</code> into the export as is, so the notes ship with the app, open without a build, and keep working even when a step leaves the app broken. They share one local stylesheet, <code>steps.css</code>, whose look is copied from <code>effects-collection/index.html</code>.</p>
+
+  <h3>No Tailwind, no font yet</h3>
+  <p>The workspace style guide is SCSS with <code>nsc-</code> roots. Fonts are a design decision for step 01, so the system font stack stands in.</p>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong><code>@types/node</code> peer conflict.</strong> The scaffold pins <code>@types/node@^20</code>; Vitest 5 wants 22 or 24+. It was bumped to <code>^24</code>. Don't install with <code>--legacy-peer-deps</code> to "fix" it.</li>
+    <li><strong>"Cannot find native binding" from Vitest.</strong> npm can drop the platform binary of <code>rolldown</code> (Vite's bundler) from the lock file, a known npm optional-dependency bug; a clean reinstall only fixes it until the next <code>npm install &lt;pkg&gt;</code>. Since step 01 the Windows binary is pinned in <code>optionalDependencies</code> at rolldown's exact version, which npm skips on other platforms. When Vitest is upgraded, bump that pin to the new rolldown version; macOS/Linux contributors who hit the error add their own platform's binding the same way.</li>
+    <li><strong><code>LayoutProps</code> / <code>PageProps</code> are generated types.</strong> They exist only after Next writes route types, so <code>npm run typecheck</code> runs <code>next typegen</code> before <code>tsc</code>.</li>
+    <li><strong><code>AGENTS.md</code> is generated by Next.</strong> <code>next dev</code> rewrites its block, telling agents to read <code>node_modules/next/dist/docs/</code> because Next 16 differs from older versions. Commit it as is.</li>
+    <li><strong>Secure context.</strong> <code>getUserMedia</code> and <code>crypto.randomUUID</code> need HTTPS or <code>localhost</code>. Testing from a tablet on the LAN needs HTTPS (e.g. <code>next dev --experimental-https</code>), not just the IP.</li>
+    <li><strong>Directory index in dev.</strong> <code>next dev</code> doesn't serve <code>index.html</code> for a folder, so link to <code>/steps/index.html</code>, not <code>/steps/</code>.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm run lint
+npm run typecheck
+npm test
+npm run build
+npm start</code></pre>
+  <p>Lint and the type check are clean, one test passes, and <code>out/index.html</code> exists. <code>npm start</code> serves it at http://localhost:3000, with these notes at <code>/steps/index.html</code>.</p>
+  <div class="note">To see the layering rule work, add <code>import { useState } from "react";</code> to <code>src/core/meta.ts</code> and run <code>npm run lint</code>: it fails with "core/ is framework-free". Remove the line afterwards.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>package.json</code>, <code>package-lock.json</code>, <code>next.config.ts</code>, <code>eslint.config.mjs</code>, <code>vitest.config.mts</code>, <code>tsconfig.json</code>, <code>.gitignore</code>, <code>AGENTS.md</code>, <code>src/app/layout.tsx</code>, <code>src/app/page.tsx</code>, <code>src/app/favicon.ico</code>, <code>src/styles/globals.scss</code>, <code>src/core/meta.ts</code>, <code>src/core/setup.test.ts</code>, <code>src/*/README.md</code>, <code>public/steps/</code>, <code>README.md</code>, <code>STYLE_GUIDE.md</code>, <code>COMPONENT_PATTERNS.md</code>.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li><code>npm run lint</code>, <code>npm run typecheck</code>, <code>npm test</code>, <code>npm run build</code> all pass</li>
+    <li><code>next.config.ts</code> has <code>output: "export"</code> and nothing else server-related</li>
+    <li>the core import rule fails when React is imported into <code>src/core/</code></li>
+    <li>no Tailwind or demo leftovers in <code>src/app/</code> or <code>public/</code></li>
+  </ul>
+
+  <nav class="pager">
+    <a href="index.html">All steps</a>
+    <a href="01-studio-shell.html">Next: 01 · Studio shell and design tokens</a>
+  </nav>
+</main>
+</body>
+</html>

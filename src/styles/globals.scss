@@ -1,0 +1,90 @@
+@use "breakpoints" as *;
+@use "controls";
+
+// Design tokens. Light is the default on :root, dark redefines the same names,
+// so no colour exists only inside a media query.
+:root {
+  --color-bg: #fbf7f0;
+  --color-surface: #ffffff;
+  --color-ink: #1f2433;
+  --color-muted: #6a7184;
+  --color-line: #e6e0d5;
+  --color-faint: #f3ede3;
+  --color-accent: #f2544a;     // capture: the one loud colour
+  --color-accent-ink: #ffffff;
+  --color-go: #24a06b;         // play
+  --color-go-ink: #ffffff;
+  --color-focus: #3b6cf6;
+  --color-stage: #15171c;      // behind photos, dark in both schemes
+  --color-stage-ink: #b9bfcc;
+
+  --hit: 3.5rem;               // smallest touch target (56px)
+  --hit-big: 5.5rem;           // capture / play
+  --radius: 1rem;
+  --radius-small: 0.625rem;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --timeline-height: 8.5rem;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #14161c;
+    --color-surface: #1d2029;
+    --color-ink: #eef0f5;
+    --color-muted: #9aa1b2;
+    --color-line: #2c303b;
+    --color-faint: #232733;
+    --color-accent: #ff6559;
+    --color-go: #33b97f;
+    --color-focus: #7d9bff;
+    --color-stage: #0a0b0e;      // darker than the page, so the frame still reads
+
+    color-scheme: dark;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-ui), system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; }
+
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+// Show / hide by breakpoint: only hide, never set a "shown" display.
+.desktop-only { @include respond-to-max("tablet") { display: none; } }
+.mobile-only { @include respond-to("tablet") { display: none; } }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

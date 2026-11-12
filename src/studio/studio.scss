@@ -1,0 +1,164 @@
+@use "@/styles/breakpoints" as *;
+
+// Studio grid. Desktop / tablet landscape: three columns around the stage.
+// Tablet portrait: stage on top, the two panels side by side under it.
+// Phone: stage, playback and timeline only; panels hidden until a later step gives them a drawer.
+.nsc-studio {
+  display: grid;
+  // minmax(0, ...) so long content (timeline strip, toolbar) can't widen the columns past the screen.
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto var(--timeline-height);
+  grid-template-areas: "toolbar" "stage" "playback" "timeline";
+  gap: var(--space-3);
+  height: 100dvh;
+  padding: var(--space-3);
+  overflow: hidden;
+
+  @include respond-to("tablet") {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto minmax(0, 1fr) auto auto var(--timeline-height);
+    grid-template-areas: "toolbar toolbar" "stage stage" "side properties" "playback playback" "timeline timeline";
+  }
+
+  @include respond-to("desktop") {
+    grid-template-columns: 15rem minmax(0, 1fr) 15rem;
+    grid-template-rows: auto minmax(0, 1fr) auto var(--timeline-height);
+    grid-template-areas: "toolbar toolbar toolbar" "side stage properties" "playback playback playback" "timeline timeline timeline";
+  }
+
+  .toolbar {
+    grid-area: toolbar;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .project-name {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    font-size: 1.5rem;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .toolbar-actions {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .side-panel,
+  .properties-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius);
+    overflow: auto;
+
+    @include respond-to-max("tablet") { display: none; }
+  }
+
+  .side-panel {
+    grid-area: side;
+    align-items: center;
+  }
+
+  .properties-panel { grid-area: properties; }
+
+  .panel-title {
+    align-self: stretch;
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 800;
+  }
+
+  .placeholder {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 0.9375rem;
+  }
+
+  // The stage keeps the project's 16:9 frame centred in whatever space the grid gives it.
+  .stage {
+    grid-area: stage;
+    display: grid;
+    place-items: center;
+    min-height: 0;
+    container-type: size;
+  }
+
+  .stage-frame {
+    display: grid;
+    place-items: center;
+    width: min(100cqw, 100cqh * 16 / 9);
+    aspect-ratio: 16 / 9;
+    padding: var(--space-3);
+    background: var(--color-stage);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius);
+    text-align: center;
+
+    .placeholder { color: var(--color-stage-ink); }
+  }
+
+  .playback-bar {
+    grid-area: playback;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+
+    @include respond-to("tablet") { gap: var(--space-4); }
+  }
+
+  .speed {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 700;
+
+    input { width: 6rem; }
+
+    @include respond-to("tablet") { input { width: 8rem; } }
+  }
+
+  .timeline {
+    grid-area: timeline;
+    min-width: 0;
+    padding: var(--space-3);
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius);
+  }
+
+  .frames {
+    display: flex;
+    gap: var(--space-2);
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow-x: auto;
+  }
+
+  .frame-slot {
+    flex: none;
+    aspect-ratio: 16 / 9;
+    height: 100%;
+    background: var(--color-faint);
+    border-radius: var(--radius-small);
+
+    &.is-next {
+      display: grid;
+      place-items: center;
+      border: 2px dashed var(--color-line);
+      background: none;
+      color: var(--color-muted);
+    }
+  }
+}

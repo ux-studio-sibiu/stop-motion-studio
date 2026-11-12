@@ -1,0 +1,20 @@
+// Responsive breakpoints and mixins (workspace STYLE_GUIDE.md).
+
+@use "sass:map";
+
+$mobile: 480px;     // small phones
+$tablet: 768px;     // tablets in portrait, large phones in landscape
+$desktop: 1024px;   // tablets in landscape, laptops
+$wide: 1440px;      // large screens
+
+$breakpoints: ("mobile": $mobile, "tablet": $tablet, "desktop": $desktop, "wide": $wide);
+
+// "tablet and up"
+@mixin respond-to($name) {
+  @media (min-width: map.get($breakpoints, $name)) { @content; }
+}
+
+// "below tablet": 0.02px under the breakpoint so it never overlaps respond-to.
+@mixin respond-to-max($name) {
+  @media (max-width: map.get($breakpoints, $name) - 0.02px) { @content; }
+}
