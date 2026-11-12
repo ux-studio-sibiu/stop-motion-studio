@@ -89,9 +89,11 @@ browser mode joins in step 15 for canvas pixel tests.
 - **Check:** store unit tests; React DevTools shows no full-tree re-render on selection change.
 
 ### 05 · Capture to an in-memory timeline
-- **Builds:** `adapters/camera/capture`: draw the video to a canvas at the project's working resolution
-  (cover-fit), `toBlob` JPEG 0.9, plus a 160 px thumbnail. Big capture button + Space key. A plain
-  timeline strip of thumbnails (no persistence yet, equal widths; time scaling comes in step 10).
+- **Builds:** `core/render/fit` (`coverCrop`, tested) *(core)*; `adapters/camera/capture`: draw the
+  video to a canvas at the project's working resolution (cover-crop), `toBlob` JPEG 0.9, plus a 160 px
+  thumbnail made from that picture. The image cache owns object URLs. Big capture button + Space key,
+  picture counter, a short flash. A plain timeline strip of thumbnails with selection (no persistence
+  yet, equal widths; time scaling comes in step 10).
 - **Decisions:** resize at capture, not at export, so storage stays small. Thumbnail generated now so
   the timeline never decodes full images.
 - **Watch out:** `videoWidth` is 0 until `loadedmetadata`; disable capture until then. Space must not
@@ -201,15 +203,14 @@ dragging. Step 24 adds a second layer under the pictures for text and shapes.
   *(core)*. `Timeline` with a picture track whose thumbnails are `hold` ticks wide (`pxPerTick` from a
   zoom level), a seconds ruler (faint tick marks every second, labels every few seconds, finer marks when
   zoomed in), click to select, arrow keys to move the selection, auto-scroll to the selection, the
-  "camera" slot at the end. `useBlobUrl(blob)` creates and revokes object URLs. Zoom in/out buttons and
+  "camera" slot at the end. Thumbnail URLs keep coming from the image cache (step 05). Zoom in/out buttons and
   Ctrl/Cmd+wheel.
 - **Decisions:** the ruler is drawn in CSS (a repeating gradient sized from `pxPerSecond`) plus a few
   absolutely positioned labels, not one DOM node per tick. The track is a `role="listbox"`. Thumbnails
   are cover-cropped and repeated when a picture is wider than one thumbnail. Zoom is UI state (Zustand),
   not saved in the project.
 - **Watch out:** at high speeds a 1-tick picture is narrow; keep a minimum visual width and a hit area of
-  at least 56 px tall. A revoked URL still used by an `<img>` shows a broken image: revoke on unmount or
-  when the blob changes, not before. Labels must stay faint (`--color-muted`, low contrast lines) so the
+  at least 56 px tall. Labels must stay faint (`--color-muted`, low contrast lines) so the
   pictures stay the focus.
 - **Check:** at 8 fps, a 1-tick picture is 1/8 of a second-mark wide; zooming keeps the selection in
   view; 100 frames scroll smoothly.
@@ -547,7 +548,7 @@ registry entry.
 - [x] 02 Core model ([page](public/steps/02-core-model.html))
 - [x] 03 Camera ([page](public/steps/03-camera.html))
 - [x] 04 Editor store ([page](public/steps/04-editor-store.html))
-- [ ] 05 Capture to an in-memory timeline
+- [x] 05 Capture to an in-memory timeline ([page](public/steps/05-capture.html))
 - [ ] 06 Dexie schema and repository
 - [ ] 07 Save captures and survive a refresh
 - [ ] 08 End-to-end tests with Playwright

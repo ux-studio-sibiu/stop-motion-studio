@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>05 Capture · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 05 of 33 · Part 2 Capture</p>
+  <h1>Capture to an in-memory timeline</h1>
+  <p class="intro">The big red button (or Space) takes a picture: the live camera frame is cropped to the project's 16:9 shape, resized to 1280×720, saved as a JPEG with a small thumbnail, and added to the end of the animation. The timeline shows the thumbnails, numbered, and a tap selects one. Nothing is saved yet: leaving the studio drops the pictures until step 07.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>src/core/render/fit.ts</code>: <code>coverCrop()</code>, the "fill without stretching" maths (CSS <code>object-fit: cover</code>), with 5 tests. The renderer will reuse it.</li>
+    <li><code>src/adapters/camera/capture.ts</code>: <code>captureFrame(video, size)</code> returns <code>{ image, thumb, width, height }</code>: a 1280×720 JPEG at quality 0.9 and a 160×90 thumbnail at 0.8.</li>
+    <li><code>src/adapters/images/imageCache.ts</code> now also hands out <strong>object URLs</strong> (<code>url(imageId)</code>), made once per image and revoked when the image is replaced, deleted or cleared. 2 new tests.</li>
+    <li><code>src/studio/media.ts</code>: the open project's two caches, <code>images</code> and <code>thumbs</code>, and <code>clearMedia()</code>.</li>
+    <li><code>src/studio/useCapture.ts</code>: <code>capture()</code> (take, cache, add a frame) and the Space shortcut.</li>
+    <li><code>src/studio/Timeline.tsx</code>: the thumbnail strip with picture numbers, selection, and a "next picture goes here" slot that stays in view.</li>
+    <li>Capture button enabled when the camera is live, a picture counter under it ("3 pictures", read out by screen readers), and a short white flash on the stage (off with reduced motion).</li>
+    <li><code>CameraView</code> hands its <code>&lt;video&gt;</code> to the studio through an <code>onVideo</code> callback.</li>
+  </ul>
+
+  <h3>What happens on a press</h3>
+  <pre><code>press / Space
+  → captureFrame(video, project)      draw the current video frame, cover-cropped, at 1280×720
+                                      draw that picture again at 160×90 for the thumbnail
+                                      encode both as JPEG (toBlob)
+  → images.put(id, image)             full picture: in memory (IndexedDB in step 07)
+    thumbs.put(id, thumb)             thumbnail: in memory
+  → insertFrames([createFrame(...)])  the store gets a new frame pointing at the image id
+  → the Timeline re-renders           its &lt;img&gt; src is thumbs.url(id)</code></pre>
+
+  <h2>Decisions</h2>
+
+  <h3>Crop and resize at capture time</h3>
+  <p>Webcams deliver all sorts of shapes and sizes: 640×480, 1920×1080, 4K, portrait on phones. Every picture is turned into the project's shape and working size the moment it's taken. Storage stays small and predictable (a 1280×720 JPEG is roughly 100-200 KB), and everything after this step (timeline, playback, export) can assume every picture is the same size.</p>
+
+  <h3>The crop is the same one the preview shows</h3>
+  <p>The live <code>&lt;video&gt;</code> uses CSS <code>object-fit: cover</code> (step 03); <code>coverCrop()</code> computes exactly that rectangle for the canvas. So the picture contains what the child saw, no more and no less. With a 4:3 camera, a strip at the top and bottom is cut off in both.</p>
+  <p class="file">src/core/render/fit.ts</p>
+  <pre><code>coverCrop(640, 480, 1280, 720)   // → { x: 0, y: 60, width: 640, height: 360 }</code></pre>
+
+  <h3>The thumbnail is made from the picture, not the video</h3>
+  <p>It's drawn from the cropped 1280×720 canvas, so it can never show a slightly different crop or a frame a few milliseconds later. It's stored separately so the timeline never has to load or decode the full pictures.</p>
+
+  <h3>The cache owns the object URLs</h3>
+  <p>An <code>&lt;img&gt;</code> can only show a Blob through a <code>blob:</code> URL made with <code>URL.createObjectURL</code>, and each one keeps its Blob in memory until <code>URL.revokeObjectURL</code>. The roadmap planned a <code>useBlobUrl</code> hook per thumbnail; making the URL inside a component turned out fragile (React may render twice, and revoking in a cleanup can blank an image that's still on screen). Instead the cache makes one URL per image, hands the same one to every component, and revokes it only when the image itself goes away. Components just read <code>thumbs.url(id)</code>.</p>
+
+  <h3>One picture at a time</h3>
+  <p>The current video frame is drawn the instant the button is pressed; encoding the JPEGs takes a moment after that. Presses during that moment are ignored, so a double tap gives one picture, and pictures always arrive in the order they were taken. Normally the gap is well under a tenth of a second.</p>
+
+  <h3>Space captures, unless something else wants it</h3>
+  <p>Space anywhere in the studio takes a picture. It's ignored while typing (inputs, text areas, editable text) and when a button or link has focus, because Space already presses the focused button; capturing as well would do two things at once. Held-down Space (key repeat) doesn't fire a burst.</p>
+
+  <h3>The studio owns the video element</h3>
+  <p><code>CameraView</code> still sets the stream on its own <code>&lt;video&gt;</code>, and passes the element up with <code>onVideo(element)</code>; the studio keeps it in a ref for capturing. Passing a ref object down and having the child write into it is what the React compiler's lint rule rejects ("This value cannot be modified"), and a callback keeps who-owns-what clear.</p>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong><code>videoWidth</code> is 0 until the first frame arrives.</strong> <code>captureFrame</code> refuses then (the press is simply ignored, with a console warning), and the button is only enabled once the camera is live.</li>
+    <li><strong><code>toBlob</code> can return <code>null</code></strong> (out of memory, a canvas that's too big). It's turned into an error, not a missing picture.</li>
+    <li><strong>Canvas memory.</strong> The two canvases are shrunk to 0×0 after encoding; Safari otherwise keeps their pixels around until garbage collection.</li>
+    <li><strong>Leaving the project changes the plan mid-capture.</strong> If the project changes while a picture is encoding, the picture is dropped instead of landing in the wrong project.</li>
+    <li><strong>Never revoke a URL that's on screen.</strong> Only the cache revokes, and only when the image leaves it: on replace, delete, or <code>clearMedia()</code> when leaving the studio.</li>
+    <li><strong><code>next/image</code> can't handle <code>blob:</code> URLs</strong>, so the thumbnails are plain <code>&lt;img&gt;</code> with the lint rule switched off on that one line.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm test
+npm run dev</code></pre>
+  <ul>
+    <li>Turn on the camera, press the red button: a flash, a thumbnail at the end of the timeline numbered 1, "1 picture" under the button.</li>
+    <li>Press Space a few times (click on the stage first, so no button has focus): more pictures. With focus on "Camera off", Space toggles the camera and takes no picture.</li>
+    <li>Take 10 pictures: the timeline scrolls so the "next picture" slot stays in view.</li>
+    <li>Tap a thumbnail: it gets a blue outline.</li>
+    <li>With a 4:3 webcam, compare a thumbnail with the live view: same crop.</li>
+    <li>DevTools &gt; Memory while capturing 20 pictures: memory grows by the JPEGs only (a few MB), not by a canvas per picture.</li>
+  </ul>
+  <div class="note">Checked while building, on the production build with a fake 4:3 camera (red band at the top, blue at the bottom, green in between): presses and Space add frames and the counter follows; presses while a picture is encoding are ignored; Space on a focused button takes no picture; the thumbnail is 160×90 JPEG and its top and bottom rows are green, so exactly the 4:3 → 16:9 crop was taken; selection outlines the tapped thumbnail; leaving the studio revokes the thumbnail URLs. Not checked: the auto-scroll (the preview window was hidden, so it had no width), a real webcam, a tablet.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/render/fit.ts</code>, <code>src/core/render/fit.test.ts</code>, <code>src/adapters/camera/capture.ts</code>, <code>src/adapters/images/imageCache.ts</code>, <code>src/adapters/images/imageCache.test.ts</code>, <code>src/studio/media.ts</code>, <code>src/studio/useCapture.ts</code>, <code>src/studio/Timeline.tsx</code>, <code>src/studio/CameraView.tsx</code>, <code>src/studio/CameraPanel.tsx</code>, <code>src/studio/Studio.tsx</code>, <code>src/studio/studio.scss</code>, <code>public/steps/05-capture.html</code>, <code>public/steps/index.html</code>, <code>public/steps/04-editor-store.html</code> (next link), <code>ROADMAP.md</code> (steps 05 and 10).</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>a picture contains exactly what the live view showed (same crop)</li>
+    <li>no component creates or revokes object URLs; only the image cache does</li>
+    <li>no Blobs in the store, only image ids</li>
+    <li>Space never captures while typing or with a button focused</li>
+    <li><code>npm test</code> (49 tests), <code>npm run lint</code>, <code>npm run typecheck</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="04-editor-store.html">Previous: 04 · Editor store</a>
+    <span>Next: 06 · Dexie schema and repository</span>
+  </nav>
+</main>
+</body>
+</html>

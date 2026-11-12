@@ -1,28 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { Camera, ChevronLeft, Download, Layers, Play, Redo2, Undo2 } from "lucide-react";
+import { ChevronLeft, Download, Layers, Play, Redo2, Undo2 } from "lucide-react";
 import { createProject } from "@/core/model";
 import { editorStore, useEditor } from "@/store/useEditor";
 import { CameraMessage } from "./CameraMessage";
 import { CameraPanel } from "./CameraPanel";
 import { CameraView } from "./CameraView";
+import { clearMedia } from "./media";
+import { Timeline } from "./Timeline";
 import { useCamera } from "./useCamera";
+import { useCapture } from "./useCapture";
 import "./studio.scss";
 
 // The studio screen. Areas still holding a placeholder are filled by later steps
-// (timeline 05/10, playback 16, properties 18).
+// (playback 16, properties 18).
 export function Studio() {
   const projectId = useSearchParams().get("project");
   const projectName = useEditor((state) => state.project?.name);
   const camera = useCamera();
+  const video = useRef<HTMLVideoElement | null>(null);
+  const onVideo = useCallback((element: HTMLVideoElement | null) => { video.current = element; }, []);
+  const { capture, capturing } = useCapture(video, camera.status === "live");
 
-  // Until projects are saved (step 07), every visit starts a fresh, empty project.
+  // Until projects are saved (step 07), every visit starts a fresh, empty project,
+  // and its photos are dropped on leaving.
   useEffect(() => {
     editorStore.getState().loadProject(createProject(), []);
-    return () => editorStore.getState().unloadProject();
+    return () => { editorStore.getState().unloadProject(); clearMedia(); };
   }, [projectId]);
 
   // Development only: poke at the store from the browser console (window.editorStore.getState()).
@@ -43,11 +50,11 @@ export function Studio() {
         </div>
       </header>
 
-      <CameraPanel camera={camera} />
+      <CameraPanel camera={camera} onCapture={capture} capturing={capturing} />
 
       <main className="stage" aria-label="Stage">
-        <div className="stage-frame">
-          {camera.stream ? <CameraView stream={camera.stream} /> : <CameraMessage camera={camera} />}
+        <div className={`stage-frame${capturing ? " is-capturing" : ""}`}>
+          {camera.stream ? <CameraView stream={camera.stream} onVideo={onVideo} /> : <CameraMessage camera={camera} />}
         </div>
       </main>
 
@@ -56,14 +63,7 @@ export function Studio() {
         <p className="placeholder">Move, size and brightness for the selected picture (steps 18-20).</p>
       </aside>
 
-      <section className="timeline" aria-label="Pictures">
-        <ol className="frames">
-          <li className="frame-slot" aria-hidden="true" />
-          <li className="frame-slot" aria-hidden="true" />
-          <li className="frame-slot" aria-hidden="true" />
-          <li className="frame-slot is-next"><Camera size={24} /><span className="visually-hidden">Next picture goes here</span></li>
-        </ol>
-      </section>
+      <Timeline />
 
       <footer className="playback-bar">
         <button type="button" className="big-button is-play" aria-label="Play" disabled><Play size={40} /></button>

@@ -12,6 +12,34 @@ describe("imageCache", () => {
     expect(cache.get("i1")).toBeUndefined();
   });
 
+  it("makes one object URL per image and replaces it when the image changes", () => {
+    const cache = createImageCache();
+    cache.put("i1", new Blob(["a"]));
+    const first = cache.url("i1");
+    expect(first).toMatch(/^blob:/);
+    expect(cache.url("i1")).toBe(first);
+    cache.put("i1", new Blob(["b"]));
+    expect(cache.url("i1")).not.toBe(first);
+    expect(cache.url("missing")).toBeUndefined();
+  });
+
+  it("revokes URLs when images are deleted or cleared", () => {
+    const cache = createImageCache();
+    const revoked: string[] = [];
+    const original = URL.revokeObjectURL;
+    URL.revokeObjectURL = (url) => { revoked.push(url); original(url); };
+    try {
+      cache.put("i1", new Blob(["a"]));
+      cache.put("i2", new Blob(["b"]));
+      const one = cache.url("i1")!, two = cache.url("i2")!;
+      cache.delete("i1");
+      cache.clear();
+      expect(revoked).toEqual([one, two]);
+    } finally {
+      URL.revokeObjectURL = original;
+    }
+  });
+
   it("clears everything", () => {
     const cache = createImageCache();
     cache.put("i1", new Blob());
