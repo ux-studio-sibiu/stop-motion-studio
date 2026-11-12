@@ -6,7 +6,7 @@ import { Camera, ChevronLeft, Download, Layers, Play, Redo2, Undo2 } from "lucid
 import "./studio.scss";
 
 // The studio screen. Step 01 is layout only: every area holds a placeholder that a later
-// step replaces (camera 03, timeline 05/09, playback 14, properties 16).
+// step replaces (camera 03, timeline 05/09, playback 15, properties 17).
 export function Studio() {
   const projectId = useSearchParams().get("project");
 
@@ -36,7 +36,7 @@ export function Studio() {
 
       <aside className="properties-panel" aria-label="Picture settings">
         <h2 className="panel-title">Picture</h2>
-        <p className="placeholder">Move, size and brightness for the selected picture (steps 16-17).</p>
+        <p className="placeholder">Move, size and brightness for the selected picture (steps 17-19).</p>
       </aside>
 
       <section className="timeline" aria-label="Pictures">

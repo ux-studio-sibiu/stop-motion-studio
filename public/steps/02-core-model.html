@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>02 Core model · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 02 of 32 · Part 1 Foundations</p>
+  <h1>Core model</h1>
+  <p class="intro">The shape of an animation, written down as plain TypeScript: projects, frames, images and thumbnails, the defaults a new one starts with, and how long each frame stays on screen. No UI changes; everything later builds on these types, and they come with tests.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>src/core/model/types.ts</code>: <code>Project</code>, <code>Frame</code>, <code>Transform</code>, <code>Adjust</code>, <code>StoredImage</code>, <code>StoredThumb</code>.</li>
+    <li><code>src/core/model/ids.ts</code>: <code>newId()</code>, a wrapper around <code>crypto.randomUUID()</code>.</li>
+    <li><code>src/core/model/project.ts</code>: <code>createProject()</code>, <code>createFrame()</code>, <code>frameDuration()</code>, <code>projectDuration()</code>, <code>clampFps()</code>, <code>clampHold()</code>, and the constants: <code>SCHEMA_VERSION</code>, default and maximum resolution, fps limits, <code>FPS_OPTIONS</code>, frozen <code>DEFAULT_TRANSFORM</code> / <code>DEFAULT_ADJUST</code>.</li>
+    <li><code>src/core/model/index.ts</code>: one import path, <code>@/core/model</code>.</li>
+    <li><code>src/core/model/project.test.ts</code>: 12 tests. The step 00 smoke test and its <code>meta.ts</code> are gone.</li>
+  </ul>
+
+  <p class="file">src/core/model/types.ts</p>
+  <pre><code>export type Project = {
+  id: string;
+  schemaVersion: number;
+  name: string;
+  width: number;           // working resolution in px; captures are resized to it
+  height: number;
+  fps: number;             // ticks per second; a frame lasts `hold` ticks
+  frameIds: string[];      // the order of the animation
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type Frame = {
+  id: string;
+  projectId: string;
+  imageId: string;         // several frames may share one image (duplicate / hold)
+  hold: number;            // whole ticks on screen, &gt;= 1
+  transform: Transform;
+  adjust: Adjust;
+};</code></pre>
+
+  <h3>How the pieces relate</h3>
+  <pre><code>Project ── frameIds: [f1, f2, f3, f2]      the order (f2 appears twice)
+   │
+   ├── Frame f1 ── imageId: i1 ──► StoredImage i1 (full photo)
+   ├── Frame f2 ── imageId: i2 ──► StoredImage i2   + StoredThumb i2 (160 px)
+   └── Frame f3 ── imageId: i2       (a duplicate: same photo, own transform)</code></pre>
+
+  <h2>Decisions</h2>
+
+  <h3>Plain data, no classes</h3>
+  <p>Everything is a type plus functions that return new objects. Plain objects go into IndexedDB as they are (step 06), into a JSON archive (step 26), and can be copied and compared for undo (step 10). A class would need converting at each of those boundaries.</p>
+
+  <h3>Order lives in <code>project.frameIds</code></h3>
+  <p>Frames don't carry an <code>order</code> number. Moving a picture from position 40 to position 2 rewrites one list on one record, instead of renumbering 39 frames, and undoing it puts the old list back. The cost is keeping the list and the frames table in step; the load step in 07 repairs any drift, and <code>projectDuration()</code> already skips ids without a frame.</p>
+
+  <h3>Time is counted in ticks, not milliseconds</h3>
+  <p>A frame has <code>hold</code> (how many ticks it stays) and the project has <code>fps</code> (ticks per second). <code>frameDuration = hold × 1000 / fps</code>. When a child changes the speed, a picture they "held for three" stays three times as long as the others at every speed. With milliseconds per frame, changing the speed would have to rewrite every frame or break that rhythm.</p>
+  <div class="note">Since this step, the plan added a <strong>time-scaled timeline</strong>: a picture's width is its duration, dragging its edge changes <code>hold</code> (snapped to whole ticks, step 12), and a faint seconds ruler shows real time. A second layer of text and shapes (step 23) uses the same ticks for its <code>start</code> and <code>length</code>, so both layers stay lined up when the speed changes. Speech bubbles (step 22) are stored on the frame they belong to. None of these change the types written in this step; they add to them. Also planned: a duplicated frame must look exactly like its source, so step 11 adds a <code>cloneFrame()</code> next to <code>createFrame()</code> that copies every field and is tested field by field.</div>
+
+  <h3>Transforms are relative to the project</h3>
+  <p><code>x</code> and <code>y</code> are fractions of the frame's width and height (0.1 = 10% to the right), <code>scale</code> 1 means "fits the frame", rotation is in degrees. If the working resolution changes, moved pictures stay where they were put.</p>
+
+  <h3>Adjustments are numbers, never pixels</h3>
+  <p><code>brightness</code> and <code>contrast</code> default to 1 (unchanged) and are applied when drawing (step 19). The original photo is never rewritten, so every change can be undone or reset.</p>
+
+  <h3>Limits are enforced where objects are made</h3>
+  <ul>
+    <li>Resolution is capped at 1920×1080 and rounded down to even numbers, because the H.264 encoder in step 25 rejects odd sizes.</li>
+    <li>fps is a whole number from 1 to 30; <code>hold</code> is a whole number of at least 1. <code>NaN</code> falls back to the defaults instead of spreading.</li>
+    <li>A blank name becomes "My animation".</li>
+  </ul>
+  <p>Later steps that change these values (speed control, hold buttons) go through the same <code>clampFps()</code> / <code>clampHold()</code>.</p>
+
+  <h3>UUIDs for every id</h3>
+  <p><code>crypto.randomUUID()</code> ids are made on the device and never clash, even when a project archive from another computer is imported (step 26). They're wrapped in <code>newId()</code> so tests or a future storage backend can swap the generator in one place.</p>
+
+  <h3><code>schemaVersion</code> on every project</h3>
+  <p>Stored data outlives the code that wrote it. Each project records the shape it was saved with, so a later version (layers, sound) knows what to migrate.</p>
+
+  <h3>Defaults are frozen, frames get copies</h3>
+  <p><code>DEFAULT_TRANSFORM</code> and <code>DEFAULT_ADJUST</code> are <code>Object.freeze</code>d, and <code>createFrame()</code> spreads them into new objects. Without that, editing one frame's transform in place could silently move every new frame.</p>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Blobs are in the types but not in the store.</strong> <code>StoredImage.blob</code> and <code>StoredThumb.blob</code> belong in IndexedDB and short-lived caches. The Zustand store (step 04) holds <code>Project</code> and <code>Frame</code> only.</li>
+    <li><strong><code>crypto.randomUUID()</code> needs a secure context</strong>: <code>localhost</code> or HTTPS. On a tablet opening the dev server by LAN IP over plain <code>http://</code>, <code>newId()</code> throws.</li>
+    <li><strong>Types are compile-time only.</strong> Data read back from IndexedDB or an imported archive isn't checked by TypeScript; step 26 validates archives at runtime.</li>
+    <li><strong>The layering rule applies here.</strong> Nothing in <code>src/core/model/</code> may import React, Next, Dexie or Zustand.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm test
+npm run lint</code></pre>
+  <p>12 tests pass: defaults, unique ids, name fallback, resolution caps and even sizes, fps and hold clamping, frozen defaults, durations, rhythm kept across speeds, and the total length skipping missing frames.</p>
+  <div class="note">Try breaking it: in <code>createFrame()</code>, replace <code>{ ...DEFAULT_TRANSFORM, ...transform }</code> with plain <code>DEFAULT_TRANSFORM</code>. The "never shares or mutates the default objects" test fails, because every frame would now point at the same object. Undo the change afterwards.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/model/types.ts</code>, <code>src/core/model/ids.ts</code>, <code>src/core/model/project.ts</code>, <code>src/core/model/index.ts</code>, <code>src/core/model/project.test.ts</code>; removed <code>src/core/meta.ts</code> and <code>src/core/setup.test.ts</code>; <code>public/steps/02-core-model.html</code>, <code>public/steps/index.html</code>, <code>public/steps/01-studio-shell.html</code> (next link), <code>public/steps/00-setup.html</code> (layering check now names <code>src/core/model/</code>), <code>ROADMAP.md</code>.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>the types match PLAN.md §3 (and PLAN.md is updated if they don't)</li>
+    <li>no function mutates its input</li>
+    <li>nothing in <code>src/core/</code> imports a framework or another layer</li>
+    <li><code>npm test</code>, <code>npm run lint</code>, <code>npm run typecheck</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="01-studio-shell.html">Previous: 01 · Studio shell</a>
+    <span>Next: 03 · Camera</span>
+  </nav>
+</main>
+</body>
+</html>
