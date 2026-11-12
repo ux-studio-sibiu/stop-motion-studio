@@ -107,8 +107,9 @@ browser mode joins in step 15 for canvas pixel tests.
 ### 06 · Dexie schema and repository *(core + adapter)*
 - **Builds:** `core/model/ProjectRepository` interface. `adapters/storage/db.ts` with version 1 tables:
   `projects: "id, updatedAt"`, `frames: "id, projectId"`, `images: "id, projectId"`,
-  `thumbs: "imageId, projectId"`. `DexieProjectRepository` implementing it. Tests with
-  `fake-indexeddb`.
+  `thumbs: "imageId, projectId"`. `createDexieRepository(db)` implementing it. A reusable
+  **contract test** (`repositoryContract.ts`) that any future repository (e.g. a cloud one) must also
+  pass, run here against Dexie on `fake-indexeddb`.
 - **Decisions:** thumbs are a separate table so listing them never touches full images. Only fields
   that are queried are indexed. The rest of the app depends on the interface, never on `db` directly.
   The `overlays` table arrives with step 24.
@@ -549,7 +550,7 @@ registry entry.
 - [x] 03 Camera ([page](public/steps/03-camera.html))
 - [x] 04 Editor store ([page](public/steps/04-editor-store.html))
 - [x] 05 Capture to an in-memory timeline ([page](public/steps/05-capture.html))
-- [ ] 06 Dexie schema and repository
+- [x] 06 Dexie schema and repository ([page](public/steps/06-storage.html))
 - [ ] 07 Save captures and survive a refresh
 - [ ] 08 End-to-end tests with Playwright
 - [ ] 09 Projects page

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>06 Storage · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 06 of 33 · Part 3 Persistence and testing</p>
+  <h1>Dexie schema and repository</h1>
+  <p class="intro">The studio now has a place to keep projects in the browser: an IndexedDB database with four tables, reached through Dexie, and a <code>ProjectRepository</code> interface the rest of the app will use. Nothing on screen changes yet; step 07 connects capture and the timeline to it. This step is the storage layer and its tests.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>dexie</code> 4, and <code>fake-indexeddb</code> for tests.</li>
+    <li><code>src/core/model/repository.ts</code>: the <code>ProjectRepository</code> interface, plus <code>ProjectChanges</code> and <code>FrameInsert</code>.</li>
+    <li><code>src/adapters/storage/db.ts</code>: <code>openStudioDb()</code> (the version 1 tables) and <code>studioDb()</code> (the app's database, opened on first use).</li>
+    <li><code>src/adapters/storage/dexieRepository.ts</code>: <code>createDexieRepository(db)</code>, the interface on Dexie.</li>
+    <li><code>src/adapters/storage/repositoryContract.ts</code>: <code>describeRepositoryContract()</code>, 10 tests that any repository must pass.</li>
+    <li><code>src/adapters/storage/dexieRepository.test.ts</code>: runs the contract on Dexie, plus 2 Dexie-only tests (the schema, and rolling back a failed transaction). 61 tests in total now.</li>
+  </ul>
+
+  <h3>The tables</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Table</th><th>Key</th><th>Indexed by</th><th>Holds</th></tr></thead>
+    <tbody>
+      <tr><td><code>projects</code></td><td><code>id</code></td><td><code>updatedAt</code></td><td>name, size, speed, <code>frameIds</code> (the order)</td></tr>
+      <tr><td><code>frames</code></td><td><code>id</code></td><td><code>projectId</code></td><td>image id, hold, transform, adjust</td></tr>
+      <tr><td><code>images</code></td><td><code>id</code></td><td><code>projectId</code></td><td>the full photo as a Blob, its size</td></tr>
+      <tr><td><code>thumbs</code></td><td><code>imageId</code></td><td><code>projectId</code></td><td>the 160×90 thumbnail as a Blob</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="file">src/adapters/storage/db.ts</p>
+  <pre><code>db.version(1).stores({
+  projects: "id, updatedAt",
+  frames: "id, projectId",
+  images: "id, projectId",
+  thumbs: "imageId, projectId",
+});</code></pre>
+
+  <h3>The interface</h3>
+  <pre><code>listProjects()                           newest first
+getProject(id)  loadProject(id)          loadProject = project + all its frames
+createProject(project)
+updateProject(id, { name, fps, frameIds })   bumps updatedAt
+deleteProject(id)                        with all its frames, images, thumbs
+insertFrames(projectId, { frames, images, thumbs, at })
+getImage(imageId)  getThumb(imageId)  listThumbs(projectId)</code></pre>
+
+  <h2>How IndexedDB and Dexie work</h2>
+  <p><strong>IndexedDB</strong> is a database built into every browser, private to the site that created it (here, the studio's origin). It stores JavaScript objects, including <strong>Blobs</strong>, directly; no conversion to text. Data is grouped in <em>object stores</em> (tables) with a primary key, and <em>indexes</em> on other fields make lookups like "all frames of this project" fast. All work happens in <em>transactions</em>: either everything in a transaction is written, or nothing is.</p>
+  <p>The raw IndexedDB API is event-based and wordy. <strong>Dexie</strong> wraps it in promises and a small query language: <code>db.frames.where("projectId").equals(id).toArray()</code>. <code>db.transaction("rw", tables, async () =&gt; { ... })</code> runs a function in one transaction; if anything inside throws, Dexie aborts it and every write in it is undone. A <strong>version</strong> is the database's layout; when the app ships a new version, Dexie upgrades each browser's existing database the first time it opens.</p>
+
+  <h2>Decisions</h2>
+
+  <h3>The studio depends on an interface, not on Dexie</h3>
+  <p><code>ProjectRepository</code> lives in <code>core/</code> and says what storage can do, in the app's own words. <code>createDexieRepository</code> in <code>adapters/</code> is one way to do it. The editor, the store and the commands (step 11) will only see the interface, so a cloud backend later is a second implementation, not a rewrite.</p>
+
+  <h3>A contract test, written once</h3>
+  <p>The tests describe the interface, not Dexie: "deleting a project removes its pictures and nothing else", "a frame of another project is refused and nothing is saved". They take a function that makes a fresh repository, so a future implementation reuses all of them by calling <code>describeRepositoryContract("Supabase", ...)</code>. Only things that are true of Dexie alone (the schema, version numbers) are tested separately.</p>
+
+  <h3>Changes that touch several tables are one transaction</h3>
+  <p><code>insertFrames</code> writes images, thumbnails, frames and the project's new order together; <code>deleteProject</code> removes from all four tables together. If the disk is full halfway through, nothing is half-saved: there's never a frame whose picture is missing, or a picture no frame can reach. A test forces a failure on the last write and checks that the earlier writes were undone.</p>
+
+  <h3>Thumbnails in their own table</h3>
+  <p><code>listThumbs(projectId)</code> loads a project's small pictures without reading a single full photo. Opening a project with 300 pictures loads about 300 KB of thumbnails instead of 50 MB of photos. Full pictures are read one at a time with <code>getImage</code> when playback or export needs them.</p>
+
+  <h3>Index only what's searched</h3>
+  <p>Every index costs space and slows writes. <code>updatedAt</code> sorts the project list, <code>projectId</code> finds a project's frames, images and thumbs. Nothing else is indexed, though every field is still stored.</p>
+
+  <h3>The order stays in <code>project.frameIds</code></h3>
+  <p>Frames are stored unordered; <code>loadProject</code> returns them as found, and the project's <code>frameIds</code> list is the order (step 02). Inserting at a position rewrites one list, not every frame.</p>
+
+  <h3>Opened on first use, never at import</h3>
+  <p><code>studioDb()</code> creates the database the first time the app asks for it. <code>next build</code> renders pages in Node, where there is no IndexedDB; opening the database when the file is imported would crash the build. Tests don't use <code>studioDb()</code> at all: each one opens its own database with a random name and deletes it afterwards.</p>
+
+  <h3>The repository sets <code>updatedAt</code></h3>
+  <p>Every change through the repository stamps the project with the time, so the projects page (step 09) can list the most recently touched first without every caller remembering to do it. The clock is a parameter, so tests set exact times.</p>
+
+  <h2>How the tests run without a browser</h2>
+  <p><code>import "fake-indexeddb/auto"</code> at the top of the test file installs a complete IndexedDB written in JavaScript as Node's global <code>indexedDB</code>. Dexie can't tell the difference, so the real repository code runs against it. It follows the IndexedDB spec closely (including transactions and Blob storage), but it isn't a browser: storage quotas, eviction and browser quirks are not tested here. That's what the Playwright tests in step 08 add.</p>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Never edit <code>version(1)</code> once it has shipped.</strong> A changed layout goes in <code>version(2)</code> with an <code>upgrade()</code> that moves the old data. Until the app ships (step 33), deleting the dev database is fine: DevTools &gt; Application &gt; IndexedDB &gt; stop-motion-studio &gt; Delete database.</li>
+    <li><strong>No <code>await</code> on non-Dexie work inside a transaction.</strong> IndexedDB closes a transaction as soon as it's idle; awaiting a <code>fetch</code> or a <code>toBlob</code> in the middle ends it, and the next write fails with <code>TransactionInactiveError</code>. Encode pictures first, then open the transaction.</li>
+    <li><strong>Every table a transaction touches must be listed</strong> in <code>db.transaction(...)</code>, or Dexie throws.</li>
+    <li><strong>Blobs are copied in.</strong> After <code>insertFrames</code>, the stored Blob is the browser's own copy; changing the original does nothing to it.</li>
+    <li><strong>Storage can run out.</strong> Writes can fail with <code>QuotaExceededError</code>; step 20 turns that into a friendly message. For now the error reaches the caller.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm test</code></pre>
+  <p>The output lists the contract tests under "Dexie: ProjectRepository contract" and the two Dexie-only tests. Try breaking it: in <code>deleteProject</code>, remove the line that deletes from <code>db.images</code>. The "deletes a project with all its frames, pictures and thumbnails" test fails.</p>
+  <div class="note">Nothing in the app uses the database yet, so there's nothing to see in the browser. Step 07 connects it, and from then on DevTools &gt; Application &gt; IndexedDB shows the four tables filling up as you capture.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/model/repository.ts</code>, <code>src/core/model/index.ts</code>, <code>src/adapters/storage/db.ts</code>, <code>src/adapters/storage/dexieRepository.ts</code>, <code>src/adapters/storage/repositoryContract.ts</code>, <code>src/adapters/storage/dexieRepository.test.ts</code>, <code>package.json</code>, <code>package-lock.json</code>, <code>public/steps/06-storage.html</code>, <code>public/steps/index.html</code>, <code>public/steps/05-capture.html</code> (next link), <code>ROADMAP.md</code>.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>the interface in <code>core/</code> mentions nothing about Dexie or IndexedDB</li>
+    <li>every method that writes to more than one table runs in one transaction</li>
+    <li>nothing opens the database at import time</li>
+    <li>the contract tests describe behaviour, not Dexie details</li>
+    <li><code>npm test</code> (61 tests), <code>npm run lint</code>, <code>npm run typecheck</code>, <code>npm run build</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="05-capture.html">Previous: 05 · Capture</a>
+    <span>Next: 07 · Save captures and survive a refresh</span>
+  </nav>
+</main>
+</body>
+</html>
