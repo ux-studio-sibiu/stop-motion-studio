@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>04 Editor store · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 04 of 33 · Part 2 Capture</p>
+  <h1>Editor store</h1>
+  <p class="intro">One place for what the studio is showing and doing right now: the open project and its frames, which pictures are selected, whether it's playing and where the playhead is, and the timeline zoom. Components read just the piece they need and re-render only when that piece changes. Photos stay out of it, in a separate image cache.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>zustand</code> 5.</li>
+    <li><code>src/store/editorStore.ts</code>: <code>createEditorStore()</code>, the state type in four slices, and <code>orderedFrames()</code>.</li>
+    <li><code>src/store/useEditor.ts</code>: the app's one store, <code>editorStore</code>, and the hooks <code>useEditor(selector)</code>, <code>useEditorShallow(selector)</code> and <code>useOrderedFrames()</code>.</li>
+    <li><code>src/adapters/images/imageCache.ts</code>: <code>createImageCache()</code>, a <code>Map</code> of image id → Blob with <code>put</code>, <code>get</code>, <code>delete</code>, <code>clear</code>.</li>
+    <li>Tests: <code>editorStore.test.ts</code> (17) and <code>imageCache.test.ts</code> (2). 42 tests in total now.</li>
+    <li>The studio loads a fresh, empty project into the store on opening, unloads it on leaving, and its title reads the name from the store. In development, <code>window.editorStore</code> is there to poke at from the browser console.</li>
+  </ul>
+
+  <h3>The four slices</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Slice</th><th>State</th><th>Actions</th></tr></thead>
+    <tbody>
+      <tr><td>project</td><td><code>project</code>, <code>frames</code> (by id)</td><td><code>loadProject</code>, <code>unloadProject</code>, <code>insertFrames(frames, at?)</code></td></tr>
+      <tr><td>selection</td><td><code>selection</code> (frame ids)</td><td><code>select(ids)</code>, <code>clearSelection</code></td></tr>
+      <tr><td>playback</td><td><code>isPlaying</code>, <code>playhead</code> (ticks)</td><td><code>play</code>, <code>pause</code>, <code>seek(tick)</code></td></tr>
+      <tr><td>ui</td><td><code>timelineZoom</code> (px per second)</td><td><code>setTimelineZoom</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Using it in a component</h3>
+  <p class="file">src/studio/Studio.tsx</p>
+  <pre><code>const projectName = useEditor((state) =&gt; state.project?.name);   // re-renders only when the name changes
+
+editorStore.getState().loadProject(createProject(), []);          // actions, outside rendering</code></pre>
+
+  <h2>Decisions</h2>
+
+  <h3>Zustand, and how it works</h3>
+  <p>A Zustand store is an object with <code>getState()</code>, <code>setState()</code> and <code>subscribe()</code>. Actions are ordinary functions inside the state that call <code>set()</code> with the fields that change; Zustand merges them into a new state object and tells subscribers. In React, <code>useStore(store, selector)</code> subscribes the component and runs the selector after every change; the component re-renders only if the selector's result is different (compared with <code>Object.is</code>). There's no provider, no reducer and no action types, which keeps it small, but the "replace, don't edit" rule of Redux still applies.</p>
+
+  <h3>A vanilla store plus a hook, not one <code>create()</code></h3>
+  <p><code>createEditorStore()</code> uses <code>createStore</code> from <code>zustand/vanilla</code>, which has no React in it. That means tests create a fresh store each time and call actions directly, with no rendering, and non-React code (the playback clock in step 16, plugins in step 22) can use the same store. <code>useEditor.ts</code> makes the one instance the app uses and wraps it in hooks.</p>
+
+  <h3>One module-level store, no React context</h3>
+  <p>There's only ever one studio on screen. A store in a module is simpler to reach than one passed through a context provider, and the factory still allows a second one if that ever changes. Opening a project calls <code>loadProject</code>, which resets selection and playback; leaving calls <code>unloadProject</code>.</p>
+
+  <h3>Metadata only</h3>
+  <p>The store holds <code>Project</code> and <code>Frame</code> objects: ids, numbers and strings. Photos are Blobs of hundreds of kilobytes each and go into the image cache, keyed by <code>imageId</code>. Keeping them out of the store keeps state copies cheap (every change makes new objects), keeps undo snapshots small (step 11), and means devtools never try to print a photo. The cache is a plain <code>Map</code> for now; step 07 replaces it with IndexedDB behind the same idea.</p>
+
+  <h3>Frames by id, order in the project</h3>
+  <p><code>frames</code> is a record keyed by id, and <code>project.frameIds</code> is the order, exactly as stored (step 02). Looking up a frame is instant, and changing one frame doesn't copy the order. <code>orderedFrames()</code> builds the list when a component needs it, skipping ids without a frame.</p>
+
+  <h3>Selectors keep re-renders small</h3>
+  <p>Each component picks what it needs: the title subscribes to the project name, not to the whole project; the timeline will subscribe to the frame list, the playhead to the playhead. When the playhead moves 60 times a second during playback (step 16), only the playhead line re-renders. A selector that builds a new array (like <code>orderedFrames</code>) would look "changed" every time, so <code>useEditorShallow</code> compares its items instead (<code>useShallow</code>).</p>
+
+  <h3>The playhead is a tick</h3>
+  <p>The roadmap first said <code>currentIndex</code>. Since then the timeline became time-based, with overlays that span several pictures, so "where are we" is a time in ticks. Which picture is on screen is worked out from it.</p>
+
+  <h3>Small guard rails in the actions</h3>
+  <ul>
+    <li><code>insertFrames</code> clamps the position into the list and does nothing without a project.</li>
+    <li><code>select</code> drops unknown ids and duplicates.</li>
+    <li><code>play</code> refuses an empty animation; <code>seek</code> rounds to whole, non-negative ticks.</li>
+    <li><code>setTimelineZoom</code> stays between 40 and 640 px per second. The zoom is about the screen, not the animation, so loading another project keeps it.</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Never edit state in place.</strong> <code>state.project.frameIds.push(id)</code> changes the array without telling Zustand, so nothing re-renders, and undo snapshots silently change. Actions always build new arrays and objects; a test checks that the previous state is untouched after an insert.</li>
+    <li><strong>Selectors that build new objects</strong> (<code>(s) =&gt; ({ a: s.a, b: s.b })</code>, <code>.map</code>, <code>.filter</code>) must go through <code>useEditorShallow</code>, or the component re-renders on every store change. In React 19 this can also cause an "infinite loop" warning.</li>
+    <li><strong>No MediaStream, DOM nodes or Blobs in the store.</strong> The camera stream stays in <code>useCamera</code>, elements in refs.</li>
+    <li><strong>Actions outside rendering.</strong> Call <code>editorStore.getState().someAction()</code> in effects and event handlers, never during render.</li>
+    <li><strong>The project isn't saved yet.</strong> Every visit to the studio starts a new empty project until step 07; the <code>?project=</code> id is read but not used for loading.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm test
+npm run dev</code></pre>
+  <ul>
+    <li>The studio's title says "My animation", read from the store.</li>
+    <li>In the browser console (development only):
+      <pre><code>editorStore.getState()
+editorStore.setState({ project: { ...editorStore.getState().project, name: "Dino walk" } })</code></pre>
+      The title changes to "Dino walk".</li>
+    <li>With React DevTools, turn on "Highlight updates when components render" and run <code>editorStore.getState().seek(5)</code>: nothing in the studio flashes, because nothing on screen reads the playhead yet.</li>
+  </ul>
+  <div class="note">Checked while building: the 19 new unit tests pass (including "notifies a selector only when its piece changes"), and the production build shows the title from the store. The dev server already running on port 3000 had stopped picking up changes (its hot-reload connection kept reconnecting), so the console check above wasn't run there. Restart <code>npm run dev</code> before trying it.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/store/editorStore.ts</code>, <code>src/store/editorStore.test.ts</code>, <code>src/store/useEditor.ts</code>, <code>src/adapters/images/imageCache.ts</code>, <code>src/adapters/images/imageCache.test.ts</code>, <code>src/studio/Studio.tsx</code>, <code>package.json</code>, <code>package-lock.json</code>, <code>public/steps/04-editor-store.html</code>, <code>public/steps/index.html</code>, <code>public/steps/03-camera.html</code> (next link), <code>ROADMAP.md</code>.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>no action edits state in place; every change builds new objects</li>
+    <li>no Blobs, streams or DOM nodes in the store</li>
+    <li>components select single values, or use <code>useEditorShallow</code> for lists</li>
+    <li><code>store/</code> doesn't import from <code>studio/</code> or <code>app/</code></li>
+    <li><code>npm test</code>, <code>npm run lint</code>, <code>npm run typecheck</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="03-camera.html">Previous: 03 · Camera</a>
+    <span>Next: 05 · Capture to an in-memory timeline</span>
+  </nav>
+</main>
+</body>
+</html>

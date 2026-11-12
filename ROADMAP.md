@@ -78,10 +78,13 @@ browser mode joins in step 15 for canvas pixel tests.
 - **Check:** allow/deny permission, unplug the webcam, switch cameras; the light turns off on leaving.
 
 ### 04 · Editor store
-- **Builds:** `store/editorStore` with slices: `project` (current project + frames in memory),
-  `selection`, `playback` (`isPlaying`, `currentIndex`), `ui` (panel open states).
+- **Builds:** `store/editorStore` (a vanilla Zustand store factory) with slices: `project` (current
+  project + frames by id), `selection`, `playback` (`isPlaying`, `playhead` in ticks), `ui`
+  (`timelineZoom`). `store/useEditor` (the app's store instance and selector hooks).
+  `adapters/images/imageCache`. The studio title reads the project name from the store.
 - **Decisions:** the store holds **metadata only, never Blobs**. Blobs go to an `ImageCache` (a
-  `Map<imageId, Blob>` for now, Dexie in step 07). Selectors per component to avoid re-renders.
+  `Map<imageId, Blob>` for now, Dexie in step 07). Selectors per component to avoid re-renders. The
+  playhead is a tick, not a frame index, because overlays live in time.
 - **Watch out:** don't put the `MediaStream` or DOM nodes in the store; keep them in refs.
 - **Check:** store unit tests; React DevTools shows no full-tree re-render on selection change.
 
@@ -543,7 +546,7 @@ registry entry.
 - [x] 01 Studio shell and design tokens ([page](public/steps/01-studio-shell.html))
 - [x] 02 Core model ([page](public/steps/02-core-model.html))
 - [x] 03 Camera ([page](public/steps/03-camera.html))
-- [ ] 04 Editor store
+- [x] 04 Editor store ([page](public/steps/04-editor-store.html))
 - [ ] 05 Capture to an in-memory timeline
 - [ ] 06 Dexie schema and repository
 - [ ] 07 Save captures and survive a refresh
