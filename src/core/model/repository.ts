@@ -10,7 +10,11 @@ export interface ProjectRepository {
   listProjects(): Promise<Project[]>;
   getProject(id: string): Promise<Project | undefined>;
   // The project and all its frames (in no particular order: project.frameIds is the order).
-  loadProject(id: string): Promise<{ project: Project; frames: Frame[] } | undefined>;
+  loadProject(id: string): Promise<LoadedProject | undefined>;
+  // Calls `onChange` with the project now, then again whenever it or its frames change,
+  // from this tab or any other. `undefined` means it doesn't exist (or was deleted).
+  // Returns a function that stops watching.
+  watchProject(id: string, onChange: (loaded: LoadedProject | undefined) => void, onError?: (error: unknown) => void): () => void;
 
   createProject(project: Project): Promise<void>;
   // Renames, speed changes, a new order. Bumps updatedAt. Returns the saved project.
@@ -26,6 +30,8 @@ export interface ProjectRepository {
   getThumb(imageId: string): Promise<Blob | undefined>;
   listThumbs(projectId: string): Promise<StoredThumb[]>;
 }
+
+export type LoadedProject = { project: Project; frames: Frame[] };
 
 export type ProjectChanges = Partial<Pick<Project, "name" | "fps" | "frameIds">>;
 

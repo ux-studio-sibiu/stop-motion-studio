@@ -17,6 +17,9 @@ of work.
 Each step below lists: **Builds** (what is implemented), **Decisions**, **Watch out**, **Check** (how
 to see it works). Steps marked *(core)* touch only plain TypeScript and come with Vitest tests.
 
+**Tests change with the code.** The repo's `CLAUDE.md` makes it a rule: every change to logic adds or
+updates its tests in the same change, and `npm test` runs before a change counts as done.
+
 **Testing in layers.** Vitest unit tests for logic from the start; Playwright end-to-end tests from step
 08 on. After step 08, every step with a user-facing flow adds or extends a Playwright spec (`e2e/`) and
 lists it in its review checklist, so `npm run test:e2e` keeps proving the whole app works. Vitest's
@@ -118,13 +121,15 @@ browser mode joins in step 15 for canvas pixel tests.
 - **Check:** repository tests pass: create, read, add frame, delete project with cascade.
 
 ### 07 · Save captures and survive a refresh
-- **Builds:** `captureAndSave()` writes image + thumb + frame and appends to `project.frameIds` in **one
-  transaction**. The timeline reads via `useLiveQuery`. The studio creates a default project when
-  `?project=` is missing and puts its id in the URL.
+- **Builds:** capture saves image + thumb + frame and appends to `project.frameIds` in **one
+  transaction** (`repository.insertFrames`). `watchProject()` on the repository (Dexie `liveQuery`
+  underneath, in the contract tests) feeds every saved change into the store through `syncProject`.
+  `repairFrameOrder()` *(core)*. The studio creates a project when `?project=` is missing and puts its
+  id in the URL; an unknown id shows "This animation isn't here".
 - **Decisions:** Dexie is the source of truth for the project; Zustand mirrors it plus holds transient
   state. A load step repairs drift: ids in `frameIds` with no frame are dropped, frames missing from it
   are appended.
-- **Watch out:** `useLiveQuery` returns `undefined` while loading, not `[]`; render a loading state.
+- **Watch out:** the first update arrives after the page renders; render a loading state.
   Replace the URL (`router.replace`), don't push, or Back leads to an empty studio.
 - **Check:** capture, refresh, the pictures are still there; open the same project in two tabs and
   capture in one, the other updates.
@@ -551,7 +556,7 @@ registry entry.
 - [x] 04 Editor store ([page](public/steps/04-editor-store.html))
 - [x] 05 Capture to an in-memory timeline ([page](public/steps/05-capture.html))
 - [x] 06 Dexie schema and repository ([page](public/steps/06-storage.html))
-- [ ] 07 Save captures and survive a refresh
+- [x] 07 Save captures and survive a refresh ([page](public/steps/07-persistence.html))
 - [ ] 08 End-to-end tests with Playwright
 - [ ] 09 Projects page
 - [ ] 10 Time-scaled timeline and seconds ruler

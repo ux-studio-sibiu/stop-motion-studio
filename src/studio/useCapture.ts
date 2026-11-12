@@ -2,13 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { captureFrame } from "@/adapters/camera/capture";
+import { appRepository } from "@/adapters/storage/appRepository";
 import { createFrame, newId } from "@/core/model";
 import { editorStore } from "@/store/useEditor";
-import { images, thumbs } from "./media";
+import { thumbs } from "./media";
 
-// Taking a picture: grab the live video, store the photo and its thumbnail in the caches,
-// add a frame at the end of the animation. Space does the same, unless the child is typing
-// or a button has focus (Space already presses that button).
+// Taking a picture: grab the live video, save the photo, its thumbnail and a new frame at the
+// end of the animation in one transaction. The timeline updates from storage (useProject),
+// so a capture shows up the same way whether it was taken here or in another tab.
+// Space does the same, unless the child is typing or a button has focus (Space already
+// presses that button).
 export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: boolean) {
   const [capturing, setCapturing] = useState(false);
   const busy = useRef(false);
@@ -25,11 +28,14 @@ export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: b
       if (editorStore.getState().project?.id !== project.id) return;   // left the project meanwhile
 
       const imageId = newId();
-      images.put(imageId, shot.image);
-      thumbs.put(imageId, shot.thumb);
-      editorStore.getState().insertFrames([createFrame(project.id, imageId)]);
+      thumbs.put(imageId, shot.thumb);   // in memory before the save, so the update finds it
+      await appRepository().insertFrames(project.id, {
+        frames: [createFrame(project.id, imageId)],
+        images: [{ id: imageId, projectId: project.id, blob: shot.image, width: shot.width, height: shot.height, createdAt: Date.now() }],
+        thumbs: [{ imageId, projectId: project.id, blob: shot.thumb }],
+      });
     } catch (error) {
-      console.warn("Capture failed", error);   // e.g. the video had no frame yet; the next press works
+      console.warn("Capture failed", error);   // no frame yet, or the save failed (full storage: step 20)
     } finally {
       busy.current = false;
       setCapturing(false);

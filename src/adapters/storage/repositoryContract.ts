@@ -99,6 +99,55 @@ export function describeRepositoryContract(name: string, setup: () => Promise<Re
       expect(await repository.getImage(stray.image.id)).toBeUndefined();
     });
 
+    // Collects what a watcher reports, and waits until a condition on it holds.
+    const watch = (id: string) => {
+      const seen: (Awaited<ReturnType<ProjectRepository["loadProject"]>>)[] = [];
+      const stop = repository.watchProject(id, (loaded) => seen.push(loaded));
+      const until = async (check: (latest: (typeof seen)[number]) => boolean) => {
+        for (let i = 0; i < 100; i++) {
+          if (seen.length && check(seen.at(-1))) return seen.at(-1);
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        throw new Error(`watchProject never reported the expected state (saw ${seen.length} updates)`);
+      };
+      return { seen, stop, until };
+    };
+
+    it("watches a project: reports it now, then after every change", async () => {
+      const watcher = watch(project.id);
+      await watcher.until((latest) => latest?.project.frameIds.length === 0);
+
+      const { frame } = await capture(project.id);
+      const latest = await watcher.until((value) => value?.project.frameIds.length === 1);
+      expect(latest?.frames.map((f) => f.id)).toEqual([frame.id]);
+
+      await repository.updateProject(project.id, { name: "Renamed" });
+      await watcher.until((value) => value?.project.name === "Renamed");
+      watcher.stop();
+    });
+
+    it("reports undefined for a missing or deleted project", async () => {
+      const missing = watch("missing");
+      await missing.until((latest) => latest === undefined);
+      missing.stop();
+
+      const watcher = watch(project.id);
+      await watcher.until((latest) => latest !== undefined);
+      await repository.deleteProject(project.id);
+      await watcher.until((latest) => latest === undefined);
+      watcher.stop();
+    });
+
+    it("stops reporting after stop()", async () => {
+      const watcher = watch(project.id);
+      await watcher.until((latest) => latest !== undefined);
+      watcher.stop();
+      const count = watcher.seen.length;
+      await capture(project.id);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(watcher.seen.length).toBe(count);
+    });
+
     it("deletes a project with all its frames, pictures and thumbnails, and nothing else", async () => {
       const mine = await capture(project.id);
       const other = createProject();

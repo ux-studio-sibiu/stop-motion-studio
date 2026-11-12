@@ -1,3 +1,4 @@
+import { liveQuery } from "dexie";
 import type { FrameInsert, Project, ProjectChanges, ProjectRepository } from "@/core/model";
 import type { StudioDb } from "./db";
 
@@ -24,6 +25,16 @@ export function createDexieRepository(db: StudioDb, now: () => number = Date.now
       const frames = await db.frames.where("projectId").equals(id).toArray();
       return { project, frames };
     }),
+
+    // liveQuery re-runs the query whenever a write touches what it read: the project's row
+    // or any frame with this projectId, in this tab or (through BroadcastChannel) another.
+    watchProject: (id, onChange, onError) => {
+      const subscription = liveQuery(async () => {
+        const [project, frames] = await Promise.all([db.projects.get(id), db.frames.where("projectId").equals(id).toArray()]);
+        return project ? { project, frames } : undefined;
+      }).subscribe({ next: onChange, error: onError });
+      return () => subscription.unsubscribe();
+    },
 
     createProject: async (project) => { await db.projects.add(project); },
 

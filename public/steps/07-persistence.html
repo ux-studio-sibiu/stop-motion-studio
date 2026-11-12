@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>07 Persistence · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 07 of 33 · Part 3 Persistence and testing</p>
+  <h1>Save captures and survive a refresh</h1>
+  <p class="intro">Pictures are now saved in the browser as they're taken. Opening the studio creates a project and puts its id in the address; reloading, closing the tab or coming back tomorrow shows the same pictures. Two tabs on the same project stay in sync. A broken order is repaired on load, and an unknown project gets a friendly page instead of an empty studio.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>src/core/model/order.ts</code>: <code>repairFrameOrder()</code> and <code>sameOrder()</code>, with 6 tests.</li>
+    <li><code>ProjectRepository.watchProject(id, onChange)</code>: reports the project now and after every change. The Dexie version uses <code>liveQuery</code>. 3 new contract tests.</li>
+    <li><code>src/adapters/storage/appRepository.ts</code>: <code>appRepository()</code>, the app's repository, made on first use.</li>
+    <li><code>syncProject()</code> in the store: mirrors a saved change, keeping the selection and playhead when it's the same project. 2 new tests. 72 tests in total.</li>
+    <li><code>src/studio/useProject.ts</code>: creates, loads and follows the project in <code>?project=</code>, and returns <code>loading</code>, <code>ready</code> or <code>missing</code>.</li>
+    <li><code>src/studio/useCapture.ts</code>: a capture is now saved with <code>insertFrames</code> (photo, thumbnail, frame and order in one transaction).</li>
+    <li><code>src/studio/media.ts</code>: only the thumbnail cache is left, plus <code>loadMissingThumbs()</code>. Full photos stay in IndexedDB.</li>
+    <li>The "This animation isn't here" page for unknown ids.</li>
+  </ul>
+
+  <h3>How a capture travels now</h3>
+  <pre><code>press
+  → captureFrame()                     JPEG + thumbnail (step 05)
+  → thumbs.put(id, thumb)              into memory first, so the timeline can show it at once
+  → repository.insertFrames(...)       one IndexedDB transaction: image, thumb, frame, new order
+        │
+        ▼  Dexie notices the write (liveQuery), in this tab and in any other open tab
+  → watchProject callback              project + all its frames, read fresh
+  → repairFrameOrder()                 order matches the frames? (it should)
+  → loadMissingThumbs()                another tab's new picture: fetch its thumbnail
+  → store.syncProject()                the store mirrors storage
+  → Timeline re-renders</code></pre>
+
+  <h2>Decisions</h2>
+
+  <h3>Storage is the source of truth, the store mirrors it</h3>
+  <p>A capture doesn't add a frame to the store directly. It saves, and the saved result flows back into the store, exactly like a change made in another tab. There's one path for data to reach the screen, so the timeline can't show a picture that failed to save, and nothing extra is needed to keep tabs in sync. The store still owns everything that isn't saved: selection, playhead, zoom. IndexedDB writes take milliseconds, so the round trip isn't visible.</p>
+
+  <h3><code>watchProject</code> is on the repository, not a Dexie hook</h3>
+  <p>The roadmap planned to read the timeline with Dexie's <code>useLiveQuery</code> React hook. That would tie components to Dexie. Instead, "tell me when this project changes" became part of <code>ProjectRepository</code>, with contract tests (reports now, reports after each change, reports <code>undefined</code> after a delete, stops when asked). Dexie implements it with <code>liveQuery</code>, which re-runs the query whenever a write touches what it read, and uses a <code>BroadcastChannel</code> to hear writes from other tabs. A cloud repository would implement the same method with its own change feed.</p>
+
+  <h3>Thumbnails before the store</h3>
+  <p>The thumbnail cache isn't reactive: the timeline reads <code>thumbs.url(id)</code> when it renders. So every update first makes sure all its thumbnails are in memory, and only then updates the store. A capture puts its own thumbnail in before saving; a picture from another tab is fetched with <code>getThumb</code>; opening a project loads all thumbnails at once with <code>listThumbs</code>. If a newer update arrives while thumbnails load, the older one is dropped, so updates never apply out of order.</p>
+
+  <h3>Repair on load</h3>
+  <p>Frames and the order are always written together, so they should always match. If they ever don't (a crash in an old version, a bad import, a bug), <code>repairFrameOrder</code> drops ids that point at nothing, removes duplicates, and adds frames that aren't in the order at the end. No picture is ever lost from the timeline. The repaired order is saved back, which triggers one more, clean update.</p>
+
+  <h3>A new project per visit without an id</h3>
+  <p><code>/studio</code> creates and saves a project, then <strong>replaces</strong> the address with <code>/studio?project=…</code>. Replace, not push: Back goes to the home page, not to an id-less studio that would create yet another project. A ref guards the creation, so React Strict Mode's double effect in development doesn't make two. Until the projects page (step 09), "Start animating" always starts a new one; the address is how to get back to a project.</p>
+
+  <h3>Unknown ids get their own page</h3>
+  <p>A project made in another browser, on another computer or deleted can't be shown, and an empty studio would be confusing. The page says so in plain words and offers a new animation.</p>
+
+  <h3>Full photos aren't kept in memory any more</h3>
+  <p>Step 05 kept every full picture in a memory cache. Now they're in IndexedDB, and nothing on screen needs them yet; playback and export (steps 15-16, 25-26) will read them as needed. Memory per picture is just its 1 KB-ish thumbnail.</p>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>The first update comes after the first render.</strong> Until then the store is empty and the title blank for a moment. Capturing is disabled until the project is <code>ready</code>.</li>
+    <li><strong>Each update re-reads all frames of the project.</strong> Fine for hundreds of pictures; step 31 measures it with 500.</li>
+    <li><strong>Two tabs can still both edit.</strong> Captures from both land safely (each is its own transaction), but later edits (moving, resizing) will be "last write wins". Collaborative editing is out of scope.</li>
+    <li><strong>Saving can fail</strong> (storage full). The capture is then dropped with a console warning; step 20 shows a friendly message.</li>
+    <li><strong>The address is the project.</strong> Bookmarking it works; sharing it with another computer doesn't (the data is in this browser only).</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm test
+npm run dev</code></pre>
+  <ul>
+    <li>Open <code>/studio</code>: the address gets <code>?project=…</code>. Take three pictures.</li>
+    <li>Reload: the three pictures are back. DevTools &gt; Application &gt; IndexedDB &gt; stop-motion-studio shows one project, three frames, three images, three thumbs.</li>
+    <li>Open the same address in a second tab, take a picture in the first: it appears in the second.</li>
+    <li>Go home and press Back: the same project, not a new one.</li>
+    <li>Open <code>/studio?project=nope</code>: "This animation isn't here".</li>
+  </ul>
+  <div class="note">Checked while building, on the production build with a fake camera: <code>/studio</code> got a project id; two captures saved; after reloading, both thumbnails came back from IndexedDB, and the database held exactly 1 project, 2 frames, 2 images, 2 thumbs; a capture in one tab appeared, with its thumbnail, in a second tab; an order deliberately broken in the database (a ghost id, a duplicate, a missing frame) was repaired on reload and saved back; leaving and coming back with Back showed the same project; an unknown id showed the missing page; no console errors in a fresh tab. Not checked: a real webcam, Safari, the dev server (Strict Mode's double effects).</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/model/order.ts</code>, <code>src/core/model/order.test.ts</code>, <code>src/core/model/repository.ts</code>, <code>src/core/model/index.ts</code>, <code>src/adapters/storage/dexieRepository.ts</code>, <code>src/adapters/storage/repositoryContract.ts</code> (watch tests), <code>src/adapters/storage/appRepository.ts</code>, <code>src/store/editorStore.ts</code>, <code>src/store/editorStore.test.ts</code> (sync tests), <code>src/studio/useProject.ts</code>, <code>src/studio/useCapture.ts</code>, <code>src/studio/media.ts</code>, <code>src/studio/Studio.tsx</code>, <code>src/studio/studio.scss</code>, <code>public/steps/07-persistence.html</code>, <code>public/steps/index.html</code>, <code>public/steps/06-storage.html</code> (next link), <code>ROADMAP.md</code>.</p>
+  <p><strong>Tests added:</strong> 6 for order repair, 3 contract tests for <code>watchProject</code>, 2 for <code>syncProject</code>. The end-to-end version of "capture, reload, still there" comes in step 08.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>a capture reaches the screen only through storage (no direct store insert)</li>
+    <li>components and the store don't import Dexie; only <code>adapters/storage/</code> does</li>
+    <li>thumbnails are in memory before the store update that shows them</li>
+    <li>no picture can disappear from the timeline through repair</li>
+    <li><code>npm test</code> (72 tests), <code>npm run lint</code>, <code>npm run typecheck</code>, <code>npm run build</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="06-storage.html">Previous: 06 · Storage</a>
+    <span>Next: 08 · End-to-end tests with Playwright</span>
+  </nav>
+</main>
+</body>
+</html>

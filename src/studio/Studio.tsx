@@ -4,39 +4,44 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChevronLeft, Download, Layers, Play, Redo2, Undo2 } from "lucide-react";
-import { createProject } from "@/core/model";
 import { editorStore, useEditor } from "@/store/useEditor";
 import { CameraMessage } from "./CameraMessage";
 import { CameraPanel } from "./CameraPanel";
 import { CameraView } from "./CameraView";
-import { clearMedia } from "./media";
 import { Timeline } from "./Timeline";
 import { useCamera } from "./useCamera";
 import { useCapture } from "./useCapture";
+import { useProject } from "./useProject";
 import "./studio.scss";
 
 // The studio screen. Areas still holding a placeholder are filled by later steps
 // (playback 16, properties 18).
 export function Studio() {
   const projectId = useSearchParams().get("project");
+  const status = useProject(projectId);
   const projectName = useEditor((state) => state.project?.name);
   const camera = useCamera();
   const video = useRef<HTMLVideoElement | null>(null);
   const onVideo = useCallback((element: HTMLVideoElement | null) => { video.current = element; }, []);
-  const { capture, capturing } = useCapture(video, camera.status === "live");
-
-  // Until projects are saved (step 07), every visit starts a fresh, empty project,
-  // and its photos are dropped on leaving.
-  useEffect(() => {
-    editorStore.getState().loadProject(createProject(), []);
-    return () => { editorStore.getState().unloadProject(); clearMedia(); };
-  }, [projectId]);
+  const { capture, capturing } = useCapture(video, camera.status === "live" && status === "ready");
 
   // Development only: poke at the store from the browser console (window.editorStore.getState()).
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") return;
     Object.assign(window, { editorStore });
   }, []);
+
+  if (status === "missing") {
+    return (
+      <div className="nsc-studio is-missing">
+        <div className="missing-message">
+          <h1>This animation isn&apos;t here</h1>
+          <p>It may have been deleted, or it was made in another browser or on another computer.</p>
+          <Link className="icon-button is-primary" href="/studio">Start a new animation</Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="nsc-studio">

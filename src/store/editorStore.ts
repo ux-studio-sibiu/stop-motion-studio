@@ -12,6 +12,10 @@ export type ProjectSlice = {
   project: Project | null;
   frames: Readonly<Record<string, Frame>>;   // by id; the order is project.frameIds
   loadProject: (project: Project, frames: Frame[]) => void;
+  // Mirrors the saved project after a change (from storage, maybe from another tab).
+  // The same project keeps its selection (minus deleted frames) and playback; a different
+  // one is loaded fresh.
+  syncProject: (project: Project, frames: Frame[]) => void;
   unloadProject: () => void;
   insertFrames: (frames: Frame[], at?: number) => void;
 };
@@ -50,6 +54,13 @@ export function createEditorStore() {
     timelineZoom: DEFAULT_TIMELINE_ZOOM,
 
     loadProject: (project, frames) => set({ ...EMPTY, project, frames: byId(frames) }),
+
+    syncProject: (project, frames) => {
+      const state = get();
+      if (state.project?.id !== project.id) return state.loadProject(project, frames);
+      const next = byId(frames);
+      set({ project, frames: next, selection: state.selection.filter((id) => id in next) });
+    },
 
     unloadProject: () => set(EMPTY),
 

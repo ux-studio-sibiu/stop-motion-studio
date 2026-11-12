@@ -33,6 +33,23 @@ describe("project slice", () => {
     expect(store.getState()).toMatchObject({ selection: [], playhead: 0, isPlaying: false });
   });
 
+  it("syncing the same project keeps the selection (minus gone frames) and the playhead", () => {
+    store.getState().loadProject({ ...project, frameIds: [a.id, b.id] }, [a, b]);
+    store.getState().select([a.id, b.id]);
+    store.getState().seek(3);
+    store.getState().syncProject({ ...project, frameIds: [b.id, c.id] }, [b, c]);
+    expect(store.getState()).toMatchObject({ selection: [b.id], playhead: 3 });
+    expect(orderedFrames(store.getState())).toEqual([b, c]);
+  });
+
+  it("syncing a different project loads it fresh", () => {
+    store.getState().loadProject({ ...project, frameIds: [a.id] }, [a]);
+    store.getState().select([a.id]);
+    const other = createProject();
+    store.getState().syncProject(other, []);
+    expect(store.getState()).toMatchObject({ project: other, selection: [], playhead: 0 });
+  });
+
   it("inserts at the end by default, or at a position", () => {
     store.getState().loadProject(project, []);
     store.getState().insertFrames([a, b]);
