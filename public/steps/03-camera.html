@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>03 Camera · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 03 of 33 · Part 2 Capture</p>
+  <h1>Camera</h1>
+  <p class="intro">The studio can turn the webcam on and off, show its live picture on the stage, switch between cameras and remember the choice. Every way it can go wrong (blocked, no camera, busy, unplugged, insecure page) gets a plain sentence and the one button that helps. No pictures are taken yet; that's step 05.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>src/adapters/camera/camera.ts</code>: plain functions over the MediaDevices API. <code>openCamera()</code>, <code>stopStream()</code>, <code>listCameras()</code>, <code>cameraPermissionGranted()</code>, <code>videoConstraints()</code>, and <code>cameraStatusFromError()</code>, which turns a <code>getUserMedia</code> error into a status.</li>
+    <li><code>src/adapters/camera/camera.test.ts</code>: 11 tests for the error mapping and constraints.</li>
+    <li><code>src/studio/useCamera.ts</code>: the hook that owns the camera's lifecycle and exposes <code>status</code>, <code>stream</code>, <code>devices</code>, <code>deviceId</code>, <code>start()</code>, <code>stop()</code>, <code>selectDevice()</code>.</li>
+    <li><code>src/studio/CameraView.tsx</code>: the <code>&lt;video&gt;</code>. <code>CameraMessage.tsx</code>: what the stage says when there's no picture. <code>CameraPanel.tsx</code>: the side panel with the camera picker, on/off button and the (still disabled) capture button.</li>
+    <li><code>.icon-button.is-primary</code> in <code>_controls.scss</code>, and the camera styles in <code>studio.scss</code>.</li>
+  </ul>
+
+  <h3>The statuses</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Status</th><th>When</th><th>The stage says</th></tr></thead>
+    <tbody>
+      <tr><td><code>idle</code></td><td>not started, or turned off</td><td>"Turn on the camera..." + button</td></tr>
+      <tr><td><code>asking</code></td><td>waiting for the prompt or the device</td><td>"When the browser asks, say yes..."</td></tr>
+      <tr><td><code>live</code></td><td>streaming</td><td>the camera picture</td></tr>
+      <tr><td><code>denied</code></td><td><code>NotAllowedError</code>, <code>SecurityError</code></td><td>"The camera is blocked. Ask a grown-up..." + Try again</td></tr>
+      <tr><td><code>no-camera</code></td><td><code>NotFoundError</code>, <code>OverconstrainedError</code>, or the track ended (unplugged)</td><td>"No camera found. Plug one in..." + Try again</td></tr>
+      <tr><td><code>busy</code></td><td><code>NotReadableError</code>, <code>AbortError</code></td><td>"Another app is using the camera..." + Try again</td></tr>
+      <tr><td><code>insecure</code></td><td>page not on https or localhost</td><td>"The camera only works on a secure page..."</td></tr>
+      <tr><td><code>unsupported</code></td><td>no <code>getUserMedia</code></td><td>"This browser can't use a camera..."</td></tr>
+      <tr><td><code>error</code></td><td>anything else</td><td>"Something went wrong..." + Try again</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>Decisions</h2>
+
+  <h3>Browser rules in the adapter, lifecycle in the hook</h3>
+  <p>The roadmap first put a <code>useCamera</code> hook in <code>adapters/</code>. It was split instead: <code>adapters/camera/camera.ts</code> knows the browser (constraints, error names, device lists) and has no React, so it's unit-tested; <code>studio/useCamera.ts</code> knows React (state, effects, cleanup). The adapter can be reused by anything that needs a camera, like a future "import from phone camera" source.</p>
+
+  <h3>No mirroring, and the preview is cropped like the photo</h3>
+  <p>The plan said "mirror the front camera". It was dropped: the preview shows <strong>exactly what a capture will contain</strong>. A mirrored preview would make every photo look flipped compared to what the child just saw, and the onion skin (step 17) and alignment tools (step 19) only work if the live picture and the photos match pixel for pixel. The <code>&lt;video&gt;</code> uses <code>object-fit: cover</code> in the 16:9 frame, the same cover-crop step 05 will use when it captures, so a 4:3 webcam shows the crop it will really take.</p>
+
+  <h3>Ask for permission after a tap</h3>
+  <p>If the browser already remembers "allow" for this site (<code>navigator.permissions.query({ name: "camera" })</code>), the camera starts by itself. Otherwise the stage shows a big "Turn on camera" button, so the permission prompt appears right after the child (or the grown-up) asked for it, not out of nowhere. Browsers that can't answer the permission query just show the button.</p>
+
+  <h3>Every open gets a request number</h3>
+  <p><code>getUserMedia</code> is slow and can resolve after the user has already turned the camera off, switched cameras or left the studio. Each <code>open()</code> takes a number; <code>release()</code> bumps it. When a stream arrives with an old number, it's stopped instead of shown. This is also what makes React Strict Mode's double mount in development safe: the first mount's stream is stopped when it lands.</p>
+  <p class="file">src/studio/useCamera.ts</p>
+  <pre><code>const next = await openCamera(id, SIZE).catch(...);
+if (mine !== request.current) { stopStream(next); return; }   // a newer request, a stop or an unmount won</code></pre>
+
+  <h3>The chosen camera is remembered</h3>
+  <p>The device id goes to <code>localStorage</code> (wrapped in <code>try</code>, so blocked storage just means "not remembered") and is requested with <code>deviceId: { exact }</code>. If that camera is gone, the hook forgets it and opens any camera instead of failing.</p>
+
+  <h3>The camera turns off when the tab is hidden</h3>
+  <p>When the child switches tabs, the stream stops and the camera light goes out; when they come back, it starts again (only if it was on). It's a privacy habit worth having in a kids' app, and it frees the camera for other apps.</p>
+
+  <h3>Ask for the working size</h3>
+  <p>Constraints ask for <code>ideal</code> 1280×720 (the default project size; the real project's size once projects load in step 07). <code>ideal</code>, not <code>exact</code>: a camera that can't do 720p still opens, at its closest mode.</p>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Stop every track.</strong> Clearing <code>video.srcObject</code> doesn't release the camera; only <code>track.stop()</code> does. The hook stops tracks on turn off, camera switch, tab hidden and unmount.</li>
+    <li><strong>iOS needs <code>playsInline</code> and <code>muted</code></strong> on the <code>&lt;video&gt;</code>, or Safari opens it fullscreen or refuses to autoplay.</li>
+    <li><strong>Device labels are empty until permission is granted.</strong> The picker shows "Camera 1", "Camera 2" until then, and the list is refreshed after the first stream starts and on <code>devicechange</code>.</li>
+    <li><strong>Unplugging fires <code>ended</code> on the track</strong>, not an error. The hook listens for it and shows "No camera found".</li>
+    <li><strong>The secure-context rule.</strong> On a tablet opening the dev server by LAN IP over <code>http://</code>, <code>navigator.mediaDevices</code> doesn't exist: the stage shows the <code>insecure</code> message. Use <code>next dev --experimental-https</code> for that.</li>
+    <li><strong>React's hook lint rules</strong> (<code>react-hooks/immutability</code>) reject a <code>useCallback</code> that calls itself. The "remembered camera is gone, open any" fallback is a <code>.catch()</code> inside the same call instead of recursion.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm test
+npm run dev</code></pre>
+  <ul>
+    <li><code>/studio</code>: the stage asks to turn on the camera. Tap it, allow the prompt: the live picture fills the 16:9 frame, not mirrored.</li>
+    <li>"Camera off" in the side panel: the picture goes and the camera light turns off.</li>
+    <li>Block the camera in the address bar and press "Try again": the blocked message.</li>
+    <li>Open the camera in another app first (on Windows): the busy message.</li>
+    <li>Unplug a USB webcam while live: "No camera found".</li>
+    <li>With two cameras, the picker appears; switch, reload: the same camera comes back.</li>
+    <li>Switch to another tab and back: the light goes off and on.</li>
+    <li>Leave the studio with the back arrow: the light goes off.</li>
+  </ul>
+  <div class="note">Tested while building with a fake camera (a canvas stream in place of <code>getUserMedia</code>): idle → live, off stops the track, unplug → no-camera, denied, busy, a late stream from an older request is stopped while the newer one is shown, and leaving the studio ends the track. Not yet tested on a real webcam, a tablet or Safari: do that when reviewing.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/adapters/camera/camera.ts</code>, <code>src/adapters/camera/camera.test.ts</code>, <code>src/studio/useCamera.ts</code>, <code>src/studio/CameraView.tsx</code>, <code>src/studio/CameraMessage.tsx</code>, <code>src/studio/CameraPanel.tsx</code>, <code>src/studio/Studio.tsx</code>, <code>src/studio/studio.scss</code>, <code>src/styles/_controls.scss</code>, <code>public/steps/03-camera.html</code>, <code>public/steps/index.html</code>, <code>public/steps/02-core-model.html</code> (next link), <code>ROADMAP.md</code> (step 03 and 16 updated to these decisions).</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>the camera light goes off in every way of leaving: off button, tab hidden, back arrow, closing the tab</li>
+    <li>every status shows a message, and the ones that can be fixed have a button</li>
+    <li>the preview isn't mirrored and crops the same way a 16:9 photo will</li>
+    <li><code>adapters/camera/</code> imports nothing from <code>studio/</code> or <code>store/</code></li>
+    <li><code>npm test</code>, <code>npm run lint</code>, <code>npm run typecheck</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="02-core-model.html">Previous: 02 · Core model</a>
+    <span>Next: 04 · Editor store</span>
+  </nav>
+</main>
+</body>
+</html>

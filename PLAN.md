@@ -36,7 +36,7 @@ plan keeps its shape and changes what is listed under "What changed from the ori
 | GIF export | `gifenc`, in a Web Worker | Small and fast. The worker keeps the UI responsive |
 | Video export | `mediabunny` (WebCodecs + muxing), only when the browser supports it | Real MP4/WebM without shipping FFmpeg.wasm (~30 MB) |
 | Backup | Project archive (`.zip` of `project.json` + images) via `fflate` | Browser storage is not a backup; kids' work must be exportable |
-| Tests | **Vitest** for `core/` and adapters (`fake-indexeddb` for Dexie); manual browser checks for camera/UI | The core is plain TypeScript, so it is cheap to test properly |
+| Tests | Three layers. **Vitest** (Node) for `core/` and adapters, `fake-indexeddb` for Dexie: fast, many edge cases. **Playwright** end-to-end tests from step 08: the real app in Chromium and WebKit, a fake webcam playing a generated video, real IndexedDB; later axe accessibility scans and screenshot tests. **Vitest browser mode** from step 15 for canvas pixel tests | Logic is tested where failures are cheap to find; a few end-to-end flows prove the pieces work together in a real browser. No jsdom component tests: jsdom has no camera, canvas or IndexedDB |
 | Offline | Installable PWA with a service worker, late in the roadmap | Classrooms often have bad Wi-Fi |
 
 ### What changed from the original plan
@@ -48,6 +48,7 @@ plan keeps its shape and changes what is listed under "What changed from the ori
 - **A plugin registry** as an explicit extension point.
 - **Thumbnails stored separately at capture time**, so the timeline never loads full images.
 - **Non-destructive adjustments** (brightness/contrast stored as numbers, applied when rendering).
+- **End-to-end tests with Playwright** (fake camera, real storage), not only unit tests.
 - **Alignment tools** (ghost, difference view, snapping, view zoom) and **identical duplicates**.
 - **A time-scaled, two-layer timeline**: resizable pictures, a seconds ruler, and an overlay layer for
   text and shapes. Speech bubbles attach to single pictures.
@@ -131,9 +132,9 @@ type Frame = {
 type StoredImage = { id: string; projectId: string; blob: Blob; width: number; height: number; createdAt: number };
 type StoredThumb = { imageId: string; projectId: string; blob: Blob };   // ~160 px wide
 
-// Added in steps 22-23 (types sketched here so earlier steps leave room for them):
+// Added in steps 23-24 (types sketched here so earlier steps leave room for them):
 
-// Something drawn on top of a picture. `kind` is registered in the plugin registry (step 21).
+// Something drawn on top of a picture. `kind` is registered in the plugin registry (step 22).
 type Element = {
   id: string;
   kind: string;             // "speech-bubble", "text", "rect", "ellipse", "arrow", ...
@@ -159,7 +160,7 @@ type Overlay = {
 - Overlays use the same ticks, so they stay lined up with the pictures when the speed changes. They are
   anchored to **time**, not to pictures: inserting a picture earlier shifts the pictures but not the
   overlays (like a second track in a video editor). "Stick to this picture" can be added later.
-- Images are kept until no frame references them (garbage collection, step 20). Undoing a delete
+- Images are kept until no frame references them (garbage collection, step 21). Undoing a delete
   therefore always finds its image.
 - Picture layers, sound and keyframes are later additions: a `schemaVersion` bump plus a Dexie migration.
   Until the app ships, changes to the stored shape can simply reset the dev database.

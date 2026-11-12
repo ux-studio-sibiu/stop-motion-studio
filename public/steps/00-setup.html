@@ -8,7 +8,7 @@
 </head>
 <body>
 <main class="nsc-step">
-  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 00 of 32 · Part 1 Foundations</p>
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 00 of 33 · Part 1 Foundations</p>
   <h1>Setup</h1>
   <p class="intro">An empty Next.js project that builds to a static site, lints its own layering rules and runs tests, before any feature exists.</p>
 
@@ -42,7 +42,7 @@
   <h2>Decisions</h2>
 
   <h3>Static export from day one</h3>
-  <p>Everything this app does (camera, canvas, IndexedDB, encoding) happens in the browser. With <code>output: "export"</code>, <code>next build</code> writes plain HTML/JS to <code>out/</code>, which any static host can serve. Turning it on now means anything server-only (API routes, server actions, reading cookies, dynamic routes without <code>generateStaticParams</code>) fails the build immediately instead of in step 32.</p>
+  <p>Everything this app does (camera, canvas, IndexedDB, encoding) happens in the browser. With <code>output: "export"</code>, <code>next build</code> writes plain HTML/JS to <code>out/</code>, which any static host can serve. Turning it on now means anything server-only (API routes, server actions, reading cookies, dynamic routes without <code>generateStaticParams</code>) fails the build immediately instead of in step 33.</p>
   <ul>
     <li><code>next start</code> doesn't work with a static export, so <code>npm start</code> serves <code>out/</code> with <code>serve</code> instead.</li>
     <li><code>images.unoptimized</code>: <code>next/image</code>'s optimiser needs a server. Our images are Blobs from IndexedDB anyway, drawn with <code>&lt;img&gt;</code> or canvas.</li>

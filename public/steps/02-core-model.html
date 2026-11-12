@@ -8,7 +8,7 @@
 </head>
 <body>
 <main class="nsc-step">
-  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 02 of 32 · Part 1 Foundations</p>
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 02 of 33 · Part 1 Foundations</p>
   <h1>Core model</h1>
   <p class="intro">The shape of an animation, written down as plain TypeScript: projects, frames, images and thumbnails, the defaults a new one starts with, and how long each frame stays on screen. No UI changes; everything later builds on these types, and they come with tests.</p>
 
@@ -53,31 +53,31 @@ export type Frame = {
   <h2>Decisions</h2>
 
   <h3>Plain data, no classes</h3>
-  <p>Everything is a type plus functions that return new objects. Plain objects go into IndexedDB as they are (step 06), into a JSON archive (step 26), and can be copied and compared for undo (step 10). A class would need converting at each of those boundaries.</p>
+  <p>Everything is a type plus functions that return new objects. Plain objects go into IndexedDB as they are (step 06), into a JSON archive (step 27), and can be copied and compared for undo (step 11). A class would need converting at each of those boundaries.</p>
 
   <h3>Order lives in <code>project.frameIds</code></h3>
   <p>Frames don't carry an <code>order</code> number. Moving a picture from position 40 to position 2 rewrites one list on one record, instead of renumbering 39 frames, and undoing it puts the old list back. The cost is keeping the list and the frames table in step; the load step in 07 repairs any drift, and <code>projectDuration()</code> already skips ids without a frame.</p>
 
   <h3>Time is counted in ticks, not milliseconds</h3>
   <p>A frame has <code>hold</code> (how many ticks it stays) and the project has <code>fps</code> (ticks per second). <code>frameDuration = hold × 1000 / fps</code>. When a child changes the speed, a picture they "held for three" stays three times as long as the others at every speed. With milliseconds per frame, changing the speed would have to rewrite every frame or break that rhythm.</p>
-  <div class="note">Since this step, the plan added a <strong>time-scaled timeline</strong>: a picture's width is its duration, dragging its edge changes <code>hold</code> (snapped to whole ticks, step 12), and a faint seconds ruler shows real time. A second layer of text and shapes (step 23) uses the same ticks for its <code>start</code> and <code>length</code>, so both layers stay lined up when the speed changes. Speech bubbles (step 22) are stored on the frame they belong to. None of these change the types written in this step; they add to them. Also planned: a duplicated frame must look exactly like its source, so step 11 adds a <code>cloneFrame()</code> next to <code>createFrame()</code> that copies every field and is tested field by field.</div>
+  <div class="note">Since this step, the plan added a <strong>time-scaled timeline</strong>: a picture's width is its duration, dragging its edge changes <code>hold</code> (snapped to whole ticks, step 13), and a faint seconds ruler shows real time. A second layer of text and shapes (step 24) uses the same ticks for its <code>start</code> and <code>length</code>, so both layers stay lined up when the speed changes. Speech bubbles (step 23) are stored on the frame they belong to. None of these change the types written in this step; they add to them. Also planned: a duplicated frame must look exactly like its source, so step 12 adds a <code>cloneFrame()</code> next to <code>createFrame()</code> that copies every field and is tested field by field.</div>
 
   <h3>Transforms are relative to the project</h3>
   <p><code>x</code> and <code>y</code> are fractions of the frame's width and height (0.1 = 10% to the right), <code>scale</code> 1 means "fits the frame", rotation is in degrees. If the working resolution changes, moved pictures stay where they were put.</p>
 
   <h3>Adjustments are numbers, never pixels</h3>
-  <p><code>brightness</code> and <code>contrast</code> default to 1 (unchanged) and are applied when drawing (step 19). The original photo is never rewritten, so every change can be undone or reset.</p>
+  <p><code>brightness</code> and <code>contrast</code> default to 1 (unchanged) and are applied when drawing (step 20). The original photo is never rewritten, so every change can be undone or reset.</p>
 
   <h3>Limits are enforced where objects are made</h3>
   <ul>
-    <li>Resolution is capped at 1920×1080 and rounded down to even numbers, because the H.264 encoder in step 25 rejects odd sizes.</li>
+    <li>Resolution is capped at 1920×1080 and rounded down to even numbers, because the H.264 encoder in step 26 rejects odd sizes.</li>
     <li>fps is a whole number from 1 to 30; <code>hold</code> is a whole number of at least 1. <code>NaN</code> falls back to the defaults instead of spreading.</li>
     <li>A blank name becomes "My animation".</li>
   </ul>
   <p>Later steps that change these values (speed control, hold buttons) go through the same <code>clampFps()</code> / <code>clampHold()</code>.</p>
 
   <h3>UUIDs for every id</h3>
-  <p><code>crypto.randomUUID()</code> ids are made on the device and never clash, even when a project archive from another computer is imported (step 26). They're wrapped in <code>newId()</code> so tests or a future storage backend can swap the generator in one place.</p>
+  <p><code>crypto.randomUUID()</code> ids are made on the device and never clash, even when a project archive from another computer is imported (step 27). They're wrapped in <code>newId()</code> so tests or a future storage backend can swap the generator in one place.</p>
 
   <h3><code>schemaVersion</code> on every project</h3>
   <p>Stored data outlives the code that wrote it. Each project records the shape it was saved with, so a later version (layers, sound) knows what to migrate.</p>
@@ -89,7 +89,7 @@ export type Frame = {
   <ul>
     <li><strong>Blobs are in the types but not in the store.</strong> <code>StoredImage.blob</code> and <code>StoredThumb.blob</code> belong in IndexedDB and short-lived caches. The Zustand store (step 04) holds <code>Project</code> and <code>Frame</code> only.</li>
     <li><strong><code>crypto.randomUUID()</code> needs a secure context</strong>: <code>localhost</code> or HTTPS. On a tablet opening the dev server by LAN IP over plain <code>http://</code>, <code>newId()</code> throws.</li>
-    <li><strong>Types are compile-time only.</strong> Data read back from IndexedDB or an imported archive isn't checked by TypeScript; step 26 validates archives at runtime.</li>
+    <li><strong>Types are compile-time only.</strong> Data read back from IndexedDB or an imported archive isn't checked by TypeScript; step 27 validates archives at runtime.</li>
     <li><strong>The layering rule applies here.</strong> Nothing in <code>src/core/model/</code> may import React, Next, Dexie or Zustand.</li>
   </ul>
 
@@ -112,7 +112,7 @@ npm run lint</code></pre>
 
   <nav class="pager">
     <a href="01-studio-shell.html">Previous: 01 · Studio shell</a>
-    <span>Next: 03 · Camera</span>
+    <a href="03-camera.html">Next: 03 · Camera</a>
   </nav>
 </main>
 </body>

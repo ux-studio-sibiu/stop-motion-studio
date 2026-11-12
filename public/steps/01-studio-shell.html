@@ -8,7 +8,7 @@
 </head>
 <body>
 <main class="nsc-step">
-  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 01 of 32 · Part 1 Foundations</p>
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 01 of 33 · Part 1 Foundations</p>
   <h1>Studio shell and design tokens</h1>
   <p class="intro">The studio screen exists: toolbar, camera panel, stage, picture panel, playback bar and timeline, laid out for a tablet in landscape and adapting down to a phone. Every area is a placeholder that names the step that fills it. Colours, sizes and the font are now tokens.</p>
 
@@ -19,7 +19,7 @@
     <li><strong>Button classes</strong> in <code>src/styles/_controls.scss</code>: <code>.icon-button</code> and <code>.big-button</code> with <code>is-capture</code> / <code>is-play</code> variants.</li>
     <li><strong>Font:</strong> Nunito through <code>next/font/google</code>, exposed as <code>--font-ui</code>.</li>
     <li><strong><code>/studio</code></strong>: <code>src/app/studio/page.tsx</code> (server component with a <code>&lt;Suspense&gt;</code>) renders <code>src/studio/Studio.tsx</code> (client component) and <code>studio.scss</code>.</li>
-    <li><strong>Home</strong> (<code>/</code>): a "Start animating" button to the studio and a link to these notes. It becomes the projects list in step 08.</li>
+    <li><strong>Home</strong> (<code>/</code>): a "Start animating" button to the studio and a link to these notes. It becomes the projects list in step 09.</li>
     <li><code>lucide-react</code> for icons.</li>
   </ul>
 
@@ -51,7 +51,7 @@
   <p><code>/studio?project=abc</code>, read with <code>useSearchParams()</code>. A static export can't pre-render a <code>/studio/[id]</code> page for ids that only exist in the user's browser. Reading search params forces that component to render on the client, and Next requires a <code>&lt;Suspense&gt;</code> boundary above it; the fallback is <code>null</code> because the shell appears almost instantly anyway.</p>
 
   <h3>Markup stays in one file for now</h3>
-  <p>The six areas are plain markup inside <code>Studio.tsx</code>, not six components. They have no behaviour yet, and the workspace rule is "no abstraction layers": each area becomes its own component in the step that gives it state (<code>CameraPanel</code> in 03, <code>Timeline</code> in 05/09, and so on). The two side panels repeat their few lines of markup instead of sharing a <code>Panel</code> wrapper.</p>
+  <p>The six areas are plain markup inside <code>Studio.tsx</code>, not six components. They have no behaviour yet, and the workspace rule is "no abstraction layers": each area becomes its own component in the step that gives it state (<code>CameraPanel</code> in 03, <code>Timeline</code> in 05/10, and so on). The two side panels repeat their few lines of markup instead of sharing a <code>Panel</code> wrapper.</p>
 
   <h3>Buttons are classes, not components</h3>
   <p><code>.icon-button</code> and <code>.big-button</code> only style a <code>&lt;button&gt;</code> or <code>&lt;Link&gt;</code>; they add no markup or behaviour. Per the style guide, that makes them drop-in classes, so they work on any element without a polymorphic <code>as</code> prop.</p>
@@ -78,7 +78,7 @@
     <li><strong>Sass modules.</strong> Use <code>@use "@/styles/breakpoints" as *;</code> (not <code>@import</code>), and <code>map.get</code> from <code>sass:map</code> (not the deprecated global <code>map-get</code>).</li>
     <li><strong>Global CSS per area.</strong> <code>studio.scss</code> is a global stylesheet imported by <code>Studio.tsx</code>; the <code>nsc-studio</code> root is what scopes it. Don't add top-level selectors to it.</li>
     <li><strong>Vitest's native binary disappeared again</strong> when <code>lucide-react</code> was installed, so the step 00 workaround (clean reinstall) wasn't enough. <code>@rolldown/binding-win32-x64-msvc</code> is now pinned in <code>optionalDependencies</code> at rolldown's exact version (1.2.19); see step 00's notes.</li>
-    <li><strong>On a phone the project name truncates</strong> ("My ...") next to four toolbar buttons. Fine for a placeholder; step 29 revisits phone toolbars.</li>
+    <li><strong>On a phone the project name truncates</strong> ("My ...") next to four toolbar buttons. Fine for a placeholder; step 30 revisits phone toolbars.</li>
   </ul>
 
   <h2>Check it</h2>

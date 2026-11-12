@@ -3,12 +3,17 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Camera, ChevronLeft, Download, Layers, Play, Redo2, Undo2 } from "lucide-react";
+import { CameraMessage } from "./CameraMessage";
+import { CameraPanel } from "./CameraPanel";
+import { CameraView } from "./CameraView";
+import { useCamera } from "./useCamera";
 import "./studio.scss";
 
-// The studio screen. Step 01 is layout only: every area holds a placeholder that a later
-// step replaces (camera 03, timeline 05/09, playback 15, properties 17).
+// The studio screen. Areas still holding a placeholder are filled by later steps
+// (timeline 05/10, playback 16, properties 18).
 export function Studio() {
   const projectId = useSearchParams().get("project");
+  const camera = useCamera();
 
   return (
     <div className="nsc-studio">
@@ -22,21 +27,17 @@ export function Studio() {
         </div>
       </header>
 
-      <aside className="side-panel" aria-label="Camera">
-        <h2 className="panel-title">Camera</h2>
-        <p className="placeholder">Camera picker and settings arrive in step 03.</p>
-        <button type="button" className="big-button is-capture" aria-label="Take a picture" disabled><Camera size={40} /></button>
-      </aside>
+      <CameraPanel camera={camera} />
 
       <main className="stage" aria-label="Stage">
         <div className="stage-frame">
-          <p className="placeholder">The camera picture shows here (step 03).</p>
+          {camera.stream ? <CameraView stream={camera.stream} /> : <CameraMessage camera={camera} />}
         </div>
       </main>
 
       <aside className="properties-panel" aria-label="Picture settings">
         <h2 className="panel-title">Picture</h2>
-        <p className="placeholder">Move, size and brightness for the selected picture (steps 17-19).</p>
+        <p className="placeholder">Move, size and brightness for the selected picture (steps 18-20).</p>
       </aside>
 
       <section className="timeline" aria-label="Pictures">

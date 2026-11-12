@@ -2,7 +2,7 @@ import { newId } from "./ids";
 import type { Adjust, Frame, Project, Transform } from "./types";
 
 // Bump when the stored shape changes, together with a Dexie migration (step 06+)
-// and an archive upgrade (step 26).
+// and an archive upgrade (step 27).
 export const SCHEMA_VERSION = 1;
 
 export const DEFAULT_WIDTH = 1280;
@@ -69,7 +69,7 @@ export function clampHold(hold: number): number {
   return Number.isFinite(hold) ? Math.max(1, Math.round(hold)) : 1;
 }
 
-// H.264 (step 25) needs even dimensions; also cap to the maximum working resolution.
+// H.264 (step 26) needs even dimensions; also cap to the maximum working resolution.
 function evenSize(size: number, max: number): number {
   const whole = Number.isFinite(size) ? Math.min(max, Math.max(2, Math.round(size))) : max;
   return whole - (whole % 2);

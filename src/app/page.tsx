@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Clapperboard } from "lucide-react";
 import "./home.scss";
 
-// Placeholder home. Becomes the projects list in step 08.
+// Placeholder home. Becomes the projects list in step 09.
 export default function Home() {
   return (
     <main id="nsc--home">
