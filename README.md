@@ -10,7 +10,7 @@ a timeline, play them back and export a GIF or video. No accounts, and photos ne
 ## Stack
 
 Next.js (App Router, static export) · React · TypeScript · SCSS · Zustand · Dexie (IndexedDB) ·
-Vitest. Later: dnd-kit, gifenc, Mediabunny, fflate.
+Vitest. Later: gifenc, Mediabunny, fflate.
 
 ## Layout
 
@@ -44,7 +44,7 @@ npm run dev
 | `npm run lint` | ESLint, including the layering rules |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run test:e2e` | Playwright end-to-end tests in Chromium (builds and serves the app on port 3200); add a file to run one spec: `npm run test:e2e -- e2e/timeline.spec.ts` |
-| `npm run test:e2e:all` | The same in Chromium and WebKit: at the end of a step, before committing |
+| `npm run test:e2e:all` | The same in Chromium and WebKit: on request, or for Safari-specific changes |
 | `npm run test:e2e:ui` | The same in Playwright's UI mode, test by test |
 | `npm run test:e2e:report` | Opens the last HTML report |
 

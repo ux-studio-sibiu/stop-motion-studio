@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PREFERENCES, readNumber, readText, savePreference, type PreferenceStorage } from "@/adapters/preferences/preferences";
+import { PREFERENCES, readNumber, readText, readTimelineView, savePreference, saveTimelineView, timelineViewKey, type PreferenceStorage } from "@/adapters/preferences/preferences";
 
 function memoryStorage(): PreferenceStorage & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -42,7 +42,32 @@ describe("preferences", () => {
     expect(readNumber(PREFERENCES.timelineZoom, storage)).toBeUndefined();
   });
 
+  it("keeps each animation's timeline view apart", () => {
+    const storage = memoryStorage();
+    saveTimelineView("p1", { zoom: 360, scrollSeconds: 4.5 }, storage);
+    saveTimelineView("p2", { zoom: 80, scrollSeconds: 0 }, storage);
+    expect(readTimelineView("p1", storage)).toEqual({ zoom: 360, scrollSeconds: 4.5 });
+    expect(readTimelineView("p2", storage)).toEqual({ zoom: 80, scrollSeconds: 0 });
+    expect(readTimelineView("p3", storage)).toBeUndefined();
+    saveTimelineView("p1", null, storage);
+    expect(readTimelineView("p1", storage)).toBeUndefined();
+  });
+
+  it("reads a broken or odd timeline view as not saved, or as the start", () => {
+    const storage = memoryStorage();
+    for (const junk of ["{", "null", "[]", '{"zoom":"big"}', '{"zoom":0}', '{"zoom":-5}']) {
+      storage.data.set(timelineViewKey("p1"), junk);
+      expect(readTimelineView("p1", storage), junk).toBeUndefined();
+    }
+    storage.data.set(timelineViewKey("p1"), '{"zoom":200,"scrollSeconds":-3}');
+    expect(readTimelineView("p1", storage)).toEqual({ zoom: 200, scrollSeconds: 0 });
+    storage.data.set(timelineViewKey("p1"), '{"zoom":200}');
+    expect(readTimelineView("p1", storage)).toEqual({ zoom: 200, scrollSeconds: 0 });
+  });
+
   it("never throws when storage is blocked or missing", () => {
+    expect(readTimelineView("p1", broken)).toBeUndefined();
+    expect(() => saveTimelineView("p1", { zoom: 1, scrollSeconds: 0 }, broken)).not.toThrow();
     expect(readText(PREFERENCES.cameraDevice, broken)).toBeUndefined();
     expect(() => savePreference(PREFERENCES.timelineZoom, 1, broken)).not.toThrow();
     expect(readNumber(PREFERENCES.timelineZoom, null)).toBeUndefined();   // no localStorage (server rendering)

@@ -1,4 +1,4 @@
-import { clampHold, cloneFrame, type Frame, type FrameInsert, type ProjectRepository, type RemovedFrame } from "../model";
+import { clampHold, cloneFrame, sameOrder, type Frame, type FrameInsert, type ProjectRepository, type RemovedFrame } from "../model";
 import type { Command } from "./command";
 
 // Takes pictures out of the animation. Undo puts them back exactly where they were (and
@@ -69,6 +69,18 @@ export function duplicateFrames(projectId: string, sources: readonly Frame[], or
       return { select: placed.map(({ source }) => source.id) };
     },
   };
+}
+
+// Puts pictures in a new order (a drag or Ctrl+arrow). Saves the whole order, so undo is
+// exact. If another tab adds or deletes a picture in between, the saved order is repaired on
+// load (useProject): a new picture goes to the end, a deleted one is dropped.
+export function reorderFrames(projectId: string, before: readonly string[], after: readonly string[], moved: readonly string[]): Command {
+  const write = (frameIds: readonly string[]) => async (repository: ProjectRepository) => {
+    if (sameOrder(before, after)) throw new Error("The order didn't change.");
+    await repository.updateProject(projectId, { frameIds: [...frameIds] });
+    return { select: moved };
+  };
+  return { label: moved.length === 1 ? "Move picture" : `Move ${moved.length} pictures`, do: write(after), undo: write(before) };
 }
 
 // Changes how long pictures last: one command for a whole drag or key press, however many

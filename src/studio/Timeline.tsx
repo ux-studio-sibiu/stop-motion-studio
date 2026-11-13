@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import { Camera, CopyPlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
-import { formatSeconds, inOrder, neighbourAfterDelete, pxPerTick, rulerScale, selectRange, ticksToSeconds, toggleInSelection, totalTicks, type Frame } from "@/core/model";
+import { formatSeconds, inOrder, moveIds, neighbourAfterDelete, nudgeGap, pxPerTick, rulerScale, sameOrder, selectRange, ticksToSeconds, toggleInSelection, totalTicks, type Frame } from "@/core/model";
 import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, withHoldPreview } from "@/store/editorStore";
 import { editorStore, useEditor, useOrderedFrames } from "@/store/useEditor";
 import { thumbs } from "./media";
+import { useReorder, type Drag } from "./useReorder";
 import { useResize, type HoldChange } from "./useResize";
-import { useZoomPreference } from "./useZoomPreference";
+import { useTimelineView } from "./useTimelineView";
 
 const ZOOM_STEP = 1.5;
 const LABEL_MIN_WIDTH = 24;   // narrower pictures don't show their number
@@ -15,8 +16,15 @@ const LABEL_MIN_WIDTH = 24;   // narrower pictures don't show their number
 // The timeline, drawn to time: a picture is as wide as it lasts (hold ticks × px per tick),
 // and a faint seconds ruler runs along the top. Zoom changes px per second; it's a way of
 // looking, not part of the animation, so it lives in the store and is remembered per device
-// (useZoomPreference), not saved in the project.
-export function Timeline({ onDelete, onDuplicate, onResize }: { onDelete: (frameIds: readonly string[]) => void; onDuplicate: (frameIds: readonly string[]) => void; onResize: (changes: HoldChange[]) => Promise<boolean> }) {
+// (useTimelineView), not saved in the project.
+type TimelineProps = {
+  onDelete: (frameIds: readonly string[]) => void;
+  onDuplicate: (frameIds: readonly string[]) => void;
+  onResize: (changes: HoldChange[]) => Promise<boolean>;
+  onReorder: (before: string[], after: string[], moved: string[]) => void;
+};
+
+export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: TimelineProps) {
   const saved = useOrderedFrames();
   const holdPreview = useEditor((state) => state.holdPreview);
   const frames = useMemo(() => withHoldPreview(saved, holdPreview), [saved, holdPreview]);   // with any resize in progress
@@ -24,12 +32,12 @@ export function Timeline({ onDelete, onDuplicate, onResize }: { onDelete: (frame
   const fps = useEditor((state) => state.project?.fps ?? 8);
   const zoom = useEditor((state) => state.timelineZoom);
   const thumbRatio = useEditor((state) => (state.project ? `${state.project.width} / ${state.project.height}` : "16 / 9"));
-  useZoomPreference();
 
   const scroller = useRef<HTMLDivElement>(null);
   const track = useRef<HTMLOListElement>(null);
   const next = useRef<HTMLLIElement>(null);
   const anchor = useRef<{ seconds: number; x: number } | null>(null);
+  useTimelineView(scroller);
 
   const tickWidth = pxPerTick(zoom, fps);
   const seconds = ticksToSeconds(totalTicks(frames), fps);
@@ -73,10 +81,16 @@ export function Timeline({ onDelete, onDuplicate, onResize }: { onDelete: (frame
     return () => element.removeEventListener("wheel", onWheel);
   }, []);
 
-  // New pictures: keep the end (and the slot for the next one) in view.
+  // New pictures: keep the end (and the slot for the next one) in view. Not for the pictures
+  // an animation opens with: there the saved view (useTimelineView) decides where it's scrolled.
+  const projectId = useEditor((state) => state.project?.id);
+  const seen = useRef<{ projectId?: string; length: number }>({ length: 0 });
   useEffect(() => {
-    next.current?.scrollIntoView({ block: "nearest", inline: "end", behavior: "smooth" });
-  }, [frames.length]);
+    const opened = seen.current.projectId !== projectId;
+    const grew = frames.length > seen.current.length;
+    seen.current = { projectId, length: frames.length };
+    if (!opened && grew) next.current?.scrollIntoView({ block: "nearest", inline: "end", behavior: "smooth" });
+  }, [frames.length, projectId]);
 
   // Selection: a click selects one picture, Shift+click a range from the anchor (where the
   // range started), Ctrl/Cmd+click adds or removes one. The focus is the end that moves
@@ -113,7 +127,10 @@ export function Timeline({ onDelete, onDuplicate, onResize }: { onDelete: (frame
 
   const duplicateSelection = () => { if (selection.length > 0) onDuplicate(selection); };
 
+  const reorder = useReorder(frames, selection, tickWidth, scroller, track, onReorder);
+
   const onPick = (id: string, event: MouseEvent) => {
+    if (reorder.takeClick()) return;   // this click ended a drag
     if (event.shiftKey) extendTo(id);
     else if (event.ctrlKey || event.metaKey) toggle(id);
     else selectOnly(id);
@@ -126,6 +143,14 @@ export function Timeline({ onDelete, onDuplicate, onResize }: { onDelete: (frame
     if (order.length === 0) return;
     const command = event.ctrlKey || event.metaKey;
     const key = event.key.toLowerCase();
+    if (command && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+      event.preventDefault();   // Ctrl/Cmd + arrow moves the selected pictures one place
+      if (selection.length === 0) return;
+      const moved = inOrder(order, selection);
+      const after = moveIds(order, moved, nudgeGap(order, moved, event.key === "ArrowLeft" ? -1 : 1));
+      if (!sameOrder(order, after)) onReorder(order, after, moved);
+      return;
+    }
     if (command && key === "a") {
       event.preventDefault();
       editorStore.getState().select(order);
@@ -188,19 +213,21 @@ export function Timeline({ onDelete, onDuplicate, onResize }: { onDelete: (frame
 
         <ol ref={track} className="track" role="listbox" aria-label="Pictures" aria-orientation="horizontal" aria-multiselectable="true" tabIndex={0} aria-activedescendant={focusId ? optionId(focusId) : undefined} onKeyDown={onKeyDown} style={{ "--thumb-ratio": thumbRatio } as CSSProperties}>
           {frames.map((frame, index) => (
-            <FrameThumb key={frame.id} frame={frame} number={index + 1} width={frame.hold * tickWidth} selected={selection.includes(frame.id)} insertAfter={frame.id === markerId} onPick={onPick}>
+            <FrameThumb key={frame.id} frame={frame} number={index + 1} width={frame.hold * tickWidth} selected={selection.includes(frame.id)} insertAfter={!reorder.drag && frame.id === markerId} dragging={reorder.drag?.ids.includes(frame.id) ?? false} onPick={onPick} onPress={reorder.onFramePointerDown}>
               {selection.includes(frame.id) && (
                 <span className="grip" aria-hidden="true" title="Drag to make it shorter or longer ([ and ] keys)" onPointerDown={(event) => resize.onGripDown(frame.id, event)} onPointerMove={resize.onGripMove} onPointerUp={(event) => resize.onGripUp(frame.id, event)} onPointerCancel={resize.cancel} onClick={(event) => event.stopPropagation()} />
               )}
               {resize.grabbed === frame.id && <span className="hold-bubble" role="status">{formatHold(frame.hold, fps)}</span>}
             </FrameThumb>
           ))}
+          {reorder.drag && <li className="drop-marker" aria-hidden="true" style={{ left: reorder.drag.markerX }} />}
           <li ref={next} className="next-slot" aria-hidden={frames.length > 0}>
             <Camera size={24} />
             {frames.length === 0 && <span className="next-hint">Your pictures appear here</span>}
           </li>
         </ol>
       </div>
+      {reorder.drag && <DragGhost drag={reorder.drag} frames={frames} />}
     </section>
   );
 }
@@ -211,17 +238,42 @@ export function Timeline({ onDelete, onDuplicate, onResize }: { onDelete: (frame
 // middle of it (cover-cropped), a long one shows it at the start and a dotted outline for the
 // rest of its time.
 // Children: the resize grip and its bubble, when selected.
-function FrameThumb({ frame, number, width, selected, insertAfter, onPick, children }: { frame: Frame; number: number; width: number; selected: boolean; insertAfter: boolean; onPick: (id: string, event: MouseEvent) => void; children?: ReactNode }) {
+type FrameThumbProps = {
+  frame: Frame;
+  number: number;
+  width: number;
+  selected: boolean;
+  insertAfter: boolean;
+  dragging: boolean;
+  onPick: (id: string, event: MouseEvent) => void;
+  onPress: (id: string, event: PointerEvent<HTMLElement>) => void;
+  children?: ReactNode;
+};
+
+function FrameThumb({ frame, number, width, selected, insertAfter, dragging, onPick, onPress, children }: FrameThumbProps) {
   const url = thumbs.url(frame.imageId);
-  const className = `frame${selected ? " is-selected" : ""}${insertAfter ? " is-insert-point" : ""}`;
+  const className = `frame${selected ? " is-selected" : ""}${insertAfter ? " is-insert-point" : ""}${dragging ? " is-dragging" : ""}`;
   return (
-    <li id={optionId(frame.id)} role="option" aria-selected={selected} aria-label={`Picture ${number}`} className={className} style={{ width }} onClick={(event) => onPick(frame.id, event)}>
+    <li id={optionId(frame.id)} role="option" aria-selected={selected} aria-label={`Picture ${number}`} className={className} style={{ width }} onClick={(event) => onPick(frame.id, event)} onPointerDown={(event) => onPress(frame.id, event)}>
       <span className="picture">
         <span className="thumb" style={{ backgroundImage: url ? `url("${url}")` : undefined }} />
         {width >= LABEL_MIN_WIDTH && <span className="frame-number">{number}</span>}
       </span>
       {children}
     </li>
+  );
+}
+
+// The small copy that follows the pointer while reordering: always thumbnail-sized, however
+// long the pictures are, with a count when several move together.
+function DragGhost({ drag, frames }: { drag: Drag; frames: readonly Frame[] }) {
+  const first = frames.find((frame) => frame.id === drag.ids[0]);
+  const url = first ? thumbs.url(first.imageId) : undefined;
+  return (
+    <div className="drag-ghost" aria-hidden="true" style={{ left: drag.x, top: drag.y }}>
+      <span className="thumb" style={{ backgroundImage: url ? `url("${url}")` : undefined }} />
+      {drag.ids.length > 1 && <span className="drag-count">{drag.ids.length}</span>}
+    </div>
   );
 }
 

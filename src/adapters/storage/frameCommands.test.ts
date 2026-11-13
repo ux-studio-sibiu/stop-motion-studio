@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { addFrames, createHistory, deleteFrames, duplicateFrames, setHold, type History } from "@/core/commands";
-import { createFrame, createProject, type Project, type ProjectRepository } from "@/core/model";
+import { addFrames, createHistory, deleteFrames, duplicateFrames, reorderFrames, setHold, type History } from "@/core/commands";
+import { createFrame, createProject, moveIds, type Project, type ProjectRepository } from "@/core/model";
 import { openStudioDb, type StudioDb } from "@/adapters/storage/db";
 import { createDexieRepository } from "@/adapters/storage/dexieRepository";
 
@@ -119,6 +119,27 @@ describe("duplicateFrames", () => {
   it("isn't recorded when there's nothing to copy", async () => {
     await expect(history.run(duplicateFrames(project.id, [], []))).rejects.toThrow();
     expect(history.state().canUndo).toBe(false);
+  });
+});
+
+describe("reorderFrames", () => {
+  it("saves the new order; undo puts the old one back; redo again", async () => {
+    const ids = await takePictures(4);
+    const moved = moveIds(ids, [ids[0], ids[1]], 2);
+    expect(await history.run(reorderFrames(project.id, ids, moved, [ids[0], ids[1]]))).toEqual({ select: [ids[0], ids[1]] });
+    expect(await order()).toEqual([ids[2], ids[3], ids[0], ids[1]]);
+    expect(history.state().undoLabel).toBe("Move 2 pictures");
+    await history.undo();
+    expect(await order()).toEqual(ids);
+    await history.redo();
+    expect(await order()).toEqual(moved);
+    expect(await frameCount()).toBe(4);   // nothing added or lost
+  });
+
+  it("isn't recorded when the order stays the same", async () => {
+    const ids = await takePictures(2);
+    await expect(history.run(reorderFrames(project.id, ids, [...ids], [ids[0]]))).rejects.toThrow();
+    expect(history.state().undoLabel).toBe("Take picture");
   });
 });
 

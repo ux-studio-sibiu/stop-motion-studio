@@ -76,6 +76,19 @@ export class Studio {
     if (release) await this.page.mouse.up();
   }
 
+  // Drags picture n by its body (its left part, away from the resize grip) to a point `dx`
+  // pixels right of where it was grabbed. Leaves the button down when `release` is false.
+  async dragPicture(number: number, dx: number, { release = true } = {}): Promise<void> {
+    const box = await this.picture(number).boundingBox();
+    if (!box) throw new Error(`Picture ${number} isn't on the timeline`);
+    const x = box.x + 4;
+    const y = box.y + box.height / 2;
+    await this.page.mouse.move(x, y);
+    await this.page.mouse.down();
+    await this.page.mouse.move(x + dx, y, { steps: 10 });
+    if (release) await this.page.mouse.up();
+  }
+
   // The ids of the selected pictures, in timeline order.
   async selectedOrder(): Promise<string[]> {
     return this.selected().evaluateAll((options) => options.map((option) => option.id));

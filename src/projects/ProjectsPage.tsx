@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clapperboard, Plus } from "lucide-react";
+import { saveTimelineView } from "@/adapters/preferences/preferences";
 import { appRepository } from "@/adapters/storage/appRepository";
 import type { Project } from "@/core/model";
 import { createSavedProject } from "./createSavedProject";
@@ -27,7 +28,9 @@ export function ProjectsPage() {
   const confirmDelete = async () => {
     const project = deleting;
     setDeleting(null);
-    if (project) await appRepository().deleteProject(project.id);
+    if (!project) return;
+    await appRepository().deleteProject(project.id);
+    saveTimelineView(project.id, null);   // its remembered zoom and scroll go with it
   };
 
   const coverUrl = (project: Project) => {

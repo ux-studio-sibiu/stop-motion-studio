@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>14 Drag to reorder · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 14 of 33 · Part 4 Timeline</p>
+  <h1>Drag to reorder</h1>
+  <p class="intro">Pictures can now be dragged to a new place. Grab one and the pictures being moved fade in place, a small copy follows the pointer, and a blue bar shows where they'll land. Let go and they move there. Dragging a selected picture carries the whole selection. <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>←</kbd> <kbd>→</kbd> does the same from the keyboard, and every move is one undo step. This finishes Part 4, the timeline.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>core/model/order.ts</code>, 6 tests:
+      <ul>
+        <li><code>moveIds</code>: moves a group to a gap, keeping its order;</li>
+        <li><code>nudgeGap</code>: the gap for a one-place keyboard move;</li>
+        <li><code>gapAt</code>: which gap a drop at an x position means.</li>
+      </ul>
+    </li>
+    <li><code>reorderFrames(projectId, before, after, moved)</code> in <code>core/commands</code>. 2 tests against storage.</li>
+    <li><code>src/studio/useReorder.ts</code>:
+      <ul>
+        <li>the press-to-drag threshold, and hold-to-pick-up on touch;</li>
+        <li>the drop gap, the marker and the copy that follows the pointer;</li>
+        <li>auto-scroll near the edges;</li>
+        <li>Escape;</li>
+        <li>skipping the click that ends a drag.</li>
+      </ul>
+    </li>
+    <li>The timeline: <code>.is-dragging</code>, <code>.drop-marker</code>, <code>.drag-ghost</code> (with a count), and <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + arrows.</li>
+    <li><code>e2e/reorder.spec.ts</code> (8 tests) and <code>dragPicture()</code> in the page object.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+
+  <h3>No drag library after all</h3>
+  <p>The plan said <code>@dnd-kit/sortable</code>. While building, three things argued against it:</p>
+  <ul>
+    <li><strong>Keyboard.</strong> dnd-kit's keyboard dragging needs each picture to take focus. Our timeline keeps focus on the list and points at the current picture with <code>aria-activedescendant</code> (step 10), so screen readers hear "Picture 3, selected". Keyboard moves are <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + arrows instead, which fit how the timeline already works.</li>
+    <li><strong>Everything else on the track.</strong> Pictures are time-scaled, have a resize grip (step 13), and can move as a group. With a sortable library, all three mean working around it rather than with it.</li>
+    <li><strong>What it would add.</strong> The drag we need is about 150 lines of pointer events, the same technique as the resize grip, with no dependency.</li>
+  </ul>
+  <p><code>PLAN.md</code> records the change.</p>
+
+  <h3>Pictures don't shuffle while dragging</h3>
+  <p>A sortable list usually slides items aside as you drag. Here the pictures stay put (the dragged ones faded), and a bar in the gap shows where they'll land. Pictures have very different widths, so sliding them around would make the drop point jump. The bar always sits in one of the 5 px gaps from the last change. Nothing is saved until the drop, and then it's one command.</p>
+  <p>The drop place is the number of staying pictures whose middle is left of the pointer (<code>gapAt</code>). A long picture is "before" until you pass its middle. The copy under the pointer is always thumbnail-sized, however long the pictures are, with a count badge when several move.</p>
+
+  <h3>A press is a click until it moves</h3>
+  <ul>
+    <li><strong>Mouse or pen</strong>: the drag starts after 8 px of movement. Less is an ordinary click, so selecting still works. The click that ends a real drag is skipped, otherwise it would select just one picture of a group.</li>
+    <li><strong>Touch</strong>: a finger has to hold still for 350 ms to pick a picture up. Moving sooner is a normal swipe that scrolls the timeline. Once picked up, the page stops scrolling (a non-passive <code>touchmove</code> listener).</li>
+  </ul>
+
+  <h3>Grip on the right half, drag on the left</h3>
+  <p>A selected 20 px picture was all grip (step 13), so it could only be resized, never moved. The first Playwright run showed this. The grip is now <code>clamp(10px, 50%, 24px)</code> wide:</p>
+  <ul>
+    <li>on a narrow picture, the right half resizes and the left half drags;</li>
+    <li>from about 48 px wide, the grip is the full finger-sized 24 px again.</li>
+  </ul>
+  <p>Grips hide while their pictures are being dragged.</p>
+
+  <h3>Moves save the whole order</h3>
+  <p><code>reorderFrames</code> writes the full new order, and undo writes the old one, so undo is exact. If another tab adds or deletes a picture in between, the order is repaired on load (step 07): a new picture goes to the end, a missing one is dropped. Dropping a picture where it already was saves nothing, and history records nothing.</p>
+
+  <h3>Groups close up</h3>
+  <p>Dragging pictures 2 and 4 moves them together and keeps their order, so the hole between them closes. <kbd>Ctrl</kbd>+arrow does the same: the selection moves one place past its neighbour.</p>
+
+  <h3>Auto-scroll</h3>
+  <p>While dragging, a pointer within 48 px of the timeline's edge scrolls it. The closer to the edge, the faster, up to 14 px a frame. The drop place updates as the pictures slide under the pointer. Resizing (step 13) could use this too; it doesn't yet.</p>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Touch isn't covered by the tests.</strong> Playwright drives a mouse here. Hold-to-pick-up was written for touch, but needs checking on a tablet, or in DevTools' device mode with touch.</li>
+    <li><strong>Virtualising a long timeline (step 31)</strong> must keep <code>gapAt</code> working: it uses the layout maths (ticks × px per tick), not the DOM, so pictures that aren't drawn still count.</li>
+    <li><strong>The order on screen changes a moment after the drop</strong>, when storage reports back (local, a few ms). If that ever shows as a jump, an order preview like step 13's length preview would fix it.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm test
+npm run test:e2e -- e2e/reorder.spec.ts
+npm run test:e2e:all
+npm run dev</code></pre>
+  <ul>
+    <li>Take five pictures and drag the first one past the third: it lands there, and one Ctrl+Z puts it back.</li>
+    <li>Shift+click to select two pictures and drag one of them: both move, and the copy shows "2".</li>
+    <li>Drag and press Escape: nothing moves.</li>
+    <li>Select a picture and press Ctrl+→ twice: it moves two places.</li>
+    <li>Zoom right in with many pictures and drag towards the right edge: the timeline scrolls.</li>
+    <li>In DevTools with touch on, hold a picture until it lifts, then move it.</li>
+  </ul>
+  <div class="note">Checked while building: 176 unit tests pass; end-to-end 57 passed, 39 skipped (camera tests in WebKit on Windows), three full runs in both browsers. Screenshot taken with Playwright of a two-picture drag (faded pictures, the copy with its count). Not checked: a real touch screen.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/model/order.ts</code>, <code>order.test.ts</code>; <code>src/core/commands/frameCommands.ts</code>; <code>src/adapters/storage/frameCommands.test.ts</code>; <code>src/studio/useReorder.ts</code>, <code>Timeline.tsx</code>, <code>Studio.tsx</code>, <code>studio.scss</code>; <code>e2e/reorder.spec.ts</code>, <code>e2e/fixtures.ts</code>; <code>PLAN.md</code> (drag and drop decision), <code>README.md</code>, <code>ROADMAP.md</code>; <code>public/steps/14-reorder.html</code>, <code>index.html</code>, <code>13-resize.html</code> (next link).</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit (176 in total): 6 for <code>moveIds</code>, <code>nudgeGap</code> and <code>gapAt</code>; 2 for <code>reorderFrames</code> against storage.</li>
+    <li>End-to-end, 8 in <code>reorder.spec.ts</code>:
+      <ul>
+        <li>drag, save, undo and reload;</li>
+        <li>marker and copy;</li>
+        <li>a small move is a click;</li>
+        <li>group drag;</li>
+        <li>Escape;</li>
+        <li>the grip never reorders;</li>
+        <li>Ctrl+arrows;</li>
+        <li>auto-scroll.</li>
+      </ul>
+    </li>
+  </ul>
+  <p>No existing test changed.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>a tap still selects; only a real drag reorders</li>
+    <li>dragging never writes to storage; a drop writes one command, and no command when nothing moved</li>
+    <li>a selected group moves together and keeps its order</li>
+    <li>a narrow selected picture can be both resized and dragged</li>
+    <li><code>npm test</code>, <code>npm run test:e2e:all</code>, <code>npm run lint</code>, <code>npm run typecheck</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="13-resize.html">Previous: 13 · Resize a picture's duration</a>
+    <span>Next: 15 · Renderer</span>
+  </nav>
+</main>
+</body>
+</html>

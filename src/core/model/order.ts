@@ -59,6 +59,30 @@ export function neighbourAfterDelete(order: readonly string[], ids: readonly str
   return order.slice(last + 1).find((id) => !remove.has(id)) ?? order.slice(0, last).findLast((id) => !remove.has(id));
 }
 
+// Moves pictures to a new place, keeping their order among themselves. `gap` is the place
+// among the pictures that stay: 0 = before all of them, 1 = after the first one, and so on.
+export function moveIds(order: readonly string[], ids: Iterable<string>, gap: number): string[] {
+  const moving = new Set(ids);
+  const moved = order.filter((id) => moving.has(id));
+  const staying = order.filter((id) => !moving.has(id));
+  const at = Math.min(staying.length, Math.max(0, Math.round(gap)));
+  return [...staying.slice(0, at), ...moved, ...staying.slice(at)];
+}
+
+// The keyboard move: the selection one place left or right (past one other picture). A
+// selection with holes closes up around its first picture's place.
+export function nudgeGap(order: readonly string[], ids: readonly string[], direction: -1 | 1): number {
+  const moving = new Set(ids);
+  const first = order.findIndex((id) => moving.has(id));
+  if (first < 0) return 0;
+  return first + direction;   // every picture before the selection stays, so its gap is `first`
+}
+
+// Where a drop at `x` goes: the number of staying pictures whose middle is left of x.
+export function gapAt(slots: readonly { start: number; width: number }[], x: number): number {
+  return slots.filter((slot) => slot.start + slot.width / 2 < x).length;
+}
+
 export function sameOrder(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((id, index) => id === b[index]);
 }

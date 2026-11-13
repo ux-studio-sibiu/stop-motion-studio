@@ -22,7 +22,7 @@ updates its tests in the same change, and `npm test` runs before a change counts
 
 **Testing in layers.** Vitest unit tests for logic from the start; Playwright end-to-end tests from step
 08 on. After step 08, every step with a user-facing flow adds or extends a Playwright spec (`e2e/`) and
-lists it in its review checklist, so `npm run test:e2e:all` keeps proving the whole app works (`test:e2e` is Chromium only, for quicker runs while working). Vitest's
+lists it in its review checklist, so `npm run test:e2e` keeps proving the whole app works (Chromium; `test:e2e:all` adds WebKit when needed). Vitest's
 browser mode joins in step 15 for canvas pixel tests.
 
 ---
@@ -263,6 +263,7 @@ dragging. Step 24 adds a second layer under the pictures for text and shapes.
   4× as long, one undo restores it.
 
 ### 14 · Drag to reorder
+- *Built differently (see the step page): own pointer drag instead of dnd-kit, Ctrl/Cmd+arrows for the keyboard.*
 - **Builds:** `@dnd-kit/sortable` on the picture track with pointer, touch and keyboard sensors and
   `horizontalListSortingStrategy` (it handles items of different widths); `ReorderFrames` command on drop.
 - **Decisions:** an activation distance (~8 px) so a tap still selects. Only the final drop creates a
@@ -517,7 +518,7 @@ neighbours. Step 18 is moving; step 19 is lining up.
   differ), lazy thumbnail loading, playback preloading tuned, a dev-only "generate 500 frames" button.
 - **Decisions:** measure first (DevTools Performance + Memory with 500 frames), optimise only what shows
   up.
-- **Watch out:** virtualisation and dnd-kit together need care (drag targets outside the rendered
+- **Watch out:** virtualisation and the reorder drag together need care (drag targets outside the rendered
   range); the overlay track must virtualise by the same time range.
 - **Check:** 500 frames: timeline scrolls at 60 fps, memory stays under an agreed budget.
 
@@ -564,7 +565,7 @@ registry entry.
 - [x] 11 Commands and undo/redo ([page](public/steps/11-undo.html))
 - [x] 12 Frame operations ([page](public/steps/12-frame-operations.html))
 - [x] 13 Resize a picture's duration ([page](public/steps/13-resize.html))
-- [ ] 14 Drag to reorder
+- [x] 14 Drag to reorder ([page](public/steps/14-reorder.html))
 - [ ] 15 Renderer
 - [ ] 16 Playback
 - [ ] 17 Onion skin

@@ -38,6 +38,16 @@ test("clicking selects a picture; arrow keys, Home and End move the selection", 
   await expect(page.getByRole("option", { selected: true })).toHaveCount(0);
 });
 
+test("the timeline takes focus for the keys but never shows a focus ring", async ({ studio, page }) => {
+  const outline = () => studio.track().evaluate((element) => getComputedStyle(element).outlineStyle);
+  await studio.picture(2).click();
+  await expect(studio.track()).toBeFocused();   // the keys still work straight away
+  expect(await outline()).toBe("none");
+  await page.keyboard.press("ArrowRight");
+  await expect(studio.picture(3)).toHaveAttribute("aria-selected", "true");
+  expect(await outline()).toBe("none");
+});
+
 test("zooming changes how wide a second is, not how long pictures last", async ({ studio, page }) => {
   await page.getByRole("button", { name: "Zoom in" }).click();
   await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(30, 0);   // 160 × 1.5 / 8
@@ -45,6 +55,33 @@ test("zooming changes how wide a second is, not how long pictures last", async (
   await page.getByRole("button", { name: "Zoom out" }).click();
   await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(13.3, 0);   // 160 / 1.5 / 8
   await expect(page.locator(".timeline-tools .duration")).toContainText("0.4 s");      // still 3 ticks long
+});
+
+test("each animation remembers its own zoom and scroll position after a reload", async ({ studio, page }) => {
+  const scroller = page.locator(".timeline-scroll");
+  const scrollLeft = () => scroller.evaluate((element) => element.scrollLeft);
+  for (let i = 0; i < 4; i++) await page.getByRole("button", { name: "Zoom in" }).click();   // 640 px/s: 80 px a picture
+  await studio.takePictures(13);   // 16 pictures, 1280 px: wider than the timeline
+  await scroller.evaluate((element) => { element.scrollLeft = 300; });
+  await page.waitForTimeout(400);   // the scroll is saved once it stops
+  const animation = page.url();
+
+  await page.reload();
+  await expect(studio.pictures()).toHaveCount(16);
+  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(80, 0);
+  await expect.poll(scrollLeft).toBeCloseTo(300, -1);
+
+  await studio.open();   // a new animation: the last zoom used, scrolled to the start
+  await studio.cameraOn();
+  await studio.takePictures(1);
+  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(80, 0);
+  await page.getByRole("button", { name: "Zoom out" }).click();   // this one gets its own zoom
+  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(53.3, 0);
+
+  await page.goto(animation);   // the first one kept its own view
+  await expect(studio.pictures()).toHaveCount(16);
+  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(80, 0);
+  await expect.poll(scrollLeft).toBeCloseTo(300, -1);
 });
 
 test("the zoom is remembered after a reload, and in a new animation", async ({ studio, page }) => {
@@ -70,16 +107,16 @@ test("Ctrl + mouse wheel over the timeline zooms too", async ({ studio, page }) 
 
 test("a long picture shows its thumbnail once and a gap before the next, still on time", async ({ studio, page }) => {
   await studio.picture(1).click();
-  await studio.dragGrip(1, 140);   // 8 ticks: 160 px, wider than its thumbnail
-  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(160, 0);
+  await studio.dragGrip(1, 300);   // 16 ticks: 2 s, 320 px, much wider than its thumbnail
+  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(320, 0);
   const thumb = await studio.widthOf(studio.thumb(1));
   expect(thumb).toBeGreaterThan(40);
-  expect(thumb).toBeLessThan(150);   // once, not repeated along the picture
+  expect(thumb).toBeLessThan(250);   // once, not stretched or repeated along the picture
   expect(await studio.thumb(1).evaluate((element) => getComputedStyle(element).backgroundRepeat)).not.toContain("repeat-x");
 
-  // The next picture starts exactly at 1 s on the ruler, and its visible part 5 px after the first ends.
-  const [secondSlot, firstPicture, oneSecond] = await Promise.all([studio.picture(2).boundingBox(), studio.picture(1).locator(".picture").boundingBox(), page.locator(".ruler-label").nth(1).boundingBox()]);
-  expect(secondSlot!.x).toBeCloseTo(oneSecond!.x, 0);
+  // The next picture starts exactly at 2 s on the ruler, and its visible part 5 px after the first ends.
+  const [secondSlot, firstPicture, twoSeconds] = await Promise.all([studio.picture(2).boundingBox(), studio.picture(1).locator(".picture").boundingBox(), page.locator(".ruler-label").nth(2).boundingBox()]);
+  expect(secondSlot!.x).toBeCloseTo(twoSeconds!.x, 0);
   expect(secondSlot!.x - (firstPicture!.x + firstPicture!.width)).toBeCloseTo(5, 0);
 });
 

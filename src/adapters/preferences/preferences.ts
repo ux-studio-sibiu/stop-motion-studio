@@ -10,7 +10,32 @@ export const PREFERENCES = {
   timelineZoom: "stop-motion-studio:timeline-zoom",
 } as const;
 
-export type PreferenceKey = (typeof PREFERENCES)[keyof typeof PREFERENCES];
+export type PreferenceKey = (typeof PREFERENCES)[keyof typeof PREFERENCES] | `stop-motion-studio:view:${string}`;
+
+// How one animation's timeline was last looked at: its zoom (px per second) and the time at the
+// left edge of the view, in seconds (not pixels, so it lands on the same moment at any zoom).
+export type TimelineView = { zoom: number; scrollSeconds: number };
+
+export function timelineViewKey(projectId: string): PreferenceKey {
+  return `stop-motion-studio:view:${projectId}`;
+}
+
+export function readTimelineView(projectId: string, storage = browserStorage()): TimelineView | undefined {
+  const text = readText(timelineViewKey(projectId), storage);
+  if (!text) return undefined;
+  try {
+    const { zoom, scrollSeconds } = JSON.parse(text) as Partial<TimelineView>;
+    if (typeof zoom !== "number" || !Number.isFinite(zoom) || zoom <= 0) return undefined;
+    return { zoom, scrollSeconds: typeof scrollSeconds === "number" && Number.isFinite(scrollSeconds) ? Math.max(0, scrollSeconds) : 0 };
+  } catch {
+    return undefined;   // not JSON: as if never saved
+  }
+}
+
+// null forgets it (a deleted animation).
+export function saveTimelineView(projectId: string, view: TimelineView | null, storage = browserStorage()): void {
+  savePreference(timelineViewKey(projectId), view && JSON.stringify(view), storage);
+}
 
 export type PreferenceStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 

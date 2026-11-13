@@ -18,9 +18,12 @@ fast, logic is never "trust the edit".
   - a small change inside one flow: only the specs for that flow, in Chromium
     (`npm run test:e2e -- e2e/timeline.spec.ts`, about 15 s);
   - a change that touches several flows, shared code (`Studio.tsx`, `useProject`, `e2e/fixtures.ts`)
-    or storage: all specs in Chromium (`npm run test:e2e`, about 25 s);
-  - the end of a roadmap step, or before a commit: both browsers (`npm run test:e2e:all`, about 45 s).
+    or storage, and the end of a roadmap step: all specs in Chromium (`npm run test:e2e`, about 25 s);
+  - WebKit (`npm run test:e2e:all`, both browsers) only when asked, or for a change aimed at Safari:
+    on Windows its camera tests all skip, so it adds time and little coverage.
   Say in the summary which of these ran.
+  - **Run it once.** Repeat runs (`--repeat-each`, or the suite several times) only while chasing
+    a test that fails now and then, and then only that test, not the whole suite.
 - **Never weaken a test to make it pass.** If a test fails, either the code is wrong or the behaviour
   changed on purpose; in the second case, change the test and say so.
 - **Tests describe behaviour, not implementation**: what a function returns or what a user sees, not
