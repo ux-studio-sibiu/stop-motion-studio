@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>12 Frame operations · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 12 of 33 · Part 4 Timeline</p>
+  <h1>Frame operations</h1>
+  <p class="intro">Pictures can now be duplicated, several can be selected at once, and a new picture goes right after the selected one instead of always at the end. A child can go back to picture 3, take two more there, copy a picture to make a pause, or select five and delete them together. Every one of these is a command, so undo works for all of them.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>cloneFrame(frame)</code> in <code>core/model/project.ts</code>: an exact copy with a new id. 2 tests.</li>
+    <li><code>core/model/selection.ts</code>: <code>selectRange</code>, <code>toggleInSelection</code>, <code>inOrder</code>, <code>insertIndexAfter</code>. 6 tests.</li>
+    <li><code>duplicateFrames(projectId, sources, order)</code> in <code>core/commands</code>; <code>addFrames</code> now selects what it added.</li>
+    <li><code>FrameInsert.after</code>: insert right after a given frame, looked up inside the transaction. 1 contract test.</li>
+    <li>The timeline:
+      <ul>
+        <li>Shift+click, Ctrl/Cmd+click, Shift+arrows and Ctrl/Cmd+A to select;</li>
+        <li>Duplicate (button and Ctrl/Cmd+D) next to Delete;</li>
+        <li>a red marker after the selected picture showing where the next capture goes.</li>
+      </ul>
+    </li>
+    <li><code>useCapture</code> inserts after the rightmost selected picture.</li>
+    <li><code>e2e/frames.spec.ts</code> (6 tests).</li>
+  </ul>
+
+  <h2>Decisions</h2>
+
+  <h3>A duplicate looks exactly like its source</h3>
+  <p><code>cloneFrame</code> keeps everything but the id:</p>
+  <ul>
+    <li>the same <code>imageId</code> (the photo is shared, not copied);</li>
+    <li>the same <code>hold</code>;</li>
+    <li>copies of <code>transform</code> and <code>adjust</code>.</li>
+  </ul>
+  <p>Sharing the photo makes duplicating free: the storage meter doesn't move, and a test checks the image count stays the same. A frame being moved, zoomed or brightened (steps 18–19) copies exactly too. One test sets those values in storage, duplicates, and compares the copy with its source field by field.</p>
+  <p>Nested objects are copied, never shared: otherwise moving the copy would move the source. A test walks every field of a frame and fails if any object or array is the same one in both. When speech bubbles arrive (step 23, <code>elements</code>), forgetting to copy them fails that test straight away.</p>
+
+  <h3>Each copy goes right after its own source</h3>
+  <p>Selecting a and b and duplicating gives a a' b b', not a b a' b'. In stop motion, a copy right after its picture is how you hold a pose for longer. The copies are selected afterwards, so duplicating again keeps stretching.</p>
+  <p>The copies are placed with <code>restoreFrames</code> (step 11), which puts frames at given final positions in one transaction. Undo removes them and selects the sources; redo puts the very same copies back.</p>
+
+  <h3>The next picture goes after the selection</h3>
+  <p>A capture goes right after the rightmost selected picture, or at the end when nothing is selected. It then selects itself, so the next capture follows it: taking five pictures in a row after picture 3 keeps them in order. A thin capture-red bar on the selected picture's right edge shows where the next one will land; it's hidden when that is simply the end, next to the camera slot. Escape clears the selection, so the next picture goes at the end again.</p>
+
+  <h3>Fast captures stay in order</h3>
+  <p>The capture selects itself only once storage reports it back (storage is the truth, step 07). A second capture before that report would still see the old selection, and land before the first one. Two things prevent that:</p>
+  <ul>
+    <li><strong>An id, not an index.</strong> The insert names the frame to follow (<code>after</code>), and the repository looks it up inside the transaction, where the order is always current.</li>
+    <li><strong>Remember the last capture.</strong> <code>useCapture</code> remembers the frame it just added. If the selection hasn't changed since then, the next picture goes after that frame.</li>
+  </ul>
+
+  <h3>Selecting several pictures</h3>
+  <ul>
+    <li><strong>Click</strong> selects one picture.</li>
+    <li><strong>Shift + click</strong> selects everything from the anchor (where the range started) to here.</li>
+    <li><strong>Ctrl/Cmd + click</strong> adds a picture to the selection, or takes it out.</li>
+    <li><strong>Shift + ← →</strong> grows or shrinks the range from the keyboard.</li>
+    <li><strong>Ctrl/Cmd + A</strong> selects all.</li>
+  </ul>
+  <p>The selection is always kept in timeline order. The "focus" (the end that moves, and what a screen reader announces) is the timeline's own state. When a capture or an undo changes the selection, the focus falls back to its end. The listbox says <code>aria-multiselectable</code>. The Delete and Duplicate buttons name the count: "Delete 3 pictures".</p>
+
+  <h2>Flaky tests, found and fixed</h2>
+  <p>With 60 tests, running Chromium and WebKit together made the machine busy enough for two timing assumptions to break now and then:</p>
+  <ul>
+    <li><strong>Camera start.</strong> The fake camera sometimes took more than Playwright's default 5 seconds to start. <code>Studio.cameraOn()</code> now allows 15 seconds for the capture button.</li>
+    <li><strong>The late-first-frame camera test</strong> (step 09). It used a 1.5-second timer, which a busy machine could reach before the test even looked at the button. Now the test itself sends the first frame (<code>window.sendFirstFrame()</code>), after checking that the button is off and stays off. It no longer depends on timing, and it still fails without the step 09 fix.</li>
+  </ul>
+  <p>Chromium alone was stable throughout; afterwards the full suite passed three times in a row.</p>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Selecting several on a tablet</strong> needs Shift or Ctrl, which a touch screen doesn't have. A "select" mode for touch belongs with the kids' polish (Part 10); for now a child on a tablet works one picture at a time.</li>
+    <li><strong>A capture now selects itself.</strong> Tests that expect nothing to be selected after taking pictures must press Escape first (<code>history.spec.ts</code> changed for that reason).</li>
+    <li><strong>Every new <code>Frame</code> field</strong> must be handled in <code>cloneFrame()</code>. A nested one must be copied, and the test above will remind you.</li>
+    <li><strong>Undoing a capture</strong> leaves nothing selected, so the next picture goes at the end.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm test
+npm run test:e2e
+npm run dev</code></pre>
+  <ul>
+    <li>Take three pictures, click the first: a red marker appears after it. Take two more: they're pictures 2 and 3, in the order taken.</li>
+    <li>Click picture 2, Shift+click picture 4: three are selected; Ctrl+click picture 3 takes it out. Press Delete: "Undo: Delete 2 pictures" brings both back, still selected.</li>
+    <li>Select a picture and press Duplicate: the copy appears right after it, selected and identical. The storage meter on the projects page doesn't grow.</li>
+    <li>Ctrl+A, Ctrl+D: every picture is doubled, each copy next to its source.</li>
+  </ul>
+  <div class="note">Checked while building: 150 unit tests pass; end-to-end 39 passed, 21 skipped (camera tests in WebKit on Windows), three full runs in a row after the flakiness fix. Screenshots taken with Playwright of a Shift+click range and of the insert marker, in light and dark.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/model/project.ts</code>, <code>project.test.ts</code>, <code>selection.ts</code>, <code>selection.test.ts</code>, <code>repository.ts</code>, <code>index.ts</code>; <code>src/core/commands/frameCommands.ts</code>; <code>src/adapters/storage/dexieRepository.ts</code>, <code>repositoryContract.ts</code>, <code>frameCommands.test.ts</code>; <code>src/studio/Timeline.tsx</code>, <code>Studio.tsx</code>, <code>useCapture.ts</code>, <code>studio.scss</code>; <code>e2e/frames.spec.ts</code>, <code>e2e/fixtures.ts</code>, <code>e2e/history.spec.ts</code>, <code>e2e/camera.spec.ts</code>; <code>public/steps/12-frame-operations.html</code>, <code>index.html</code>, <code>11-undo.html</code> (next link); <code>ROADMAP.md</code>.</p>
+  <p><strong>Tests added:</strong></p>
+    <ul>
+      <li>Unit (150 in total):
+        <ul>
+          <li>2 for <code>cloneFrame</code> (all fields copied; no nested object shared);</li>
+          <li>6 for selection;</li>
+          <li>5 command tests against storage (capture at a place; duplicate placement, exact copy and no storage growth, undo and redo, nothing to copy);</li>
+          <li>1 contract test for <code>after</code>.</li>
+        </ul>
+      </li>
+      <li>End-to-end: 6 in <code>frames.spec.ts</code>.</li>
+    </ul>
+  <p><strong>Tests changed:</strong></p>
+    <ul>
+      <li><code>history.spec.ts</code>: "the delete button is off with nothing selected" now clears the selection first, because captures select themselves on purpose.</li>
+      <li><code>camera.spec.ts</code>: the late-first-frame test sends its first frame by hand, so it no longer depends on timing.</li>
+      <li><code>Studio.cameraOn()</code>: waits up to 15 s.</li>
+    </ul>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>a duplicate equals its source in every field but the id, and shares no nested object</li>
+    <li>duplicating adds no photos to storage</li>
+    <li>a capture lands after the selected picture, and fast captures stay in order</li>
+    <li>every operation is one command, and undo restores the selection too</li>
+    <li><code>npm test</code>, <code>npm run test:e2e</code>, <code>npm run lint</code>, <code>npm run typecheck</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="11-undo.html">Previous: 11 · Commands and undo/redo</a>
+    <span>Next: 13 · Resize a picture's duration</span>
+  </nav>
+</main>
+</body>
+</html>

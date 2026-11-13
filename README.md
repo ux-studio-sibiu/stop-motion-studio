@@ -43,7 +43,8 @@ npm run dev
 | `npm test` | Vitest, once (`npm run test:watch` to keep it running) |
 | `npm run lint` | ESLint, including the layering rules |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm run test:e2e` | Playwright end-to-end tests in Chromium and WebKit (builds and serves the app on port 3200) |
+| `npm run test:e2e` | Playwright end-to-end tests in Chromium (builds and serves the app on port 3200); add a file to run one spec: `npm run test:e2e -- e2e/timeline.spec.ts` |
+| `npm run test:e2e:all` | The same in Chromium and WebKit: at the end of a step, before committing |
 | `npm run test:e2e:ui` | The same in Playwright's UI mode, test by test |
 | `npm run test:e2e:report` | Opens the last HTML report |
 

@@ -38,7 +38,9 @@ export class Studio {
     const live = this.page.getByRole("button", { name: "Camera off" });
     await expect(turnOn.or(live)).toBeVisible();
     if (await turnOn.isVisible()) await turnOn.click();
-    await expect(this.captureButton()).toBeEnabled();
+    // Starting a camera can take a few seconds when the machine is busy (both browsers running
+    // many tests at once), longer than Playwright's default 5 s for an expect.
+    await expect(this.captureButton()).toBeEnabled({ timeout: 15_000 });
   }
 
   // One picture at a time: each press waits for its thumbnail, because presses while the
@@ -53,7 +55,15 @@ export class Studio {
 
   readonly undoButton = () => this.page.getByRole("button", { name: "Undo" });
   readonly redoButton = () => this.page.getByRole("button", { name: "Redo" });
-  readonly deleteButton = () => this.page.getByRole("button", { name: "Delete picture" });
+  // "Delete picture" or "Delete 3 pictures", depending on the selection; the same for Duplicate.
+  readonly deleteButton = () => this.page.getByRole("button", { name: /^Delete (picture|\d+ pictures)$/ });
+  readonly duplicateButton = () => this.page.getByRole("button", { name: /^Duplicate (picture|\d+ pictures)$/ });
+  readonly selected = () => this.page.getByRole("option", { selected: true });
+
+  // The ids of the selected pictures, in timeline order.
+  async selectedOrder(): Promise<string[]> {
+    return this.selected().evaluateAll((options) => options.map((option) => option.id));
+  }
 
   // Which frames are on the timeline, in order, by their id (pictures are renumbered after
   // a delete, so their names can't tell a picture that came back from a new one).

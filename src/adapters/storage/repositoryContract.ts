@@ -67,6 +67,16 @@ export function describeRepositoryContract(name: string, setup: () => Promise<Re
       expect(loaded?.frames.map((f) => f.id).sort()).toEqual([first.frame.id, second.frame.id, middle.frame.id].sort());
     });
 
+    it("adds frames right after a given frame, or at the end when it's gone", async () => {
+      const first = await capture(project.id);
+      const second = await capture(project.id);
+      const { frame } = picture(project.id);
+      const saved = await repository.insertFrames(project.id, { frames: [frame], after: first.frame.id, at: 0 });   // after wins
+      expect(saved.frameIds).toEqual([first.frame.id, frame.id, second.frame.id]);
+      const { frame: last } = picture(project.id);
+      expect((await repository.insertFrames(project.id, { frames: [last], after: "gone" })).frameIds.at(-1)).toBe(last.id);
+    });
+
     it("keeps photos as Blobs and lists the project's thumbnails", async () => {
       const { frame } = await capture(project.id);
       const image = await repository.getImage(frame.imageId);

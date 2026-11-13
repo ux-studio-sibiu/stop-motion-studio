@@ -65,11 +65,13 @@ export function createDexieRepository(db: StudioDb, now: () => number = Date.now
       ]);
     }),
 
-    insertFrames: (projectId, { frames, images = [], thumbs = [], at }: FrameInsert) => db.transaction("rw", all, async () => {
+    insertFrames: (projectId, { frames, images = [], thumbs = [], at, after }: FrameInsert) => db.transaction("rw", all, async () => {
       const project = await requireProject(projectId);
       if (frames.some((frame) => frame.projectId !== projectId)) throw new Error("A frame belongs to another project.");
 
-      const index = Math.min(project.frameIds.length, Math.max(0, Math.round(at ?? project.frameIds.length)));
+      const afterIndex = after === undefined ? -1 : project.frameIds.indexOf(after);
+      const wanted = after === undefined ? at : afterIndex < 0 ? undefined : afterIndex + 1;
+      const index = Math.min(project.frameIds.length, Math.max(0, Math.round(wanted ?? project.frameIds.length)));
       const frameIds = [...project.frameIds.slice(0, index), ...frames.map((frame) => frame.id), ...project.frameIds.slice(index)];
       const saved = { ...project, frameIds, updatedAt: now() };
 

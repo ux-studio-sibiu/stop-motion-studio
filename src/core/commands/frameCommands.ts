@@ -1,4 +1,4 @@
-import type { FrameInsert, ProjectRepository, RemovedFrame } from "../model";
+import { cloneFrame, type Frame, type FrameInsert, type ProjectRepository, type RemovedFrame } from "../model";
 import type { Command } from "./command";
 
 // Takes pictures out of the animation. Undo puts them back exactly where they were (and
@@ -21,7 +21,8 @@ export function deleteFrames(projectId: string, frameIds: readonly string[]): Co
   };
 }
 
-// Adds new frames (a capture) with their photos. Undo takes them out again, keeping the
+// Adds new frames (a capture) with their photos, at `insert.at` (default: the end), and selects
+// them, so the next capture goes after this one. Undo takes them out again, keeping the
 // photos, and redo puts them back. The photos are only needed for the first do(): after
 // that the command lets go of them, so a long history doesn't hold megabytes of Blobs.
 export function addFrames(projectId: string, insert: FrameInsert, label = "Take picture"): Command {
@@ -37,9 +38,35 @@ export function addFrames(projectId: string, insert: FrameInsert, label = "Take 
       } else {
         await repository.restoreFrames(projectId, removed);
       }
+      return { select: ids };
     },
     async undo(repository: ProjectRepository) {
       removed = (await repository.removeFrames(projectId, ids)).removed;
+    },
+  };
+}
+
+// Copies pictures, each copy right after its source (a b → a a' b b'), and selects the copies.
+// A copy looks exactly like its source (cloneFrame) and shares its photo, so duplicating
+// costs no storage. `order` is the animation's order now, to know where the sources are.
+export function duplicateFrames(projectId: string, sources: readonly Frame[], order: readonly string[]): Command {
+  const placed = sources
+    .map((source) => ({ source, index: order.indexOf(source.id) }))
+    .filter(({ index }) => index >= 0)
+    .sort((a, b) => a.index - b.index);
+  // The k-th copy lands after its source, which has k earlier copies in front of it.
+  const copies: RemovedFrame[] = placed.map(({ source, index }, k) => ({ frame: cloneFrame(source), index: index + k + 1 }));
+  const ids = copies.map(({ frame }) => frame.id);
+  return {
+    label: copies.length === 1 ? "Duplicate picture" : `Duplicate ${copies.length} pictures`,
+    async do(repository) {
+      if (copies.length === 0) throw new Error("Nothing to duplicate.");
+      await repository.restoreFrames(projectId, copies);
+      return { select: ids };
+    },
+    async undo(repository) {
+      await repository.removeFrames(projectId, ids);
+      return { select: placed.map(({ source }) => source.id) };
     },
   };
 }

@@ -33,7 +33,9 @@ export interface ProjectRepository {
   // restoreFrames can put them back. Their pictures stay (undo needs them; unused pictures
   // are cleaned up separately). Ids that aren't in the project are ignored.
   removeFrames(projectId: string, frameIds: readonly string[]): Promise<{ project: Project; removed: RemovedFrame[] }>;
-  // Puts removed frames back at their places, in one transaction. Their pictures must still exist.
+  // Puts frames at the given places in the order, in one transaction: removed frames back where
+  // they were, or new frames that share existing pictures (duplicates). Each index is where the
+  // frame ends up. Their pictures must exist.
   restoreFrames(projectId: string, removed: readonly RemovedFrame[]): Promise<Project>;
 
   getImage(imageId: string): Promise<Blob | undefined>;
@@ -53,4 +55,7 @@ export type FrameInsert = {
   images?: StoredImage[];
   thumbs?: StoredThumb[];
   at?: number;
+  // Right after this frame instead (looked up inside the transaction, so it works even if the
+  // caller's copy of the order is out of date). Wins over `at`; a missing frame means the end.
+  after?: string;
 };

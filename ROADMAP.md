@@ -22,7 +22,7 @@ updates its tests in the same change, and `npm test` runs before a change counts
 
 **Testing in layers.** Vitest unit tests for logic from the start; Playwright end-to-end tests from step
 08 on. After step 08, every step with a user-facing flow adds or extends a Playwright spec (`e2e/`) and
-lists it in its review checklist, so `npm run test:e2e` keeps proving the whole app works. Vitest's
+lists it in its review checklist, so `npm run test:e2e:all` keeps proving the whole app works (`test:e2e` is Chromium only, for quicker runs while working). Vitest's
 browser mode joins in step 15 for canvas pixel tests.
 
 ---
@@ -562,7 +562,7 @@ registry entry.
 - [x] 09 Projects page ([page](public/steps/09-projects.html))
 - [x] 10 Time-scaled timeline and seconds ruler ([page](public/steps/10-timeline.html))
 - [x] 11 Commands and undo/redo ([page](public/steps/11-undo.html))
-- [ ] 12 Frame operations
+- [x] 12 Frame operations ([page](public/steps/12-frame-operations.html))
 - [ ] 13 Resize a picture's duration
 - [ ] 14 Drag to reorder
 - [ ] 15 Renderer

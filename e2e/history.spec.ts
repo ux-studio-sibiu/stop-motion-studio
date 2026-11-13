@@ -40,9 +40,11 @@ test("delete three pictures with the Delete key, undo three times: all back in p
   await expect(studio.pictures()).toHaveCount(4);
 });
 
-test("the delete button removes the selected picture, and only works with one selected", async ({ studio }) => {
+test("the delete button removes the selected picture, and is off with nothing selected", async ({ studio, page }) => {
   await studio.takePictures(2);
   const taken = await studio.order();
+  await studio.track().focus();
+  await page.keyboard.press("Escape");   // a capture selects itself (step 12): clear that
   await expect(studio.deleteButton()).toBeDisabled();
 
   await studio.picture(1).click();
@@ -55,6 +57,7 @@ test("a new change clears redo", async ({ studio }) => {
   await studio.takePictures(2);
   await studio.undoButton().click();
   await expect(studio.redoButton()).toBeEnabled();
+  await expect(studio.pictures()).toHaveCount(1);   // the undo has reached the timeline (takePictures counts from here)
   await studio.takePictures(1);
   await expect(studio.redoButton()).toBeDisabled();
 });

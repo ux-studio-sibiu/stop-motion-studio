@@ -56,6 +56,14 @@ export function createFrame(projectId: string, imageId: string, { hold = 1, tran
   };
 }
 
+// An exact copy with a new id: same picture (shared, not copied), same length, position and
+// brightness. Nested objects are copied, never shared, so moving the copy can't move the
+// source. Every field added to Frame must be handled here; a test fails if a nested object
+// is shared or a field goes missing.
+export function cloneFrame(frame: Frame): Frame {
+  return { ...frame, id: newId(), transform: { ...frame.transform }, adjust: { ...frame.adjust } };
+}
+
 // How long a frame stays on screen, in ms.
 export function frameDuration(project: Pick<Project, "fps">, frame: Pick<Frame, "hold">): number {
   return (frame.hold * 1000) / project.fps;

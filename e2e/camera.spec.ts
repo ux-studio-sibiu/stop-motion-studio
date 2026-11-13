@@ -35,13 +35,14 @@ test("the capture button waits for the camera's first picture, so no press is lo
   const canStream = await page.evaluate(() => "captureStream" in HTMLCanvasElement.prototype);
   test.skip(!canStream, "This browser build has no media streams (Playwright's WebKit on Windows).");
   await page.addInitScript(() => {
-    // A camera that answers at once but sends its first frame only after 1.5 seconds,
-    // like a slow USB webcam waking up.
+    // A camera that answers at once but sends its first frame only when the test says so,
+    // like a slow USB webcam waking up. (Not a timer: on a busy machine a timer can fire
+    // before the test has even looked at the button.)
     navigator.mediaDevices.getUserMedia = async () => {
       const canvas = document.createElement("canvas");
       canvas.width = 320;
       canvas.height = 240;
-      setTimeout(() => setInterval(() => { const c = canvas.getContext("2d")!; c.fillStyle = "#2e8b57"; c.fillRect(0, 0, 320, 240); }, 33), 1500);
+      Object.assign(window, { sendFirstFrame: () => setInterval(() => { const c = canvas.getContext("2d")!; c.fillStyle = "#2e8b57"; c.fillRect(0, 0, 320, 240); }, 33) });
       return canvas.captureStream(30);
     };
   });
@@ -52,7 +53,10 @@ test("the capture button waits for the camera's first picture, so no press is lo
 
   await expect(page.getByRole("button", { name: "Camera off" })).toBeVisible();   // the camera is on...
   await expect(studio.captureButton()).toBeDisabled();                             // ...but there's no picture yet
-  await expect(studio.captureButton()).toBeEnabled({ timeout: 5000 });
+  await page.waitForTimeout(500);                                                  // and it stays off while waiting
+  await expect(studio.captureButton()).toBeDisabled();
+  await page.evaluate(() => (window as unknown as { sendFirstFrame: () => void }).sendFirstFrame());
+  await expect(studio.captureButton()).toBeEnabled();
   await studio.captureButton().click();
   await expect(studio.pictures()).toHaveCount(1);
 });

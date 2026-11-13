@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanName, createFrame, createProject, DEFAULT_ADJUST, DEFAULT_NAME, MAX_NAME_LENGTH, DEFAULT_TRANSFORM, frameDuration, MAX_HEIGHT, MAX_WIDTH, projectDuration, SCHEMA_VERSION, type Frame } from "@/core/model";
+import { cleanName, cloneFrame, createFrame, createProject, DEFAULT_ADJUST, DEFAULT_NAME, MAX_NAME_LENGTH, DEFAULT_TRANSFORM, frameDuration, MAX_HEIGHT, MAX_WIDTH, projectDuration, SCHEMA_VERSION, type Frame } from "@/core/model";
 
 describe("createProject", () => {
   it("uses the defaults", () => {
@@ -93,5 +93,28 @@ describe("durations", () => {
     const frames = new Map<string, Frame>([[a.id, a], [b.id, b]]);
     const project = { fps: 10, frameIds: [a.id, b.id, "missing", a.id] };
     expect(projectDuration(project, frames)).toBe(400);
+  });
+});
+
+describe("cloneFrame", () => {
+  const source = createFrame("p1", "img-1", { hold: 3, transform: { x: 0.1, scale: 1.4, rotation: 12, flipX: true }, adjust: { brightness: 1.3 } });
+
+  it("copies every field except the id", () => {
+    const copy = cloneFrame(source);
+    expect(copy.id).not.toBe(source.id);
+    expect({ ...copy, id: source.id }).toEqual(source);
+    expect(Object.keys(copy).sort()).toEqual(Object.keys(source).sort());
+  });
+
+  it("shares the picture, not the nested objects", () => {
+    const copy = cloneFrame(source);
+    expect(copy.imageId).toBe(source.imageId);
+    // Any nested object or array shared with the source would let an edit to the copy move the
+    // source too. This also catches a future nested field (elements) that isn't copied.
+    for (const key of Object.keys(source) as (keyof Frame)[]) {
+      if (typeof source[key] === "object" && source[key] !== null) expect(copy[key], key).not.toBe(source[key]);
+    }
+    copy.transform.x = 0.9;
+    expect(source.transform.x).toBe(0.1);
   });
 });

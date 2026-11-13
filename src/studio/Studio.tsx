@@ -13,7 +13,7 @@ import { useCamera } from "./useCamera";
 import { useCapture } from "./useCapture";
 import { useHistory } from "./useHistory";
 import { useProject } from "./useProject";
-import { deleteFrames } from "@/core/commands";
+import { deleteFrames, duplicateFrames } from "@/core/commands";
 import "./studio.scss";
 
 // The studio screen. Areas still holding a placeholder are filled by later steps
@@ -29,6 +29,11 @@ export function Studio() {
   const canCapture = camera.status === "live" && status === "ready" && videoReady;
   const history = useHistory(projectId);
   const { capture, capturing } = useCapture(video, canCapture, history.run);
+  const duplicate = (ids: readonly string[]) => {
+    const { project, frames } = editorStore.getState();
+    if (!project) return;
+    void history.run(duplicateFrames(project.id, ids.flatMap((id) => frames[id] ?? []), project.frameIds));
+  };
 
   // Development only: poke at the store from the browser console (window.editorStore.getState()).
   useEffect(() => {
@@ -73,7 +78,7 @@ export function Studio() {
         <p className="placeholder">Move, size and brightness for the selected picture (steps 18-20).</p>
       </aside>
 
-      <Timeline onDelete={(ids) => projectId && history.run(deleteFrames(projectId, ids))} />
+      <Timeline onDelete={(ids) => projectId && history.run(deleteFrames(projectId, ids))} onDuplicate={(ids) => duplicate(ids)} />
 
       <footer className="playback-bar">
         <button type="button" className="big-button is-play" aria-label="Play" disabled><Play size={40} /></button>

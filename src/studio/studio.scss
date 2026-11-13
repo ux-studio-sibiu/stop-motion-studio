@@ -197,6 +197,8 @@
     align-items: center;
     gap: var(--space-1);
 
+    .tools-gap { width: var(--space-2); }
+
     .duration {
       margin-left: auto;
       color: var(--color-muted);
@@ -249,6 +251,7 @@
     padding: var(--space-1) 0 0;
     list-style: none;
     border-radius: var(--radius-small);
+    user-select: none;   // Shift+click selects pictures, not text
 
     &:focus-visible { outline-offset: -2px; }
   }
@@ -271,6 +274,20 @@
     &.is-selected {
       box-shadow: inset 0 0 0 3px var(--color-focus), inset -1px 0 0 var(--color-surface);
       z-index: 1;
+    }
+
+    // Where the next capture goes: a capture-coloured bar on the right edge, with a dot on top.
+    &.is-insert-point::after {
+      content: "";
+      position: absolute;
+      top: -0.375rem;
+      right: -2px;
+      bottom: 0;
+      width: 4px;
+      border-radius: 2px;
+      background: radial-gradient(circle at 50% 3px, var(--color-accent) 3px, transparent 3.5px), linear-gradient(var(--color-accent), var(--color-accent)) 50% 0.375rem / 4px calc(100% - 0.375rem) no-repeat;
+      z-index: 2;
+      pointer-events: none;
     }
   }
 

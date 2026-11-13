@@ -1,23 +1,26 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from "react";
-import { Camera, Trash2, ZoomIn, ZoomOut } from "lucide-react";
-import { formatSeconds, neighbourAfterDelete, pxPerTick, rulerScale, ticksToSeconds, totalTicks, type Frame } from "@/core/model";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { Camera, CopyPlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
+import { formatSeconds, inOrder, neighbourAfterDelete, pxPerTick, rulerScale, selectRange, ticksToSeconds, toggleInSelection, totalTicks, type Frame } from "@/core/model";
 import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM } from "@/store/editorStore";
 import { editorStore, useEditor, useOrderedFrames } from "@/store/useEditor";
 import { thumbs } from "./media";
+import { useZoomPreference } from "./useZoomPreference";
 
 const ZOOM_STEP = 1.5;
 const LABEL_MIN_WIDTH = 24;   // narrower pictures don't show their number
 
 // The timeline, drawn to time: a picture is as wide as it lasts (hold ticks × px per tick),
 // and a faint seconds ruler runs along the top. Zoom changes px per second; it's a way of
-// looking, not part of the animation, so it lives in the store and isn't saved.
-export function Timeline({ onDelete }: { onDelete: (frameIds: readonly string[]) => void }) {
+// looking, not part of the animation, so it lives in the store and is remembered per device
+// (useZoomPreference), not saved in the project.
+export function Timeline({ onDelete, onDuplicate }: { onDelete: (frameIds: readonly string[]) => void; onDuplicate: (frameIds: readonly string[]) => void }) {
   const frames = useOrderedFrames();
   const selection = useEditor((state) => state.selection);
   const fps = useEditor((state) => state.project?.fps ?? 8);
   const zoom = useEditor((state) => state.timelineZoom);
+  useZoomPreference();
 
   const scroller = useRef<HTMLDivElement>(null);
   const track = useRef<HTMLOListElement>(null);
@@ -71,11 +74,23 @@ export function Timeline({ onDelete }: { onDelete: (frameIds: readonly string[])
     next.current?.scrollIntoView({ block: "nearest", inline: "end", behavior: "smooth" });
   }, [frames.length]);
 
-  // A new selection: bring it into view.
-  const selectedId = selection[selection.length - 1];
+  // Selection: a click selects one picture, Shift+click a range from the anchor (where the
+  // range started), Ctrl/Cmd+click adds or removes one. The focus is the end that moves
+  // (arrow keys, the screen reader's "current" picture). The selection can also change from
+  // elsewhere (a capture or undo selects pictures), so both fall back to the selection's end.
+  const order = frames.map((frame) => frame.id);
+  const [cursor, setCursor] = useState<{ anchor: string; focus: string } | null>(null);
+  const focusId = cursor && selection.includes(cursor.focus) ? cursor.focus : selection.at(-1);
+  const anchorId = cursor && selection.includes(cursor.anchor) ? cursor.anchor : focusId;
+
+  const selectOnly = (id: string) => { editorStore.getState().select([id]); setCursor({ anchor: id, focus: id }); };
+  const extendTo = (id: string) => { editorStore.getState().select(selectRange(order, anchorId, id)); setCursor({ anchor: anchorId ?? id, focus: id }); };
+  const toggle = (id: string) => { editorStore.getState().select(toggleInSelection(order, selection, id)); setCursor({ anchor: id, focus: id }); };
+
+  // A new focus: bring it into view.
   useEffect(() => {
-    if (selectedId) document.getElementById(optionId(selectedId))?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [selectedId]);
+    if (focusId) document.getElementById(optionId(focusId))?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [focusId]);
 
   // Delete moves the selection to the neighbour straight away, before the save comes back, so
   // pressing Delete quickly several times deletes one picture after another. Pictures being
@@ -83,47 +98,72 @@ export function Timeline({ onDelete }: { onDelete: (frameIds: readonly string[])
   const deleting = useRef(new Set<string>());
   const deleteSelection = () => {
     if (selection.length === 0) return;
-    const shown = new Set(frames.map((frame) => frame.id));
+    const shown = new Set(order);
     for (const id of deleting.current) if (!shown.has(id)) deleting.current.delete(id);
-    const order = frames.map((frame) => frame.id).filter((id) => !deleting.current.has(id));
+    const remaining = order.filter((id) => !deleting.current.has(id));
     selection.forEach((id) => deleting.current.add(id));
-    const neighbour = neighbourAfterDelete(order, selection);
+    const neighbour = neighbourAfterDelete(remaining, selection);
     editorStore.getState().select(neighbour ? [neighbour] : []);
     onDelete(selection);
   };
 
+  const duplicateSelection = () => { if (selection.length > 0) onDuplicate(selection); };
+
   const onKeyDown = (event: KeyboardEvent<HTMLOListElement>) => {
-    if (frames.length === 0) return;
-    const current = frames.findIndex((frame) => frame.id === selectedId);
-    const target = {
-      ArrowRight: current < 0 ? 0 : Math.min(frames.length - 1, current + 1),
-      ArrowLeft: current < 0 ? frames.length - 1 : Math.max(0, current - 1),
-      Home: 0,
-      End: frames.length - 1,
-    }[event.key];
-    if (target === undefined) {
-      if (event.key === "Escape") editorStore.getState().clearSelection();
-      if (event.key === "Delete" || event.key === "Backspace") {
-        event.preventDefault();
-        deleteSelection();
-      }
+    if (order.length === 0) return;
+    const command = event.ctrlKey || event.metaKey;
+    const key = event.key.toLowerCase();
+    if (command && key === "a") {
+      event.preventDefault();
+      editorStore.getState().select(order);
+      setCursor({ anchor: order[0], focus: order[order.length - 1] });
       return;
     }
+    if (command && key === "d") {
+      event.preventDefault();   // not the browser's "bookmark this page"
+      duplicateSelection();
+      return;
+    }
+    if (event.key === "Escape") { editorStore.getState().clearSelection(); return; }
+    if (event.key === "Delete" || event.key === "Backspace") {
+      event.preventDefault();
+      deleteSelection();
+      return;
+    }
+    const current = focusId ? order.indexOf(focusId) : -1;
+    const target = {
+      ArrowRight: current < 0 ? 0 : Math.min(order.length - 1, current + 1),
+      ArrowLeft: current < 0 ? order.length - 1 : Math.max(0, current - 1),
+      Home: 0,
+      End: order.length - 1,
+    }[event.key];
+    if (target === undefined) return;
     event.preventDefault();
-    editorStore.getState().select([frames[target].id]);
+    if (event.shiftKey) extendTo(order[target]); else selectOnly(order[target]);
   };
 
-  const select = (id: string) => {
-    editorStore.getState().select([id]);
+  const onPick = (id: string, event: MouseEvent) => {
+    if (event.shiftKey) extendTo(id);
+    else if (event.ctrlKey || event.metaKey) toggle(id);
+    else selectOnly(id);
     track.current?.focus({ preventScroll: true });   // so the arrow keys work straight after a click
   };
+
+  // The next capture goes after the rightmost selected picture. When that isn't the last one,
+  // a marker on its right edge shows where.
+  const insertAfter = inOrder(order, selection).at(-1);
+  const markerId = insertAfter !== order[order.length - 1] ? insertAfter : undefined;
+  const count = selection.length;
+  const pictures = count > 1 ? `${count} pictures` : "picture";
 
   return (
     <section className="timeline" aria-label="Timeline">
       <div className="timeline-tools">
         <button type="button" className="icon-button is-small" aria-label="Zoom out" disabled={zoom <= MIN_TIMELINE_ZOOM} onClick={() => zoomTo(zoom / ZOOM_STEP)}><ZoomOut size={20} /></button>
         <button type="button" className="icon-button is-small" aria-label="Zoom in" disabled={zoom >= MAX_TIMELINE_ZOOM} onClick={() => zoomTo(zoom * ZOOM_STEP)}><ZoomIn size={20} /></button>
-        <button type="button" className="icon-button is-small" aria-label="Delete picture" title="Delete picture (Delete key)" disabled={selection.length === 0} onClick={deleteSelection}><Trash2 size={20} /></button>
+        <span className="tools-gap" />
+        <button type="button" className="icon-button is-small" aria-label={`Duplicate ${pictures}`} title={`Duplicate ${pictures} (Ctrl + D)`} disabled={count === 0} onClick={duplicateSelection}><CopyPlus size={20} /></button>
+        <button type="button" className="icon-button is-small" aria-label={`Delete ${pictures}`} title={`Delete ${pictures} (Delete key)`} disabled={count === 0} onClick={deleteSelection}><Trash2 size={20} /></button>
         <span className="duration" aria-label="Length of the animation">{seconds < 10 ? `${seconds.toFixed(1)} s` : formatSeconds(seconds)}</span>
       </div>
 
@@ -132,8 +172,8 @@ export function Timeline({ onDelete }: { onDelete: (frameIds: readonly string[])
           {labels.map((at) => <span key={at} className="ruler-label" style={{ left: at * zoom }}>{formatSeconds(at)}</span>)}
         </div>
 
-        <ol ref={track} className="track" role="listbox" aria-label="Pictures" aria-orientation="horizontal" tabIndex={0} aria-activedescendant={selectedId ? optionId(selectedId) : undefined} onKeyDown={onKeyDown}>
-          {frames.map((frame, index) => <FrameThumb key={frame.id} frame={frame} number={index + 1} width={frame.hold * tickWidth} selected={selection.includes(frame.id)} onSelect={select} />)}
+        <ol ref={track} className="track" role="listbox" aria-label="Pictures" aria-orientation="horizontal" aria-multiselectable="true" tabIndex={0} aria-activedescendant={focusId ? optionId(focusId) : undefined} onKeyDown={onKeyDown}>
+          {frames.map((frame, index) => <FrameThumb key={frame.id} frame={frame} number={index + 1} width={frame.hold * tickWidth} selected={selection.includes(frame.id)} insertAfter={frame.id === markerId} onPick={onPick} />)}
           <li ref={next} className="next-slot" aria-hidden={frames.length > 0}>
             <Camera size={24} />
             {frames.length === 0 && <span className="next-hint">Your pictures appear here</span>}
@@ -146,10 +186,11 @@ export function Timeline({ onDelete }: { onDelete: (frameIds: readonly string[])
 
 // One picture, as wide as it lasts. Its thumbnail is a background repeated along the width:
 // a short picture shows the middle of it (cover-cropped), a long one shows it several times.
-function FrameThumb({ frame, number, width, selected, onSelect }: { frame: Frame; number: number; width: number; selected: boolean; onSelect: (id: string) => void }) {
+function FrameThumb({ frame, number, width, selected, insertAfter, onPick }: { frame: Frame; number: number; width: number; selected: boolean; insertAfter: boolean; onPick: (id: string, event: MouseEvent) => void }) {
   const url = thumbs.url(frame.imageId);
+  const className = `frame${selected ? " is-selected" : ""}${insertAfter ? " is-insert-point" : ""}`;
   return (
-    <li id={optionId(frame.id)} role="option" aria-selected={selected} aria-label={`Picture ${number}`} className={`frame${selected ? " is-selected" : ""}`} style={{ width, backgroundImage: url ? `url("${url}")` : undefined }} onClick={() => onSelect(frame.id)}>
+    <li id={optionId(frame.id)} role="option" aria-selected={selected} aria-label={`Picture ${number}`} className={className} style={{ width, backgroundImage: url ? `url("${url}")` : undefined }} onClick={(event) => onPick(frame.id, event)}>
       {width >= LABEL_MIN_WIDTH && <span className="frame-number">{number}</span>}
     </li>
   );

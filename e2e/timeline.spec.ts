@@ -47,6 +47,19 @@ test("zooming changes how wide a second is, not how long pictures last", async (
   await expect(page.locator(".timeline-tools .duration")).toContainText("0.4 s");      // still 3 ticks long
 });
 
+test("the zoom is remembered after a reload, and in a new animation", async ({ studio, page }) => {
+  await page.getByRole("button", { name: "Zoom in" }).click();
+  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(30, 0);
+  await page.reload();
+  await expect(studio.pictures()).toHaveCount(3);
+  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(30, 0);
+
+  await studio.open();   // a new, empty animation
+  await studio.cameraOn();
+  await studio.takePictures(1);
+  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(30, 0);
+});
+
 test("Ctrl + mouse wheel over the timeline zooms too", async ({ studio, page }) => {
   await studio.picture(1).hover();
   await page.keyboard.down("Control");

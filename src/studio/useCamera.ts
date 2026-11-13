@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cameraPermissionGranted, cameraStatusFromError, cameraSupported, isMissingDevice, listCameras, openCamera, stopStream, unavailableStatus, type CameraStatus } from "@/adapters/camera/camera";
+import { PREFERENCES, readText, savePreference } from "@/adapters/preferences/preferences";
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from "@/core/model";
 
 export type Camera = {
@@ -14,18 +15,14 @@ export type Camera = {
   selectDevice: (deviceId: string) => void;
 };
 
-const DEVICE_KEY = "stop-motion-studio:camera";
 const SIZE = { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };   // the project's size once projects load (step 07)
 
 function readDevice(): string | null {
-  try { return localStorage.getItem(DEVICE_KEY); } catch { return null; }
+  return readText(PREFERENCES.cameraDevice) ?? null;
 }
 
 function saveDevice(deviceId: string | null): void {
-  try {
-    if (deviceId) localStorage.setItem(DEVICE_KEY, deviceId);
-    else localStorage.removeItem(DEVICE_KEY);
-  } catch { /* storage blocked: just don't remember */ }
+  savePreference(PREFERENCES.cameraDevice, deviceId || null);
 }
 
 // Owns the webcam for the studio. Every open gets a request number; when a newer request,
