@@ -54,12 +54,37 @@ export class Studio {
   }
 }
 
-export const test = base.extend<StudioOptions & { studio: Studio }>({
+// The projects page (home): the list of saved animations.
+export class Projects {
+  constructor(readonly page: Page) {}
+
+  readonly newButton = () => this.page.getByRole("button", { name: "New animation" });
+  readonly cards = () => this.page.locator(".nsc-project-card");
+  readonly card = (name: string) => this.cards().filter({ has: this.page.getByRole("link", { name, exact: true }) });
+
+  async open(): Promise<void> {
+    await this.page.goto("/");
+    await expect(this.page.getByText("Loading your animations…")).toBeHidden();   // the list has answered
+  }
+
+  async rename(from: string, to: string): Promise<void> {
+    await this.page.getByRole("button", { name: `Rename ${from}` }).click();
+    const input = this.page.getByRole("textbox", { name: "Animation name" });
+    await input.fill(to);
+    await input.press("Enter");
+  }
+}
+
+export const test = base.extend<StudioOptions & { studio: Studio; projects: Projects }>({
   fakeCamera: ["device", { option: true }],
 
   studio: async ({ page, fakeCamera }, use) => {
     if (fakeCamera === "script") await page.addInitScript(installScriptCamera);
     await use(new Studio(page, fakeCamera));
+  },
+
+  projects: async ({ page }, use) => {
+    await use(new Projects(page));
   },
 });
 

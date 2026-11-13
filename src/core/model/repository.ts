@@ -8,6 +8,10 @@ import type { Frame, Project, StoredImage, StoredThumb } from "./types";
 export interface ProjectRepository {
   // Newest first, by updatedAt.
   listProjects(): Promise<Project[]>;
+  // listProjects now, then again after any project is created, changed or deleted.
+  watchProjects(onChange: (projects: Project[]) => void, onError?: (error: unknown) => void): () => void;
+  // The thumbnail of the project's first picture, for its card; undefined while it has none.
+  getCover(projectId: string): Promise<{ imageId: string; blob: Blob } | undefined>;
   getProject(id: string): Promise<Project | undefined>;
   // The project and all its frames (in no particular order: project.frameIds is the order).
   loadProject(id: string): Promise<LoadedProject | undefined>;

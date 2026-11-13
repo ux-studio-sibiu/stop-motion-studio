@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>09 Projects page · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 09 of 33 · Part 3 Persistence and testing</p>
+  <h1>Projects page</h1>
+  <p class="intro">The home page now lists every animation saved in this browser, newest first, each with its first picture, name, picture count and date. A child can start a new one, open, rename or delete one (after a clear "are you sure?"), and see how much space the studio uses. Building it also turned up and fixed a capture bug from step 05.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>src/projects/</code>, the projects screen:
+      <ul>
+        <li><code>ProjectsPage.tsx</code>: the page, with "New animation", the list, the empty state and the delete dialog.</li>
+        <li><code>ProjectCard.tsx</code>: one animation, with rename in place and a delete button.</li>
+        <li><code>DeleteDialog.tsx</code>: the confirmation, a modal <code>&lt;dialog&gt;</code>.</li>
+        <li><code>StorageMeter.tsx</code>: "Using 104 KB of about 10 GB on this device".</li>
+        <li><code>useProjects.ts</code>: the live list and its cover pictures.</li>
+        <li><code>createSavedProject.ts</code>: make, save and ask the browser to keep the data.</li>
+        <li><code>projects.scss</code>.</li>
+      </ul>
+    </li>
+    <li><code>ProjectRepository</code> gains <code>watchProjects()</code> (the list, kept up to date) and <code>getCover()</code> (the first picture's thumbnail). 2 contract tests.</li>
+    <li><code>cleanName()</code> in <code>core/model</code>: tidies a typed name, caps it at 60 characters, never empty. 3 tests; <code>createProject</code> uses it too.</li>
+    <li><code>src/adapters/storage/storageInfo.ts</code>: <code>estimateStorage()</code>, <code>requestPersistentStorage()</code>, <code>isStoragePersistent()</code>, <code>formatBytes()</code>. 13 tests.</li>
+    <li><code>.icon-button.is-danger</code> and the <code>--color-danger</code> token (a darker red than the capture button, so "delete" and "take a picture" never look alike).</li>
+    <li><code>e2e/projects.spec.ts</code> (7 tests) and a <code>Projects</code> page object in <code>e2e/fixtures.ts</code>; 1 new camera test.</li>
+    <li>The old placeholder home and its <code>home.scss</code> are gone.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+
+  <h3>The list watches storage, like the studio does</h3>
+  <p><code>watchProjects</code> reports the list now and after every create, rename, capture or delete, from this tab or another. Deleting doesn't remove a card by hand; it deletes in storage, and the list updates. Same rule as step 07: storage is the truth, the screen follows it.</p>
+
+  <h3>Covers load before the list shows</h3>
+  <p>Each card shows its first picture's thumbnail, found with <code>getCover()</code>. They're loaded into a cover cache (the same <code>ImageCache</code> as the studio's thumbnails, which owns and revokes the object URLs) before the list updates, so no card ever appears without its picture and then pops one in. The cache is keyed by image id, so moving a different picture to the front gives the card a new cover.</p>
+
+  <h3>Rename in place</h3>
+  <p>The pencil turns the name into a text field, already selected. Enter or clicking away saves, Escape cancels. Whatever is typed goes through <code>cleanName()</code>: extra spaces go, a very long name is cut to 60 characters, and an empty one becomes "My animation" rather than a card with no name. Renaming counts as a change, so the animation moves to the top of the list.</p>
+
+  <h3>Delete is the one thing that asks</h3>
+  <p>Everything inside the studio will be undoable (step 11), but a deleted project can't come back. So delete opens a modal dialog with the picture and the name: <em>Delete "Dino walk"? Its 12 pictures will be gone for good. This can't be undone.</em> <strong>Keep it</strong> is focused, so Enter or a quick tap does nothing harmful; <strong>Delete</strong> is the red one. Escape also means "keep it". The project, its frames, photos and thumbnails go in one transaction (step 06).</p>
+  <p>A native <code>&lt;dialog&gt;</code> opened with <code>showModal()</code> does the hard parts: it keeps keyboard focus inside, makes the page behind inert, closes on Escape, and is announced as a dialog.</p>
+
+  <h3>Asking the browser to keep the data</h3>
+  <p>By default browser storage is "best effort": if the disk runs low, the browser may clear it. <code>navigator.storage.persist()</code> asks for "persistent" storage, which only the user can clear. It's asked when a project is created, a moment the child cares about, and never waited for: Chrome usually decides silently, Firefox may show a prompt, Safari often says no. The meter says which it is: "The browser has promised to keep your animations", or a gentle note that it may clear them, pointing at project backup (step 26).</p>
+
+  <h3>The meter says "about"</h3>
+  <p><code>navigator.storage.estimate()</code> gives a usage and a quota, but both are estimates (browsers pad them to avoid leaking what other sites store). The meter says "Using 104 KB of about 10 GB on this device" and hides itself entirely when the browser can't tell. Warnings when it gets full come in step 20.</p>
+
+  <h3>Two ways to start a project, one function</h3>
+  <p>"New animation" and opening <code>/studio</code> without an id both call <code>createSavedProject()</code>, so both save the project and ask for persistent storage the same way.</p>
+
+  <h2>A bug from step 05, found here</h2>
+  <p>Taking screenshots of this page, a script pressed the capture button straight after the camera came on, and no picture appeared. The console said <em>"The camera picture isn't ready yet."</em> The capture button turned on as soon as the camera stream started, but some cameras take a moment longer to send their first frame; a press in that gap was silently ignored. A child would just see the button not work.</p>
+  <ol>
+    <li><strong>A failing test first</strong>, as the repo's <code>CLAUDE.md</code> asks: <code>camera.spec.ts</code> › "the capture button waits for the camera's first picture" uses a camera whose first frame arrives after 1.5 seconds, and expects the button to be off until then. It failed: <code>Expected: disabled, Received: enabled</code>.</li>
+    <li><strong>The fix</strong>: <code>CameraView</code> only hands the video to the studio once it has a frame (<code>loadeddata</code>, with <code>videoWidth &gt; 0</code>), and the capture button is enabled only then. The test passes.</li>
+  </ol>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>WebKit and parallel runs.</strong> With more tests, Playwright's WebKit on Windows started crashing now and then when about ten copies ran at once ("Target page, context or browser has been closed"), passing on the next run. The WebKit project now runs at most two at a time (<code>workers: 2</code> in its project); three full runs in a row were clean.</li>
+    <li><strong><code>persist()</code> can prompt.</strong> Only call it where a person just did something (creating a project), never on page load or repeatedly. To show the state, use <code>isStoragePersistent()</code>, which never asks.</li>
+    <li><strong>Long names on desktop cards</strong> are cut with "…" next to the two buttons; the full name shows in the rename field and on phones.</li>
+    <li><strong>The list is per browser.</strong> Animations made in another browser or on another computer don't appear (the "isn't here" page from step 07 explains that).</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm test
+npm run test:e2e
+npm run dev</code></pre>
+  <ul>
+    <li>With nothing saved: "No animations yet". Press <strong>New animation</strong>: the studio opens with a new project.</li>
+    <li>Take a picture, go back: the card shows that picture and "1 picture".</li>
+    <li>Rename it with the pencil, reload: the name stays. Rename to only spaces: it becomes "My animation". Press Escape while renaming: nothing changes.</li>
+    <li>Delete: the dialog shows the picture and name, with Keep it focused. Keep it, then delete for real: the card goes, and stays gone after a reload.</li>
+    <li>Open two tabs on the home page, take a picture in a third: both lists move that animation to the top.</li>
+  </ul>
+  <div class="note">Checked while building: unit tests 90 passed; end-to-end 23 passed, 5 skipped (capture tests in WebKit on Windows), three full runs in a row. Screenshots taken with Playwright of the empty page, a list of three, the delete dialog and a phone-width page (no sideways scroll). Not checked: Firefox's persistence prompt, Safari, a real webcam.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/projects/ProjectsPage.tsx</code>, <code>ProjectCard.tsx</code>, <code>DeleteDialog.tsx</code>, <code>StorageMeter.tsx</code>, <code>useProjects.ts</code>, <code>createSavedProject.ts</code>, <code>projects.scss</code>; <code>src/app/page.tsx</code> (and <code>src/app/home.scss</code> removed); <code>src/core/model/project.ts</code>, <code>project.test.ts</code>, <code>repository.ts</code>; <code>src/adapters/storage/dexieRepository.ts</code>, <code>repositoryContract.ts</code>, <code>storageInfo.ts</code>, <code>storageInfo.test.ts</code>; <code>src/studio/CameraView.tsx</code>, <code>CameraPanel.tsx</code>, <code>Studio.tsx</code>, <code>useProject.ts</code>; <code>src/styles/globals.scss</code>, <code>_controls.scss</code>; <code>e2e/projects.spec.ts</code>, <code>e2e/camera.spec.ts</code>, <code>e2e/fixtures.ts</code>; <code>playwright.config.ts</code> (WebKit workers); <code>public/steps/09-projects.html</code>, <code>index.html</code>, <code>08-playwright.html</code> (next link), <code>05-capture.html</code> (note on the fix); <code>ROADMAP.md</code>.</p>
+  <p><strong>Tests added:</strong> unit: 3 for <code>cleanName</code>, 13 for storage info, 2 repository contract tests (90 in total). End-to-end: 7 in <code>projects.spec.ts</code> (empty state, new, cover and count, rename and blank names, Escape, delete with confirmation, storage meter) and 1 in <code>camera.spec.ts</code> (late first frame).</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>deleting always asks, with "Keep it" as the focused answer</li>
+    <li>nothing removes a card directly; the list follows storage</li>
+    <li><code>persist()</code> is only called when a project is created</li>
+    <li>the capture button stays off until the camera has a frame</li>
+    <li><code>npm test</code>, <code>npm run test:e2e</code>, <code>npm run lint</code>, <code>npm run typecheck</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="08-playwright.html">Previous: 08 · Playwright</a>
+    <span>Next: 10 · Time-scaled timeline and seconds ruler</span>
+  </nav>
+</main>
+</body>
+</html>

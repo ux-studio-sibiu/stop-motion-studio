@@ -17,6 +17,18 @@ export function createDexieRepository(db: StudioDb, now: () => number = Date.now
   return {
     listProjects: () => db.projects.orderBy("updatedAt").reverse().toArray(),
 
+    watchProjects: (onChange, onError) => {
+      const subscription = liveQuery(() => db.projects.orderBy("updatedAt").reverse().toArray()).subscribe({ next: onChange, error: onError });
+      return () => subscription.unsubscribe();
+    },
+
+    getCover: async (projectId) => {
+      const firstId = (await db.projects.get(projectId))?.frameIds[0];
+      const frame = firstId ? await db.frames.get(firstId) : undefined;
+      const thumb = frame ? await db.thumbs.get(frame.imageId) : undefined;
+      return thumb ? { imageId: thumb.imageId, blob: thumb.blob } : undefined;
+    },
+
     getProject: (id) => db.projects.get(id),
 
     loadProject: (id) => db.transaction("r", db.projects, db.frames, async () => {

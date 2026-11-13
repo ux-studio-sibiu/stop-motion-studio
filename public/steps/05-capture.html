@@ -61,7 +61,7 @@
 
   <h2>Watch out</h2>
   <ul>
-    <li><strong><code>videoWidth</code> is 0 until the first frame arrives.</strong> <code>captureFrame</code> refuses then (the press is simply ignored, with a console warning), and the button is only enabled once the camera is live.</li>
+    <li><strong><code>videoWidth</code> is 0 until the first frame arrives.</strong> <code>captureFrame</code> refuses then (the press is simply ignored, with a console warning), and the button is only enabled once the camera is live. <em>Since step 09: and once the first frame has actually arrived; before that, a press was silently ignored.</em></li>
     <li><strong><code>toBlob</code> can return <code>null</code></strong> (out of memory, a canvas that's too big). It's turned into an error, not a missing picture.</li>
     <li><strong>Canvas memory.</strong> The two canvases are shrunk to 0×0 after encoding; Safari otherwise keeps their pixels around until garbage collection.</li>
     <li><strong>Leaving the project changes the plan mid-capture.</strong> If the project changes while a picture is encoding, the picture is dropped instead of landing in the wrong project.</li>

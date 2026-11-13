@@ -1,15 +1,7 @@
-import Link from "next/link";
-import { Clapperboard } from "lucide-react";
-import "./home.scss";
+import { ProjectsPage } from "@/projects/ProjectsPage";
 
-// Placeholder home. Becomes the projects list in step 09.
+// The projects live in this browser's IndexedDB, so the list is a client component; the
+// static export ships an empty shell that fills in once the page runs.
 export default function Home() {
-  return (
-    <main id="nsc--home">
-      <h1>Stop-motion Studio</h1>
-      <p className="lede">Take pictures, move your toys a little, take more pictures. Then press play.</p>
-      <Link className="start" href="/studio"><Clapperboard size={32} />Start animating</Link>
-      <p className="notes"><a href="steps/index.html">How it&apos;s built, step by step</a></p>
-    </main>
-  );
+  return <ProjectsPage />;
 }

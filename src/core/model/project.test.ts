@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createFrame, createProject, DEFAULT_ADJUST, DEFAULT_TRANSFORM, frameDuration, MAX_HEIGHT, MAX_WIDTH, projectDuration, SCHEMA_VERSION, type Frame } from "@/core/model";
+import { cleanName, createFrame, createProject, DEFAULT_ADJUST, DEFAULT_NAME, MAX_NAME_LENGTH, DEFAULT_TRANSFORM, frameDuration, MAX_HEIGHT, MAX_WIDTH, projectDuration, SCHEMA_VERSION, type Frame } from "@/core/model";
 
 describe("createProject", () => {
   it("uses the defaults", () => {
@@ -27,6 +27,23 @@ describe("createProject", () => {
     expect(createProject({ fps: 60 }).fps).toBe(30);
     expect(createProject({ fps: 11.6 }).fps).toBe(12);
     expect(createProject({ fps: Number.NaN }).fps).toBe(8);
+  });
+});
+
+describe("cleanName", () => {
+  it("tidies spaces inside and around the name", () => {
+    expect(cleanName("  Dino   walk\n ")).toBe("Dino walk");
+  });
+
+  it("falls back to the default when nothing is left", () => {
+    expect(cleanName("   ")).toBe(DEFAULT_NAME);
+    expect(cleanName("")).toBe(DEFAULT_NAME);
+  });
+
+  it("caps long names without leaving a trailing space", () => {
+    const name = cleanName(`${"a".repeat(MAX_NAME_LENGTH - 1)} and more`);
+    expect(name).toBe("a".repeat(MAX_NAME_LENGTH - 1));
+    expect(cleanName("b".repeat(200))).toHaveLength(MAX_NAME_LENGTH);
   });
 });
 

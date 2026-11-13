@@ -31,6 +31,32 @@ test("turning the camera off stops it, and so does leaving the studio @real-came
   await expect.poll(() => secondTrack.evaluate((track) => track.readyState)).toBe("ended");
 });
 
+test("the capture button waits for the camera's first picture, so no press is lost", async ({ studio, page }) => {
+  const canStream = await page.evaluate(() => "captureStream" in HTMLCanvasElement.prototype);
+  test.skip(!canStream, "This browser build has no media streams (Playwright's WebKit on Windows).");
+  await page.addInitScript(() => {
+    // A camera that answers at once but sends its first frame only after 1.5 seconds,
+    // like a slow USB webcam waking up.
+    navigator.mediaDevices.getUserMedia = async () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 320;
+      canvas.height = 240;
+      setTimeout(() => setInterval(() => { const c = canvas.getContext("2d")!; c.fillStyle = "#2e8b57"; c.fillRect(0, 0, 320, 240); }, 33), 1500);
+      return canvas.captureStream(30);
+    };
+  });
+  await studio.open();
+  const turnOn = page.getByRole("button", { name: "Turn on camera" });
+  await expect(turnOn.or(page.getByRole("button", { name: "Camera off" }))).toBeVisible();
+  if (await turnOn.isVisible()) await turnOn.click();
+
+  await expect(page.getByRole("button", { name: "Camera off" })).toBeVisible();   // the camera is on...
+  await expect(studio.captureButton()).toBeDisabled();                             // ...but there's no picture yet
+  await expect(studio.captureButton()).toBeEnabled({ timeout: 5000 });
+  await studio.captureButton().click();
+  await expect(studio.pictures()).toHaveCount(1);
+});
+
 test("a blocked camera says so and offers to try again", async ({ studio, page }) => {
   await page.addInitScript(() => {
     // Every request for the camera is refused, as if the user (or a policy) blocked it.

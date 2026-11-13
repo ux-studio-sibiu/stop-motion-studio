@@ -18,13 +18,22 @@ export const FPS_OPTIONS = [5, 8, 10, 12, 15] as const;   // what the speed cont
 export const DEFAULT_TRANSFORM: Readonly<Transform> = Object.freeze({ x: 0, y: 0, scale: 1, rotation: 0, flipX: false, flipY: false });
 export const DEFAULT_ADJUST: Readonly<Adjust> = Object.freeze({ brightness: 1, contrast: 1 });
 
+export const DEFAULT_NAME = "My animation";
+export const MAX_NAME_LENGTH = 60;
+
+// A project name as typed: spaces tidied, capped so it fits a card, never empty.
+export function cleanName(name: string): string {
+  const tidy = name.replace(/\s+/g, " ").trim().slice(0, MAX_NAME_LENGTH).trim();
+  return tidy || DEFAULT_NAME;
+}
+
 type ProjectOptions = { name?: string; width?: number; height?: number; fps?: number; now?: number };
 
-export function createProject({ name = "My animation", width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT, fps = DEFAULT_FPS, now = Date.now() }: ProjectOptions = {}): Project {
+export function createProject({ name = DEFAULT_NAME, width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT, fps = DEFAULT_FPS, now = Date.now() }: ProjectOptions = {}): Project {
   return {
     id: newId(),
     schemaVersion: SCHEMA_VERSION,
-    name: name.trim() || "My animation",
+    name: cleanName(name),
     width: evenSize(width, MAX_WIDTH),
     height: evenSize(height, MAX_HEIGHT),
     fps: clampFps(fps),

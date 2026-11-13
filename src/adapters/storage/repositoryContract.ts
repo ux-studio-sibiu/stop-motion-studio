@@ -148,6 +148,38 @@ export function describeRepositoryContract(name: string, setup: () => Promise<Re
       expect(watcher.seen.length).toBe(count);
     });
 
+    it("watches the project list: newest first, after creates, changes and deletes", async () => {
+      const lists: string[][] = [];
+      const stop = repository.watchProjects((projects) => lists.push(projects.map((p) => p.name)));
+      const until = async (expected: string[]) => {
+        for (let i = 0; i < 100 && JSON.stringify(lists.at(-1)) !== JSON.stringify(expected); i++) await new Promise((resolve) => setTimeout(resolve, 10));
+        expect(lists.at(-1)).toEqual(expected);
+      };
+
+      await until(["Dino walk"]);
+      tick(10);
+      const robot = createProject({ name: "Robot dance", now: 5 });
+      await repository.createProject(robot);
+      await until(["Robot dance", "Dino walk"]);
+      await repository.updateProject(project.id, { name: "Dino run" });   // updatedAt 10: now the newest
+      await until(["Dino run", "Robot dance"]);
+      await repository.deleteProject(robot.id);
+      await until(["Dino run"]);
+      stop();
+    });
+
+    it("gives the first picture's thumbnail as the cover, and none for an empty project", async () => {
+      expect(await repository.getCover(project.id)).toBeUndefined();
+      expect(await repository.getCover("missing")).toBeUndefined();
+
+      const first = await capture(project.id);
+      const second = await capture(project.id, 0);   // inserted at the start: it becomes the cover
+      const cover = await repository.getCover(project.id);
+      expect(cover?.imageId).toBe(second.frame.imageId);
+      expect(await cover?.blob.text()).toBe("thumb");
+      expect(cover?.imageId).not.toBe(first.frame.imageId);
+    });
+
     it("deletes a project with all its frames, pictures and thumbnails, and nothing else", async () => {
       const mine = await capture(project.id);
       const other = createProject();

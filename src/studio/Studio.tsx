@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChevronLeft, Download, Layers, Play, Redo2, Undo2 } from "lucide-react";
 import { editorStore, useEditor } from "@/store/useEditor";
@@ -22,8 +22,10 @@ export function Studio() {
   const projectName = useEditor((state) => state.project?.name);
   const camera = useCamera();
   const video = useRef<HTMLVideoElement | null>(null);
-  const onVideo = useCallback((element: HTMLVideoElement | null) => { video.current = element; }, []);
-  const { capture, capturing } = useCapture(video, camera.status === "live" && status === "ready");
+  const [videoReady, setVideoReady] = useState(false);
+  const onVideo = useCallback((element: HTMLVideoElement | null) => { video.current = element; setVideoReady(element !== null); }, []);
+  const canCapture = camera.status === "live" && status === "ready" && videoReady;
+  const { capture, capturing } = useCapture(video, canCapture);
 
   // Development only: poke at the store from the browser console (window.editorStore.getState()).
   useEffect(() => {
@@ -55,7 +57,7 @@ export function Studio() {
         </div>
       </header>
 
-      <CameraPanel camera={camera} onCapture={capture} capturing={capturing} />
+      <CameraPanel camera={camera} canCapture={canCapture} onCapture={capture} capturing={capturing} />
 
       <main className="stage" aria-label="Stage">
         <div className={`stage-frame${capturing ? " is-capturing" : ""}`}>

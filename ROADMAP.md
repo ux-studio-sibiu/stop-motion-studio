@@ -559,7 +559,7 @@ registry entry.
 - [x] 06 Dexie schema and repository ([page](public/steps/06-storage.html))
 - [x] 07 Save captures and survive a refresh ([page](public/steps/07-persistence.html))
 - [x] 08 End-to-end tests with Playwright ([page](public/steps/08-playwright.html))
-- [ ] 09 Projects page
+- [x] 09 Projects page ([page](public/steps/09-projects.html))
 - [ ] 10 Time-scaled timeline and seconds ruler
 - [ ] 11 Commands and undo/redo
 - [ ] 12 Frame operations

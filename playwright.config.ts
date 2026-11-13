@@ -48,6 +48,9 @@ export default defineConfig<StudioOptions>({
       name: "webkit",
       use: { ...devices["Desktop Safari"], fakeCamera: "script" },
       grepInvert: /@real-camera/,
+      // Playwright's WebKit on Windows crashes now and then when many copies run at once
+      // ("Target page, context or browser has been closed"); two at a time is stable.
+      workers: 2,
     },
   ],
 });

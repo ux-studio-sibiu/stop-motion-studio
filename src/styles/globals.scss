@@ -15,6 +15,8 @@
   --color-go: #24a06b;         // play
   --color-go-ink: #ffffff;
   --color-focus: #3b6cf6;
+  --color-danger: #b3261e;     // deleting; darker than capture red so the two never look alike
+  --color-danger-ink: #ffffff;
   --color-stage: #15171c;      // behind photos, dark in both schemes
   --color-stage-ink: #b9bfcc;
 
@@ -42,6 +44,7 @@
     --color-accent: #ff6559;
     --color-go: #33b97f;
     --color-focus: #7d9bff;
+    --color-danger: #e2584f;
     --color-stage: #0a0b0e;      // darker than the page, so the frame still reads
 
     color-scheme: dark;

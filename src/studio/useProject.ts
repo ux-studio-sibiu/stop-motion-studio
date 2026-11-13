@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { appRepository } from "@/adapters/storage/appRepository";
-import { createProject, repairFrameOrder, sameOrder } from "@/core/model";
+import { repairFrameOrder, sameOrder } from "@/core/model";
+import { createSavedProject } from "@/projects/createSavedProject";
 import { editorStore } from "@/store/useEditor";
 import { clearMedia, loadMissingThumbs } from "./media";
 
@@ -21,10 +22,9 @@ export function useProject(projectId: string | null): ProjectStatus {
   useEffect(() => {
     if (projectId || creating.current) return;   // the ref stops Strict Mode's second run making a second project
     creating.current = true;
-    const project = createProject();
-    void appRepository().createProject(project).then(() => {
+    void createSavedProject().then((id) => {
       creating.current = false;
-      router.replace(`/studio?project=${project.id}`);   // replace, not push: Back shouldn't return to an empty URL
+      router.replace(`/studio?project=${id}`);   // replace, not push: Back shouldn't return to an empty URL
     });
   }, [projectId, router]);
 
