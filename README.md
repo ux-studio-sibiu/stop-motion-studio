@@ -43,6 +43,9 @@ npm run dev
 | `npm test` | Vitest, once (`npm run test:watch` to keep it running) |
 | `npm run lint` | ESLint, including the layering rules |
 | `npm run typecheck` | `tsc --noEmit` |
+| `npm run test:e2e` | Playwright end-to-end tests in Chromium and WebKit (builds and serves the app on port 3200) |
+| `npm run test:e2e:ui` | The same in Playwright's UI mode, test by test |
+| `npm run test:e2e:report` | Opens the last HTML report |
 
 The webcam needs a secure context: `localhost` works, a LAN IP over plain `http://` does not.
 

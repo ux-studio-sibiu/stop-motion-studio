@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>08 Playwright · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 08 of 33 · Part 3 Persistence and testing</p>
+  <h1>End-to-end tests with Playwright</h1>
+  <p class="intro">The studio is now tested the way a child uses it: in a real browser, with a webcam (a fake one playing a generated video), real IndexedDB, real clicks and real reloads. Seven tests cover the camera, saving, reloading and the "missing project" page, in Chromium and WebKit. This page explains Playwright from scratch, because every later step adds to these tests.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>@playwright/test</code> 1.65, and its Chromium and WebKit browsers (downloaded once per machine into <code>%LOCALAPPDATA%\ms-playwright</code>).</li>
+    <li><code>playwright.config.ts</code>: builds and serves the app on port 3200, two browser projects, the fake-camera flags, traces on failure.</li>
+    <li><code>e2e/fake-camera.ts</code>: writes the webcam video (<code>e2e/.generated/fake-camera.y4m</code>, ignored by git) before the tests start.</li>
+    <li><code>e2e/fixtures.ts</code>: a <code>studio</code> fixture with a <code>Studio</code> page object (<code>open</code>, <code>cameraOn</code>, <code>takePictures</code>, …) and a script camera for browsers without a fake device.</li>
+    <li><code>e2e/camera.spec.ts</code>: camera on → live picture; off and leaving → the track really stops; blocked → the blocked message.</li>
+    <li><code>e2e/persistence.spec.ts</code>: 3 pictures survive a reload; a new project starts empty; Back returns to the same project; an unknown id shows the friendly page.</li>
+    <li>Scripts <code>test:e2e</code>, <code>test:e2e:ui</code>, <code>test:e2e:report</code>; report and result folders in <code>.gitignore</code>; an ESLint override for <code>e2e/</code>.</li>
+  </ul>
+
+  <h2>What an end-to-end test is</h2>
+  <p>A unit test (Vitest) calls one function and checks what it returns. An end-to-end test starts the whole app, opens it in a browser and acts like a person: click this, wait for that, reload. It checks what appears on screen. Same idea, tested both ways:</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Vitest (step 07)</th><th>Playwright (this step)</th></tr></thead>
+    <tbody>
+      <tr><td><pre><code>await repository.insertFrames(id, {...});
+const loaded = await repository.loadProject(id);
+expect(loaded.frames).toHaveLength(1);</code></pre></td>
+      <td><pre><code>await studio.takePictures(3);
+await page.reload();
+await expect(studio.pictures()).toHaveCount(3);</code></pre></td></tr>
+      <tr><td>Proves the repository saves and loads, in Node, with a fake IndexedDB, in milliseconds.</td><td>Proves the camera, the capture, the real IndexedDB, the loading after a reload and the timeline all work together, in a real browser, in seconds.</td></tr>
+      <tr><td>Fails → points at one function.</td><td>Fails → says the flow broke; the trace shows where.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>That's why both stay: many fast unit tests for the logic, a few end-to-end tests for the flows that matter.</p>
+
+  <h2>How Playwright drives a browser</h2>
+  <p>Playwright ships its own builds of Chromium, Firefox and WebKit. The test runner starts one as a separate process and talks to it over its automation protocol (Chrome DevTools Protocol for Chromium, a similar one for WebKit), the same channel DevTools uses. Every action (<code>click</code>, <code>fill</code>, <code>reload</code>) is a message to the browser; the page itself runs exactly as it would for a person.</p>
+  <pre><code>browser   one browser process, started once per worker
+  └─ context   like a fresh browser profile: its own cookies, localStorage and IndexedDB
+       └─ page   one tab</code></pre>
+  <p><strong>Every test gets a new context.</strong> That's why each test starts with an empty database: a test can't see another test's pictures, and tests can run in parallel and in any order. Creating a context takes milliseconds, unlike starting a browser.</p>
+
+  <h2>The test runner</h2>
+  <p class="file">e2e/persistence.spec.ts</p>
+  <pre><code>import { expect, test } from "./fixtures";
+
+test("pictures survive a reload", async ({ studio, page }) =&gt; {
+  await studio.open();
+  await studio.cameraOn();
+  await studio.takePictures(3);
+  await page.reload();
+  await expect(studio.pictures()).toHaveCount(3);
+});</code></pre>
+  <ul>
+    <li><strong><code>test(name, fn)</code></strong> defines a test, like Vitest's <code>it</code>. <code>test.describe</code> groups, <code>test.beforeEach</code> runs setup, <code>test.skip(condition, reason)</code> skips with a reason shown in the report.</li>
+    <li><strong>Fixtures</strong> are the arguments of the test function: <code>{ page }</code>, <code>{ context }</code>, <code>{ browser }</code> are built in. Playwright creates each one before the test and cleans it up after, only if the test asks for it.</li>
+    <li><strong>Custom fixtures</strong> extend that list. <code>e2e/fixtures.ts</code> adds <code>studio</code>: it installs the script camera when the project needs one, then hands the test a <code>Studio</code> object. Tests import <code>test</code> from <code>./fixtures</code> instead of from Playwright.</li>
+    <li><strong>Options</strong> are fixtures that projects set: <code>fakeCamera: "device" | "script"</code> is set per browser in the config, and the <code>studio</code> fixture reads it.</li>
+  </ul>
+
+  <h3>The page object</h3>
+  <p><code>Studio</code> names the things a test does, in the studio's own words: <code>open()</code>, <code>cameraOn()</code>, <code>takePictures(3)</code>, <code>pictures()</code>. Tests read like the flow they check, and when a button's label changes, only <code>fixtures.ts</code> changes, not every test.</p>
+
+  <h2>Locators and auto-waiting</h2>
+  <p>A <strong>locator</strong> describes how to find something, not the element itself: <code>page.getByRole("button", { name: "Take a picture" })</code>. It's looked up again every time it's used, so it's never stale after a re-render.</p>
+  <ul>
+    <li><strong>Find things the way people do.</strong> <code>getByRole</code> (a button, a link, a heading, by its accessible name), <code>getByLabel</code>, <code>getByText</code>. Not CSS classes: classes change for styling reasons and say nothing about what the user sees. If a test can't find a button by its name, a screen reader can't either, so these tests double as a basic accessibility check. Two places still use selectors (<code>video</code>, <code>.picture-count</code>), where there's no role to find them by.</li>
+    <li><strong>Actions wait.</strong> Before <code>click()</code>, Playwright waits until the element is attached, visible, stable (not animating), enabled and not covered by something else. No "wait 500 ms" needed.</li>
+    <li><strong>Web-first assertions retry.</strong> <code>await expect(locator).toHaveCount(3)</code> checks again and again until it's true or 5 seconds pass. That's how a test waits for a capture to be saved and shown without guessing how long it takes. <code>expect.poll(() =&gt; value)</code> does the same for any value, like a video's width.</li>
+    <li><strong>Never <code>waitForTimeout</code>.</strong> A fixed sleep is either too short on a slow machine (flaky) or too long everywhere (slow).</li>
+  </ul>
+  <div class="note">Building this step hit exactly the trap auto-waiting can't cover: <code>if (await button.isVisible())</code> checks <em>once</em>, right now. Straight after the page loaded, neither "Turn on camera" nor the live camera was on screen yet, so the check said "not visible", skipped the click and the camera never started. The fix waits for one of the two first: <code>await expect(turnOn.or(live)).toBeVisible()</code>, then decides.</div>
+
+  <h2>The config, line by line</h2>
+  <p class="file">playwright.config.ts</p>
+  <pre><code>testDir: "e2e",                          // where the *.spec.ts files are
+globalSetup: "./e2e/fake-camera.ts",     // runs once before any browser: writes the webcam video
+fullyParallel: true,                     // tests run side by side in several workers
+forbidOnly: !!process.env.CI,            // a forgotten test.only fails on CI
+retries: process.env.CI ? 1 : 0,
+reporter: [["list"], ["html", { open: "never" }]],
+
+webServer: {
+  command: "npm run build &amp;&amp; npx serve out -l 3200 --no-port-switching",
+  url: "http://localhost:3200",          // Playwright waits until this answers
+  reuseExistingServer: !process.env.CI,  // locally, a server already on 3200 is reused
+},
+
+use: {
+  baseURL: "http://localhost:3200",      // page.goto("/studio") means this server
+  trace: "retain-on-failure",            // a failed test keeps a trace to replay
+},
+
+projects: [
+  { name: "chromium", use: { ...devices["Desktop Chrome"], permissions: ["camera"], fakeCamera: "device",
+      launchOptions: { args: [ "--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream",
+                               "--use-file-for-fake-video-capture=…/fake-camera.y4m" ] } } },
+  { name: "webkit", use: { ...devices["Desktop Safari"], fakeCamera: "script" }, grepInvert: /@real-camera/ },
+],</code></pre>
+  <ul>
+    <li><strong>The production build, not <code>next dev</code>.</strong> It's what ships, it has no dev overlay, and it doesn't run React Strict Mode's double effects, which would make tests behave differently from real use. Port 3200 keeps it away from your <code>next dev</code> on 3000.</li>
+    <li><strong>Projects</strong> are "the same tests, with these settings". Every test runs once per project unless filtered: <code>grepInvert: /@real-camera/</code> leaves out tests with that tag in their name in WebKit.</li>
+    <li><strong><code>devices[...]</code></strong> sets a viewport, user agent and scale factor that match a typical desktop.</li>
+  </ul>
+
+  <h2>The fake camera</h2>
+  <p>Chromium has three switches for exactly this:</p>
+  <ul>
+    <li><code>--use-fake-ui-for-media-stream</code>: answers the "allow camera?" prompt with yes.</li>
+    <li><code>--use-fake-device-for-media-stream</code>: replaces real webcams with a fake device (without a file it shows a test pattern).</li>
+    <li><code>--use-file-for-fake-video-capture=file.y4m</code>: the fake device plays this video, on a loop.</li>
+  </ul>
+  <p><code>permissions: ["camera"]</code> also grants the permission at the browser level, so the studio sees "already allowed" and starts the camera by itself.</p>
+  <p><strong>The video format.</strong> Y4M (YUV4MPEG2) is about the simplest video file there is: one text line (<code>YUV4MPEG2 W320 H240 F15:1 Ip A1:1 C420jpeg</code>: size, 15 frames per second, square pixels, 4:2:0 colour), then each frame as the word <code>FRAME</code>, a newline, and raw pixels. Pixels are YUV: a full-size plane of brightness (Y), then two quarter-size planes of colour (U and V), one byte per value. <code>e2e/fake-camera.ts</code> writes 30 frames of a white square sliding across a green field, 320×240 (4:3, so the 16:9 crop is exercised too). That's 3.4 MB of raw video: too big for git, generated in milliseconds.</p>
+  <p><strong>WebKit</strong> has no file-backed fake camera, so its project uses a <em>script camera</em>: before the page's own code runs, <code>addInitScript</code> replaces <code>navigator.mediaDevices</code> with one whose <code>getUserMedia</code> returns a canvas stream. Playwright's WebKit build for Windows turned out to have no media streams at all (no <code>navigator.mediaDevices</code>, no <code>canvas.captureStream</code>), so no camera can be faked there: <code>cameraOn()</code> checks for it and skips the test, with the reason in the report. On macOS or Linux (for example a CI runner) those tests run. The tests that don't need a camera run in WebKit everywhere.</p>
+
+  <h2>Writing and debugging tests</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Command</th><th>What it's for</th></tr></thead>
+    <tbody>
+      <tr><td><code>npm run test:e2e</code></td><td>Run everything, headless (no windows), both browsers.</td></tr>
+      <tr><td><code>npx playwright test --project=chromium -g "reload"</code></td><td>One browser, tests whose name matches.</td></tr>
+      <tr><td><code>npx playwright test --headed</code></td><td>Watch the browser windows while the tests run.</td></tr>
+      <tr><td><code>npm run test:e2e:ui</code></td><td><strong>UI mode</strong>: a window listing every test; run one, see each step on a timeline with a snapshot of the page, rerun on save. The best way to write a new test.</td></tr>
+      <tr><td><code>npm run test:e2e:report</code></td><td>The HTML report of the last run, with every failure, its error and its trace.</td></tr>
+      <tr><td><code>npx playwright show-trace test-results/…/trace.zip</code></td><td>The <strong>trace viewer</strong>: replay a failed test action by action, with the DOM at each moment, console output and network requests.</td></tr>
+      <tr><td><code>npx playwright codegen http://localhost:3200/studio</code></td><td><strong>Codegen</strong>: click around in a browser, and it writes the test code for what you did. A good start, then rewrite it with the page object.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>Vitest stays</strong> for logic; Playwright covers the handful of flows a child goes through.</li>
+    <li><strong>A page object</strong> instead of raw locators in every test, so the UI's wording lives in one place.</li>
+    <li><strong>Tags in test names</strong> (<code>@real-camera</code>) choose which browsers run what, instead of separate folders.</li>
+    <li><strong>Skip with a reason, never silently pass.</strong> Where a browser can't fake a camera, the test says "skipped: no media streams", so a green run never hides untested flows.</li>
+    <li><strong>Assert counts and states, not pixels.</strong> The fake video moves, so two captures never match pixel for pixel. Tests check "3 pictures", "the thumbnail is 160 px wide", "the track has ended". Pixel checks come with the renderer (step 15), on still images.</li>
+    <li><strong>One lint override</strong>: the React hooks rule mistakes Playwright's fixture function <code>use()</code> for React's <code>use()</code> hook, so it's off for <code>e2e/</code>.</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>A stale server.</strong> Locally, a server already on port 3200 is reused, and it serves whatever is in <code>out/</code>. If tests behave like old code, stop that server (or run <code>npm run build</code>) and run again.</li>
+    <li><strong>Browsers are per machine.</strong> After cloning, or after a Playwright upgrade: <code>npx playwright install chromium webkit</code>.</li>
+    <li><strong>One check is not a wait.</strong> <code>isVisible()</code>, <code>count()</code> and <code>textContent()</code> answer once. To wait, use <code>expect(...)</code> or <code>expect.poll(...)</code>.</li>
+    <li><strong>Captures are one at a time.</strong> <code>takePictures()</code> waits for each thumbnail before the next press, because presses during a save are ignored on purpose (step 05).</li>
+    <li><strong>Tests are independent.</strong> Never rely on another test's data or order; make what you need inside the test.</li>
+  </ul>
+
+  <h2>How later steps use it</h2>
+  <p>Every step with a user-facing flow adds or extends a spec in <code>e2e/</code> (the rule is in the repo's <code>CLAUDE.md</code>) and names it in its review checklist. Next up: step 09 adds <code>projects.spec.ts</code> (create, rename, delete), step 10-14 the timeline (select, resize, reorder, undo).</p>
+
+  <h2>Check it</h2>
+  <pre><code>npm run test:e2e</code></pre>
+  <p>Expected: <strong>10 passed, 2 skipped</strong> (the two capture tests in WebKit on Windows). Then:</p>
+  <ul>
+    <li>Run <code>npm run test:e2e:ui</code>, pick "pictures survive a reload", and step through its timeline.</li>
+    <li>Break it on purpose: in <code>src/studio/CameraPanel.tsx</code> change <code>aria-label="Take a picture"</code> to <code>aria-label="Snap"</code>, run <code>npx playwright test --project=chromium -g "reload"</code>. It fails with <code>getByRole('button', { name: 'Take a picture' })</code> … <code>element(s) not found</code>. Open its trace from the report, then put the label back.</li>
+  </ul>
+  <div class="note">Run while building: 10 passed and 2 skipped, from a clean start (Playwright building and serving the app itself), in about 15 seconds. The "Snap" break above was tried and failed with exactly that message. The unit tests (72), lint and typecheck pass too.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>playwright.config.ts</code>, <code>e2e/fake-camera.ts</code>, <code>e2e/fixtures.ts</code>, <code>e2e/camera.spec.ts</code>, <code>e2e/persistence.spec.ts</code>, <code>eslint.config.mjs</code>, <code>.gitignore</code>, <code>package.json</code>, <code>package-lock.json</code>, <code>README.md</code> (scripts), <code>public/steps/08-playwright.html</code>, <code>public/steps/index.html</code>, <code>public/steps/07-persistence.html</code> (next link), <code>ROADMAP.md</code>.</p>
+  <p><strong>Tests added:</strong> 3 camera tests and 4 persistence tests. Chromium runs all 7; WebKit leaves out the 2 <code>@real-camera</code> tests and, on Windows, skips the 2 that capture. That's 12 runs: 10 pass, 2 skip.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li><code>npm run test:e2e</code> passes; skipped tests show their reason</li>
+    <li>no <code>waitForTimeout</code> anywhere in <code>e2e/</code></li>
+    <li>tests find things by role, label or text, through the <code>Studio</code> page object</li>
+    <li>no test depends on another test's data</li>
+    <li>the generated video and the report folders are not committed</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="07-persistence.html">Previous: 07 · Persistence</a>
+    <span>Next: 09 · Projects page</span>
+  </nav>
+</main>
+</body>
+</html>

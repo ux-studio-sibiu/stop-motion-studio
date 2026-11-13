@@ -136,8 +136,9 @@ browser mode joins in step 15 for canvas pixel tests.
 
 ### 08 · End-to-end tests with Playwright
 - **Builds:** `@playwright/test` and its browsers (Chromium, WebKit). `playwright.config.ts` with a
-  `webServer` that builds the static export and serves `out/`, and two projects: **chromium** (with a
-  fake camera) and **webkit** (layout and storage, no camera). `e2e/fake-camera.ts`, run as global
+  `webServer` that builds the static export and serves `out/` on port 3200, and two projects:
+  **chromium** (with the browser's own fake camera) and **webkit** (a script-faked camera; capture tests
+  skip themselves in WebKit builds without media streams, such as Playwright's WebKit on Windows). `e2e/fake-camera.ts`, run as global
   setup, writes a short `.y4m` video of a coloured shape sliding across a background into an ignored
   folder, and Chromium plays it as its webcam. First tests: `e2e/camera.spec.ts` (turn on → live picture,
   off → track stopped, blocked camera → the blocked message) and `e2e/persistence.spec.ts` (capture 3,
@@ -557,7 +558,7 @@ registry entry.
 - [x] 05 Capture to an in-memory timeline ([page](public/steps/05-capture.html))
 - [x] 06 Dexie schema and repository ([page](public/steps/06-storage.html))
 - [x] 07 Save captures and survive a refresh ([page](public/steps/07-persistence.html))
-- [ ] 08 End-to-end tests with Playwright
+- [x] 08 End-to-end tests with Playwright ([page](public/steps/08-playwright.html))
 - [ ] 09 Projects page
 - [ ] 10 Time-scaled timeline and seconds ruler
 - [ ] 11 Commands and undo/redo

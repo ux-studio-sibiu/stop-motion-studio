@@ -29,12 +29,20 @@ const adapterRules = {
   },
 };
 
+// Playwright tests aren't React: its fixtures call a function named `use`, which the React
+// hooks rule mistakes for React's use() hook.
+const e2eRules = {
+  files: ["e2e/**/*.ts", "playwright.config.ts"],
+  rules: { "react-hooks/rules-of-hooks": "off" },
+};
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   coreRules,
   adapterRules,
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+  e2eRules,
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "test-results/**", "playwright-report/**", "e2e/.generated/**"]),
 ]);
 
 export default eslintConfig;
