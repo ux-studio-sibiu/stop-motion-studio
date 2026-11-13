@@ -35,7 +35,7 @@ export type PlaybackSlice = {
 };
 
 export type UiSlice = {
-  timelineZoom: number;                      // px per second on the timeline (step 10)
+  timelineZoom: number;                      // px per second on the timeline
   setTimelineZoom: (pxPerSecond: number) => void;
 };
 
@@ -43,7 +43,7 @@ export type EditorState = ProjectSlice & SelectionSlice & PlaybackSlice & UiSlic
 
 export const MIN_TIMELINE_ZOOM = 40;
 export const MAX_TIMELINE_ZOOM = 640;
-const DEFAULT_TIMELINE_ZOOM = 120;
+export const DEFAULT_TIMELINE_ZOOM = 160;   // a tick at the default 8 fps is 20 px wide
 
 const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0 } as const;
 

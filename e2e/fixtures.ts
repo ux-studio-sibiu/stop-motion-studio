@@ -13,7 +13,9 @@ export class Studio {
   constructor(readonly page: Page, private readonly fakeCamera: StudioOptions["fakeCamera"]) {}
 
   readonly captureButton = () => this.page.getByRole("button", { name: "Take a picture" });
-  readonly pictures = () => this.page.getByRole("button", { name: /^Picture \d+$/ });
+  readonly track = () => this.page.getByRole("listbox", { name: "Pictures" });
+  readonly pictures = () => this.page.getByRole("option", { name: /^Picture \d+$/ });
+  readonly picture = (number: number) => this.page.getByRole("option", { name: `Picture ${number}`, exact: true });
   readonly cameraToggle = () => this.page.getByRole("button", { name: /^Camera (on|off)$/ });
   readonly video = () => this.page.locator("video");
 
@@ -51,6 +53,21 @@ export class Studio {
 
   pictureCount(): Locator {
     return this.page.locator(".picture-count");
+  }
+
+  // Width on screen, in CSS pixels.
+  async widthOf(locator: Locator): Promise<number> {
+    return (await locator.boundingBox())?.width ?? 0;
+  }
+
+  // Resolves when the picture's thumbnail (a background image) is a real, loaded JPEG.
+  async thumbnailOf(number: number): Promise<{ type: string; size: number }> {
+    return this.picture(number).evaluate(async (element) => {
+      const url = getComputedStyle(element).backgroundImage.match(/url\("?(.*?)"?\)/)?.[1];
+      if (!url) return { type: "", size: 0 };
+      const blob = await fetch(url).then((response) => response.blob());
+      return { type: blob.type, size: blob.size };
+    });
   }
 }
 

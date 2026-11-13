@@ -13,9 +13,9 @@ test("pictures survive a reload", async ({ studio, page }) => {
 
   await expect(studio.pictures()).toHaveCount(3);
   await expect(studio.pictureCount()).toHaveText("3 pictures");
-  // The thumbnails really loaded from storage, not just their buttons.
-  for (const image of await page.locator(".frame-thumb img").all()) {
-    await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(160);
+  // The thumbnails really came back from storage, not just the pictures' places.
+  for (const number of [1, 2, 3]) {
+    await expect.poll(() => studio.thumbnailOf(number)).toMatchObject({ type: "image/jpeg" });
   }
 });
 

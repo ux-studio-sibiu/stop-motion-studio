@@ -19,6 +19,13 @@
   &:hover:not(:disabled) { background: var(--color-faint); }
   &:disabled { opacity: 0.45; cursor: not-allowed; }
 
+  // Secondary tools (timeline zoom): smaller, but still a comfortable 40 px.
+  &.is-small {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    padding: 0 var(--space-2);
+  }
+
   &.is-primary {
     border-color: var(--color-accent);
     background: var(--color-accent);

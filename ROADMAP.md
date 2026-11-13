@@ -560,7 +560,7 @@ registry entry.
 - [x] 07 Save captures and survive a refresh ([page](public/steps/07-persistence.html))
 - [x] 08 End-to-end tests with Playwright ([page](public/steps/08-playwright.html))
 - [x] 09 Projects page ([page](public/steps/09-projects.html))
-- [ ] 10 Time-scaled timeline and seconds ruler
+- [x] 10 Time-scaled timeline and seconds ruler ([page](public/steps/10-timeline.html))
 - [ ] 11 Commands and undo/redo
 - [ ] 12 Frame operations
 - [ ] 13 Resize a picture's duration

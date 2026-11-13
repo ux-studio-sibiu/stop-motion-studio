@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>10 Timeline · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 10 of 33 · Part 4 Timeline</p>
+  <h1>Time-scaled timeline and seconds ruler</h1>
+  <p class="intro">The timeline is now drawn to time. A picture is exactly as wide as it lasts on screen, and a faint ruler above counts seconds. Zoom in and out with the buttons or Ctrl + mouse wheel. Click a picture to select it, then move with the arrow keys. This is the base for resizing (step 13), reordering (14) and the playhead (16).</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>src/core/model/timing.ts</code>: <code>ticksToSeconds</code>, <code>secondsToTicks</code>, <code>pxPerTick</code>, <code>frameStarts</code>, <code>totalTicks</code>, <code>frameIndexAt</code> (which picture is on screen at a tick), <code>rulerScale</code> and <code>formatSeconds</code>. 18 tests.</li>
+    <li><code>src/studio/Timeline.tsx</code>, rewritten:
+      <ul>
+        <li>tools: zoom out, zoom in, the animation's length;</li>
+        <li>the seconds ruler;</li>
+        <li>the picture track: each picture <code>hold × px per tick</code> wide;</li>
+        <li>keyboard selection;</li>
+        <li>Ctrl/Cmd + wheel zoom around the pointer;</li>
+        <li>auto-scroll to the selection and to new pictures.</li>
+      </ul>
+    </li>
+    <li>Default zoom 160 px per second: at the default 8 pictures per second, one tick is 20 px. The timeline area is taller (10.5 rem) to fit the tools, the ruler and a track you can tap.</li>
+    <li><code>.icon-button.is-small</code> for the zoom buttons (still 40 px).</li>
+    <li><code>e2e/timeline.spec.ts</code> (5 tests). The page object now finds pictures as listbox options, and checks thumbnails through their background image.</li>
+  </ul>
+
+  <h3>The numbers</h3>
+  <pre><code>px per tick   = px per second / fps          160 / 8 = 20 px
+picture width = hold × px per tick           a 3-tick picture = 60 px
+starts        = [0, hold₀, hold₀ + hold₁, …] where each picture begins, in ticks
+length        = total ticks / fps            24 ticks at 8 fps = 3.0 s</code></pre>
+
+  <h2>Decisions</h2>
+
+  <h3>Ticks underneath, seconds and pixels only for showing</h3>
+  <p>All the maths starts from ticks (step 02): <code>frameStarts</code> puts pictures end to end, <code>frameIndexAt</code> finds the picture under a tick with a binary search (the playhead will use it), and seconds and pixels are derived from ticks when drawing. Changing the speed later rescales the whole timeline, ruler included, without touching a single picture.</p>
+
+  <h3>Widths are exact, so the ruler lines up</h3>
+  <p>A gap between pictures would push every picture a few pixels off its time. Instead pictures sit edge to edge, separated by a 1 px line drawn inside each one (an inset <code>box-shadow</code>), and the selection outline is drawn inside too. The fourth picture starts exactly where the ruler says it does.</p>
+
+  <h3>The ruler is a background, not hundreds of elements</h3>
+  <p>The marks are one repeating gradient sized to the mark spacing (<code>background-size: markSeconds × zoom</code>); only the labels are elements. <code>rulerScale</code> decides the spacing:</p>
+  <ul>
+    <li><strong>Labels:</strong> every 1, 2, 5, 10, 15, 30… seconds, the first that leaves at least 64 px between labels.</li>
+    <li><strong>Marks:</strong> every second, and every half or quarter second once zoomed in far enough to tell them apart.</li>
+  </ul>
+  <p>The ruler is faint (line colour, muted small text) so the pictures stay the main thing.</p>
+
+  <h3>Thumbnails as a repeating background</h3>
+  <p>A picture's thumbnail is its background, centred, at the track's height, repeating sideways. A short picture shows the middle of its thumbnail (cover-cropped); a long one shows it two or three times, which reads as "this picture stays a while". One CSS rule does both.</p>
+
+  <h3>A listbox, for keyboards and screen readers</h3>
+  <p>The track is <code>role="listbox"</code> and each picture is an <code>option</code> named "Picture 3" with <code>aria-selected</code>. The listbox gets keyboard focus (Tab), and the selected picture is announced through <code>aria-activedescendant</code>. Arrows move the selection, Home and End jump to the ends, and Escape clears it. Clicking a picture focuses the track, so the arrow keys work straight away. Selecting several pictures comes with the frame operations (step 12).</p>
+
+  <h3>Zoom keeps your place</h3>
+  <p>Zooming changes how many pixels a second gets, so everything moves. To stay oriented, the time under the pointer (Ctrl + wheel), or under the selected picture (buttons), or the middle of the view, is remembered before the zoom and scrolled back under the same spot right after it (in a layout effect, before the browser paints). Zoom goes from 40 to 640 px per second, in steps of 1.5×. It's how you look at the timeline, not part of the animation, so it's kept in the store and not saved.</p>
+
+  <h3>Ctrl + wheel needs a native listener</h3>
+  <p>React attaches wheel handlers as "passive", which means they can't call <code>preventDefault()</code>, so Ctrl + wheel would zoom the whole page instead. The timeline adds its own <code>wheel</code> listener with <code>{ passive: false }</code> and only takes over when Ctrl (or Cmd) is held; plain wheel and trackpad swipes still scroll.</p>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Narrow pictures at high speed.</strong> At 15 pictures per second and the default zoom, a one-tick picture is about 11 px wide. Widths are never padded (the ruler must line up), so zoom in to pick out single pictures; picture numbers only show when a picture is at least 24 px wide. The track is 56 px tall, so it's still easy to hit.</li>
+    <li><strong>Thumbnails aren't <code>&lt;img&gt;</code> any more.</strong> Tests that check a thumbnail read the element's <code>background-image</code> URL (see <code>Studio.thumbnailOf()</code> in <code>e2e/fixtures.ts</code>).</li>
+    <li><strong>The ruler is drawn a little past the end</strong> (2 s), under the "next picture" slot, so there's always time to the right of the last picture.</li>
+    <li><strong>Long animations</strong> are a wide element with many pictures; virtualising it (drawing only what's visible) is step 31.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm test
+npm run test:e2e
+npm run dev</code></pre>
+  <ul>
+    <li>Take a dozen pictures: each is a narrow slice (20 px); the ruler shows 0s, 1s, 2s, with 8 pictures per second; the length reads "1.5 s".</li>
+    <li>Zoom in twice: pictures get wider, half-second marks appear, the selected picture stays in place.</li>
+    <li>Hold Ctrl and scroll over the timeline: it zooms around the pointer, the page doesn't.</li>
+    <li>Click a picture, then use the arrow keys, Home, End and Escape.</li>
+    <li>With a screen reader, Tab to the timeline: "Pictures, list box", then "Picture 3, selected".</li>
+  </ul>
+  <div class="note">Checked while building: 108 unit tests pass; end-to-end 28 passed, 10 skipped (camera tests in WebKit on Windows), three runs in a row. Screenshots taken with Playwright of twelve pictures with one held for 6 ticks (its thumbnail repeats), zoomed in twice (half-second marks, the selection kept in place), and in dark mode. That review changed the length label from "2s (2.1 s)" to "2.1 s".</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/model/timing.ts</code>, <code>src/core/model/timing.test.ts</code>, <code>src/core/model/index.ts</code>, <code>src/studio/Timeline.tsx</code>, <code>src/studio/studio.scss</code>, <code>src/store/editorStore.ts</code> (default zoom), <code>src/styles/globals.scss</code> (timeline height), <code>src/styles/_controls.scss</code> (<code>is-small</code>), <code>e2e/timeline.spec.ts</code>, <code>e2e/fixtures.ts</code>, <code>e2e/persistence.spec.ts</code> (thumbnail check), <code>public/steps/10-timeline.html</code>, <code>public/steps/index.html</code>, <code>public/steps/09-projects.html</code> (next link), <code>ROADMAP.md</code>.</p>
+  <p><strong>Tests added:</strong> 18 unit tests for timing and the ruler; 5 end-to-end tests (widths and ruler, selection keys, zoom buttons, Ctrl + wheel, thumbnails). Changed: the page object (pictures are options now) and the persistence test's thumbnail check.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>a picture's width is exactly <code>hold × zoom / fps</code>, with no gaps that push it off the ruler</li>
+    <li>zooming never changes how long anything lasts</li>
+    <li>every timing calculation lives in <code>core/model/timing.ts</code> and is tested</li>
+    <li>the timeline works with the keyboard alone</li>
+    <li><code>npm test</code>, <code>npm run test:e2e</code>, <code>npm run lint</code>, <code>npm run typecheck</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="09-projects.html">Previous: 09 · Projects page</a>
+    <span>Next: 11 · Commands and undo/redo</span>
+  </nav>
+</main>
+</body>
+</html>
