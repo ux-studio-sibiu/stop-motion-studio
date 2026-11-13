@@ -563,7 +563,7 @@ registry entry.
 - [x] 10 Time-scaled timeline and seconds ruler ([page](public/steps/10-timeline.html))
 - [x] 11 Commands and undo/redo ([page](public/steps/11-undo.html))
 - [x] 12 Frame operations ([page](public/steps/12-frame-operations.html))
-- [ ] 13 Resize a picture's duration
+- [x] 13 Resize a picture's duration ([page](public/steps/13-resize.html))
 - [ ] 14 Drag to reorder
 - [ ] 15 Renderer
 - [ ] 16 Playback

@@ -1,4 +1,4 @@
-import { cloneFrame, type Frame, type FrameInsert, type ProjectRepository, type RemovedFrame } from "../model";
+import { clampHold, cloneFrame, type Frame, type FrameInsert, type ProjectRepository, type RemovedFrame } from "../model";
 import type { Command } from "./command";
 
 // Takes pictures out of the animation. Undo puts them back exactly where they were (and
@@ -68,5 +68,21 @@ export function duplicateFrames(projectId: string, sources: readonly Frame[], or
       await repository.removeFrames(projectId, ids);
       return { select: placed.map(({ source }) => source.id) };
     },
+  };
+}
+
+// Changes how long pictures last: one command for a whole drag or key press, however many
+// pictures it changed. Undo puts every length back. The changed pictures are selected.
+export function setHold(projectId: string, changes: readonly { id: string; from: number; to: number }[]): Command {
+  const ids = changes.map((change) => change.id);
+  const apply = (pick: "from" | "to") => async (repository: ProjectRepository) => {
+    if (changes.length === 0) throw new Error("No length to change.");
+    await repository.updateFrames(projectId, changes.map((change) => ({ id: change.id, hold: clampHold(change[pick]) })));
+    return { select: ids };
+  };
+  return {
+    label: changes.length === 1 ? "Change length" : `Change length of ${changes.length} pictures`,
+    do: apply("to"),
+    undo: apply("from"),
   };
 }

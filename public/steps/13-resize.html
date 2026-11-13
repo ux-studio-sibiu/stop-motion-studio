@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>13 Resize a picture · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 13 of 33 · Part 4 Timeline</p>
+  <h1>Resize a picture's duration</h1>
+  <p class="intro">A picture's width on the timeline is how long it stays on screen, and now that width can be dragged. Select a picture, grab the handle on its right edge and pull. It grows in whole ticks, a bubble says how long it is ("0.5 s"), and everything after it slides along. <kbd>[</kbd> and <kbd>]</kbd> do the same from the keyboard, one tick at a time. Each drag or key press is one undo step.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>ProjectRepository.updateFrames(projectId, changes)</code>: changes frames' <code>hold</code>, <code>transform</code> or <code>adjust</code> in one transaction. 2 contract tests. Moving, zooming and brightening (steps 18–19) will use it too.</li>
+    <li><code>setHold(projectId, changes)</code> in <code>core/commands</code>: one command for a whole resize, however many pictures it changed. 3 tests against storage.</li>
+    <li><code>ticksFromPx</code> and <code>resizeHolds</code> in <code>core/model/timing.ts</code>. 4 tests.</li>
+    <li>A hold preview in the editor store (<code>holdPreview</code>, <code>previewHolds</code>, <code>clearHoldPreview</code>) and <code>withHoldPreview()</code>, which applies it to the frames. 5 tests.</li>
+    <li><code>src/studio/useResize.ts</code>: the drag, the tap-through, Escape and the <kbd>[</kbd> <kbd>]</kbd> keys. The timeline gets a grip and a bubble on selected pictures.</li>
+    <li><code>useHistory().run</code> now says whether a command was saved, so a failed resize can put the preview back.</li>
+    <li><code>e2e/resize.spec.ts</code> (8 tests) and <code>grip()</code> / <code>dragGrip()</code> in the page object.</li>
+  </ul>
+
+  <h3>One drag, step by step</h3>
+  <pre><code>pointerdown on the grip   remember the selected pictures' lengths, capture the pointer
+pointermove               delta = round(dx / px per tick); store.previewHolds(length + delta)
+                          → the timeline redraws at the new widths; storage isn't touched
+pointerup                 history.run(setHold([{ id, from, to }, …]))   one command
+                          → saved; the store's preview entry goes once storage reports it back
+Escape / pointercancel    store.clearHoldPreview(): back as it was, nothing saved</code></pre>
+
+  <h2>Decisions</h2>
+
+  <h3>While dragging, only the screen changes</h3>
+  <p>Saving on every pointer move would write to IndexedDB dozens of times a second and fill the undo history with tiny steps. Instead the new lengths live in the editor store as a <em>preview</em>, and the timeline draws with them. Letting go runs one <code>setHold</code> command.</p>
+  <p>A preview entry is dropped once the saved frame has that length (in <code>syncProject</code>), so the width never flickers back to the old value while the save is on its way. If the save fails, the preview is cleared and the picture shows its saved length again.</p>
+
+  <h3>Snapped to whole ticks</h3>
+  <p>Lengths stay whole ticks, never less than 1, so every duration is a whole number of 1/fps. Changing the speed (step 16) then scales all of them evenly. A drag of <code>dx</code> pixels is <code>round(dx / px per tick)</code> ticks, so the edge jumps to the nearest tick mark.</p>
+
+  <h3>Several pictures: the same amount each</h3>
+  <p>With several selected, dragging any of their grips changes all of them by the same number of ticks. Shortening keeps each one at least 1 tick: a 1-tick and a 3-tick picture shortened by two become 1 and 1, and only the one that changed is saved.</p>
+
+  <h3>The grip shows on selected pictures only</h3>
+  <p>At the default zoom a picture is 20 px wide. A 24 px grip on every picture would cover them all, and clicking to select would start resizes. So:</p>
+  <ul>
+    <li>You select first, then drag.</li>
+    <li>The grip's hit area is 24 px, finger-sized, but reaches only 4 px into the next picture. The first version reached 12 px, which covered a narrow neighbour so it couldn't be clicked; the multi-select Playwright test caught it.</li>
+    <li>A tap on the grip without moving (under 4 px) counts as a click on the picture, with Shift or Ctrl. A narrow selected picture is mostly grip, and can still be Ctrl+clicked out of the selection.</li>
+  </ul>
+  <p>The grip uses pointer events with <code>setPointerCapture</code>, so the drag keeps following the pointer anywhere on the page. <code>touch-action: none</code> makes a finger drag resize instead of scrolling the timeline. It's separate from the reorder drag coming in step 14.</p>
+
+  <h3>The capture marker became a dot</h3>
+  <p>Step 12's red "next picture goes here" bar ran down the same right edge as the grip and hid it. The marker is now a red dot just above that edge.</p>
+
+  <h3><kbd>[</kbd> and <kbd>]</kbd> pressed quickly</h3>
+  <p>Each press is a command, and builds on the length on screen: the preview, if the previous press isn't saved yet. Three quick presses give +3 ticks, not +1 three times, and each undoes on its own.</p>
+
+  <h3>A preview isn't a selector</h3>
+  <p>The timeline doesn't read the frames with the preview applied through a store selector. Such a selector builds new frame objects every time it runs, and React's <code>useSyncExternalStore</code> would see a "new" value every render and re-render forever. Instead the timeline reads frames and preview separately and combines them with <code>withHoldPreview()</code> in a <code>useMemo</code>. Frames without a preview stay the same objects, and a test checks that.</p>
+
+  <h2>A test bug from step 12, fixed</h2>
+  <p>The late-first-frame camera test (step 09, made deterministic in step 12) hung about 1 run in 5 at <code>page.goto</code>. Chrome holds back the page's "load" event while a <code>&lt;video&gt;</code> waits for its first frame. In this test the frame only comes when the test sends it, after loading, so each was waiting for the other. The test now loads with <code>waitUntil: "domcontentloaded"</code>, and passed 10 runs in a row on its own.</p>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>No auto-scroll while dragging</strong> near the timeline's edge. A very long drag needs zooming out first. Auto-scroll comes with reordering (step 14), which needs it too.</li>
+    <li><strong>Overlays (step 24)</strong> stay at their times when a picture gets longer; only pictures slide. That step must show it clearly.</li>
+    <li><strong>The grip is for pointers.</strong> Screen reader and keyboard users have <kbd>[</kbd> and <kbd>]</kbd>; the grip itself is <code>aria-hidden</code>.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm test
+npm run test:e2e -- e2e/resize.spec.ts
+npm run test:e2e:all
+npm run dev</code></pre>
+  <ul>
+    <li>Take a few pictures, click one, drag its right handle: the bubble counts up in steps ("0.25 s", "0.38 s", "0.5 s"), and the pictures after it move along.</li>
+    <li>Let go, then press Ctrl+Z: one undo puts it back.</li>
+    <li>Drag and press Escape before letting go: nothing changes.</li>
+    <li>Select two and drag one handle: both grow. Press <kbd>]</kbd> three times quickly: three ticks longer, three undo steps.</li>
+    <li>Reload: the lengths stay.</li>
+  </ul>
+  <div class="note">Checked while building: 168 unit tests pass; end-to-end 48 passed, 30 skipped (camera tests in WebKit on Windows), three full runs in both browsers. Screenshots taken with Playwright of a selected picture, a drag in progress with its bubble, and dark mode. That review moved the capture marker to a dot and made the grip wider.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/model/repository.ts</code>, <code>timing.ts</code>, <code>timing.test.ts</code>; <code>src/core/commands/frameCommands.ts</code>; <code>src/adapters/storage/dexieRepository.ts</code>, <code>repositoryContract.ts</code>, <code>frameCommands.test.ts</code>; <code>src/store/editorStore.ts</code>, <code>editorStore.test.ts</code>; <code>src/studio/useResize.ts</code>, <code>Timeline.tsx</code>, <code>Studio.tsx</code>, <code>useHistory.ts</code>, <code>studio.scss</code>; <code>e2e/resize.spec.ts</code>, <code>e2e/fixtures.ts</code>, <code>e2e/camera.spec.ts</code>; <code>public/steps/13-resize.html</code>, <code>index.html</code>, <code>12-frame-operations.html</code> (next link, marker note); <code>ROADMAP.md</code>.</p>
+  <p><strong>Tests added:</strong> unit (168 in total):</p>
+  <ul>
+    <li>2 contract tests for <code>updateFrames</code>;</li>
+    <li>3 for <code>setHold</code> against storage;</li>
+    <li>4 for <code>ticksFromPx</code> and <code>resizeHolds</code>;</li>
+    <li>5 for the hold preview.</li>
+  </ul>
+  <p>End-to-end, 8 in <code>resize.spec.ts</code>:</p>
+  <ul>
+    <li>drag, bubble, slide and save;</li>
+    <li>undo;</li>
+    <li>Escape cancels;</li>
+    <li>minimum 1 tick;</li>
+    <li>tap-through;</li>
+    <li>grip only when selected;</li>
+    <li>several at once;</li>
+    <li>quick <kbd>[</kbd> <kbd>]</kbd>.</li>
+  </ul>
+  <p><strong>Tests changed:</strong> <code>camera.spec.ts</code>'s late-first-frame test no longer waits for "load".</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>dragging never writes to storage; letting go writes one command</li>
+    <li>lengths are whole ticks, at least 1</li>
+    <li>Escape or a cancelled pointer leaves everything as it was</li>
+    <li>a narrow neighbour of a selected picture can still be clicked</li>
+    <li><code>npm test</code>, <code>npm run test:e2e:all</code>, <code>npm run lint</code>, <code>npm run typecheck</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="12-frame-operations.html">Previous: 12 · Frame operations</a>
+    <span>Next: 14 · Drag to reorder</span>
+  </nav>
+</main>
+</body>
+</html>

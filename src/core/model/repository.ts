@@ -33,6 +33,9 @@ export interface ProjectRepository {
   // restoreFrames can put them back. Their pictures stay (undo needs them; unused pictures
   // are cleaned up separately). Ids that aren't in the project are ignored.
   removeFrames(projectId: string, frameIds: readonly string[]): Promise<{ project: Project; removed: RemovedFrame[] }>;
+  // Changes frames' length, position or look, all in one transaction. Fails, saving nothing,
+  // if a frame isn't in this project. Bumps the project's updatedAt.
+  updateFrames(projectId: string, changes: readonly FrameChanges[]): Promise<Project>;
   // Puts frames at the given places in the order, in one transaction: removed frames back where
   // they were, or new frames that share existing pictures (duplicates). Each index is where the
   // frame ends up. Their pictures must exist.
@@ -46,6 +49,9 @@ export interface ProjectRepository {
 export type LoadedProject = { project: Project; frames: Frame[] };
 
 export type ProjectChanges = Partial<Pick<Project, "name" | "fps" | "frameIds">>;
+
+// What can change on a frame after it's made. The id says which frame.
+export type FrameChanges = { id: string } & Partial<Pick<Frame, "hold" | "transform" | "adjust">>;
 
 // A frame taken out of the order, and the index it had there.
 export type RemovedFrame = { frame: Frame; index: number };

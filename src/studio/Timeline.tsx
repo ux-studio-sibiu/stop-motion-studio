@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import { Camera, CopyPlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { formatSeconds, inOrder, neighbourAfterDelete, pxPerTick, rulerScale, selectRange, ticksToSeconds, toggleInSelection, totalTicks, type Frame } from "@/core/model";
-import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM } from "@/store/editorStore";
+import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, withHoldPreview } from "@/store/editorStore";
 import { editorStore, useEditor, useOrderedFrames } from "@/store/useEditor";
 import { thumbs } from "./media";
+import { useResize, type HoldChange } from "./useResize";
 import { useZoomPreference } from "./useZoomPreference";
 
 const ZOOM_STEP = 1.5;
@@ -15,11 +16,14 @@ const LABEL_MIN_WIDTH = 24;   // narrower pictures don't show their number
 // and a faint seconds ruler runs along the top. Zoom changes px per second; it's a way of
 // looking, not part of the animation, so it lives in the store and is remembered per device
 // (useZoomPreference), not saved in the project.
-export function Timeline({ onDelete, onDuplicate }: { onDelete: (frameIds: readonly string[]) => void; onDuplicate: (frameIds: readonly string[]) => void }) {
-  const frames = useOrderedFrames();
+export function Timeline({ onDelete, onDuplicate, onResize }: { onDelete: (frameIds: readonly string[]) => void; onDuplicate: (frameIds: readonly string[]) => void; onResize: (changes: HoldChange[]) => Promise<boolean> }) {
+  const saved = useOrderedFrames();
+  const holdPreview = useEditor((state) => state.holdPreview);
+  const frames = useMemo(() => withHoldPreview(saved, holdPreview), [saved, holdPreview]);   // with any resize in progress
   const selection = useEditor((state) => state.selection);
   const fps = useEditor((state) => state.project?.fps ?? 8);
   const zoom = useEditor((state) => state.timelineZoom);
+  const thumbRatio = useEditor((state) => (state.project ? `${state.project.width} / ${state.project.height}` : "16 / 9"));
   useZoomPreference();
 
   const scroller = useRef<HTMLDivElement>(null);
@@ -109,6 +113,15 @@ export function Timeline({ onDelete, onDuplicate }: { onDelete: (frameIds: reado
 
   const duplicateSelection = () => { if (selection.length > 0) onDuplicate(selection); };
 
+  const onPick = (id: string, event: MouseEvent) => {
+    if (event.shiftKey) extendTo(id);
+    else if (event.ctrlKey || event.metaKey) toggle(id);
+    else selectOnly(id);
+    track.current?.focus({ preventScroll: true });   // so the arrow keys work straight after a click
+  };
+
+  const resize = useResize(frames, selection, tickWidth, onResize, onPick);
+
   const onKeyDown = (event: KeyboardEvent<HTMLOListElement>) => {
     if (order.length === 0) return;
     const command = event.ctrlKey || event.metaKey;
@@ -124,7 +137,15 @@ export function Timeline({ onDelete, onDuplicate }: { onDelete: (frameIds: reado
       duplicateSelection();
       return;
     }
-    if (event.key === "Escape") { editorStore.getState().clearSelection(); return; }
+    if (event.key === "Escape") {
+      if (!resize.cancel()) editorStore.getState().clearSelection();   // first Escape cancels a drag
+      return;
+    }
+    if (event.key === "[" || event.key === "]") {
+      event.preventDefault();
+      resize.nudge(event.key === "]" ? 1 : -1);
+      return;
+    }
     if (event.key === "Delete" || event.key === "Backspace") {
       event.preventDefault();
       deleteSelection();
@@ -140,13 +161,6 @@ export function Timeline({ onDelete, onDuplicate }: { onDelete: (frameIds: reado
     if (target === undefined) return;
     event.preventDefault();
     if (event.shiftKey) extendTo(order[target]); else selectOnly(order[target]);
-  };
-
-  const onPick = (id: string, event: MouseEvent) => {
-    if (event.shiftKey) extendTo(id);
-    else if (event.ctrlKey || event.metaKey) toggle(id);
-    else selectOnly(id);
-    track.current?.focus({ preventScroll: true });   // so the arrow keys work straight after a click
   };
 
   // The next capture goes after the rightmost selected picture. When that isn't the last one,
@@ -172,8 +186,15 @@ export function Timeline({ onDelete, onDuplicate }: { onDelete: (frameIds: reado
           {labels.map((at) => <span key={at} className="ruler-label" style={{ left: at * zoom }}>{formatSeconds(at)}</span>)}
         </div>
 
-        <ol ref={track} className="track" role="listbox" aria-label="Pictures" aria-orientation="horizontal" aria-multiselectable="true" tabIndex={0} aria-activedescendant={focusId ? optionId(focusId) : undefined} onKeyDown={onKeyDown}>
-          {frames.map((frame, index) => <FrameThumb key={frame.id} frame={frame} number={index + 1} width={frame.hold * tickWidth} selected={selection.includes(frame.id)} insertAfter={frame.id === markerId} onPick={onPick} />)}
+        <ol ref={track} className="track" role="listbox" aria-label="Pictures" aria-orientation="horizontal" aria-multiselectable="true" tabIndex={0} aria-activedescendant={focusId ? optionId(focusId) : undefined} onKeyDown={onKeyDown} style={{ "--thumb-ratio": thumbRatio } as CSSProperties}>
+          {frames.map((frame, index) => (
+            <FrameThumb key={frame.id} frame={frame} number={index + 1} width={frame.hold * tickWidth} selected={selection.includes(frame.id)} insertAfter={frame.id === markerId} onPick={onPick}>
+              {selection.includes(frame.id) && (
+                <span className="grip" aria-hidden="true" title="Drag to make it shorter or longer ([ and ] keys)" onPointerDown={(event) => resize.onGripDown(frame.id, event)} onPointerMove={resize.onGripMove} onPointerUp={(event) => resize.onGripUp(frame.id, event)} onPointerCancel={resize.cancel} onClick={(event) => event.stopPropagation()} />
+              )}
+              {resize.grabbed === frame.id && <span className="hold-bubble" role="status">{formatHold(frame.hold, fps)}</span>}
+            </FrameThumb>
+          ))}
           <li ref={next} className="next-slot" aria-hidden={frames.length > 0}>
             <Camera size={24} />
             {frames.length === 0 && <span className="next-hint">Your pictures appear here</span>}
@@ -184,16 +205,29 @@ export function Timeline({ onDelete, onDuplicate }: { onDelete: (frameIds: reado
   );
 }
 
-// One picture, as wide as it lasts. Its thumbnail is a background repeated along the width:
-// a short picture shows the middle of it (cover-cropped), a long one shows it several times.
-function FrameThumb({ frame, number, width, selected, insertAfter, onPick }: { frame: Frame; number: number; width: number; selected: boolean; insertAfter: boolean; onPick: (id: string, event: MouseEvent) => void }) {
+// One picture, as wide as it lasts. The slot (the <li>) is exactly that wide; inside it the
+// picture leaves a small gap at its end, so pictures look separate while every one still starts
+// exactly at its time on the ruler. The thumbnail is shown once: a short picture shows the
+// middle of it (cover-cropped), a long one shows it at the start and a dotted outline for the
+// rest of its time.
+// Children: the resize grip and its bubble, when selected.
+function FrameThumb({ frame, number, width, selected, insertAfter, onPick, children }: { frame: Frame; number: number; width: number; selected: boolean; insertAfter: boolean; onPick: (id: string, event: MouseEvent) => void; children?: ReactNode }) {
   const url = thumbs.url(frame.imageId);
   const className = `frame${selected ? " is-selected" : ""}${insertAfter ? " is-insert-point" : ""}`;
   return (
-    <li id={optionId(frame.id)} role="option" aria-selected={selected} aria-label={`Picture ${number}`} className={className} style={{ width, backgroundImage: url ? `url("${url}")` : undefined }} onClick={(event) => onPick(frame.id, event)}>
-      {width >= LABEL_MIN_WIDTH && <span className="frame-number">{number}</span>}
+    <li id={optionId(frame.id)} role="option" aria-selected={selected} aria-label={`Picture ${number}`} className={className} style={{ width }} onClick={(event) => onPick(frame.id, event)}>
+      <span className="picture">
+        <span className="thumb" style={{ backgroundImage: url ? `url("${url}")` : undefined }} />
+        {width >= LABEL_MIN_WIDTH && <span className="frame-number">{number}</span>}
+      </span>
+      {children}
     </li>
   );
+}
+
+// A picture's length for the drag bubble: "1.5 s", "0.13 s", "2 s".
+function formatHold(hold: number, fps: number): string {
+  return `${Number(ticksToSeconds(hold, fps).toFixed(2))} s`;
 }
 
 function optionId(frameId: string): string {

@@ -132,6 +132,28 @@ export function describeRepositoryContract(name: string, setup: () => Promise<Re
       expect(loaded?.frames.find((f) => f.id === ids[2])).toEqual(removed[1].frame);
     });
 
+    it("updates frames' length and look together, and bumps updatedAt", async () => {
+      const [a, b] = [await capture(project.id), await capture(project.id)];
+      tick(9);
+      const saved = await repository.updateFrames(project.id, [{ id: a.frame.id, hold: 4 }, { id: b.frame.id, adjust: { brightness: 1.2, contrast: 1 } }]);
+      expect(saved.updatedAt).toBe(9);
+      expect(saved.frameIds).toEqual([a.frame.id, b.frame.id]);
+      const frames = (await repository.loadProject(project.id))?.frames ?? [];
+      expect(frames.find((f) => f.id === a.frame.id)).toEqual({ ...a.frame, hold: 4 });
+      expect(frames.find((f) => f.id === b.frame.id)).toEqual({ ...b.frame, adjust: { brightness: 1.2, contrast: 1 } });
+    });
+
+    it("refuses to update a frame that isn't in the project, and saves nothing", async () => {
+      const mine = await capture(project.id);
+      const other = createProject();
+      await repository.createProject(other);
+      const theirs = await capture(other.id);
+      await expect(repository.updateFrames(project.id, [{ id: mine.frame.id, hold: 3 }, { id: theirs.frame.id, hold: 3 }])).rejects.toThrow();
+      await expect(repository.updateFrames(project.id, [{ id: "missing", hold: 3 }])).rejects.toThrow();
+      expect((await repository.loadProject(project.id))?.frames[0].hold).toBe(1);
+      expect((await repository.loadProject(other.id))?.frames[0].hold).toBe(1);
+    });
+
     it("refuses to restore frames of another project and saves nothing", async () => {
       const other = createProject();
       await repository.createProject(other);

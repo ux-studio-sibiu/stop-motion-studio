@@ -60,6 +60,22 @@ export class Studio {
   readonly duplicateButton = () => this.page.getByRole("button", { name: /^Duplicate (picture|\d+ pictures)$/ });
   readonly selected = () => this.page.getByRole("option", { selected: true });
 
+  // The resize grip on a selected picture's right edge.
+  readonly grip = (number: number) => this.picture(number).locator(".grip");
+
+  // Drags picture n's grip sideways by dx pixels, in small steps like a real hand. Leaves the
+  // mouse button down when `release` is false, to look at the drag in progress.
+  async dragGrip(number: number, dx: number, { release = true } = {}): Promise<void> {
+    const box = await this.grip(number).boundingBox();
+    if (!box) throw new Error(`Picture ${number} has no grip (is it selected?)`);
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await this.page.mouse.move(x, y);
+    await this.page.mouse.down();
+    await this.page.mouse.move(x + dx, y, { steps: 8 });
+    if (release) await this.page.mouse.up();
+  }
+
   // The ids of the selected pictures, in timeline order.
   async selectedOrder(): Promise<string[]> {
     return this.selected().evaluateAll((options) => options.map((option) => option.id));
@@ -80,9 +96,12 @@ export class Studio {
     return (await locator.boundingBox())?.width ?? 0;
   }
 
+  // The element showing a picture's thumbnail (once, as a background image).
+  readonly thumb = (number: number) => this.picture(number).locator(".thumb");
+
   // Resolves when the picture's thumbnail (a background image) is a real, loaded JPEG.
   async thumbnailOf(number: number): Promise<{ type: string; size: number }> {
-    return this.picture(number).evaluate(async (element) => {
+    return this.thumb(number).evaluate(async (element) => {
       const url = getComputedStyle(element).backgroundImage.match(/url\("?(.*?)"?\)/)?.[1];
       if (!url) return { type: "", size: 0 };
       const blob = await fetch(url).then((response) => response.blob());

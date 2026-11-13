@@ -71,7 +71,7 @@ test("a duplicate is an exact copy, right after its source, and is selected", as
   expect([now[0], now[2]]).toEqual([a, b]);
   await expect(studio.picture(2)).toHaveAttribute("aria-selected", "true");
   // The same photo: the copy's thumbnail is the very same image as the source's.
-  const background = (n: number) => studio.picture(n).evaluate((element) => getComputedStyle(element).backgroundImage);
+  const background = (n: number) => studio.thumb(n).evaluate((element) => getComputedStyle(element).backgroundImage);
   expect(await background(2)).toBe(await background(1));
   expect(await studio.widthOf(studio.picture(2))).toBeCloseTo(await studio.widthOf(studio.picture(1)), 1);
 

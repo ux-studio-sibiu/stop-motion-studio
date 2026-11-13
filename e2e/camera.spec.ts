@@ -46,7 +46,10 @@ test("the capture button waits for the camera's first picture, so no press is lo
       return canvas.captureStream(30);
     };
   });
-  await studio.open();
+  // Don't wait for the page's "load" event: Chrome holds it back while a <video> waits for its
+  // first frame, and here that frame only comes when the test sends it.
+  await page.goto("/studio", { waitUntil: "domcontentloaded" });
+  await expect(page).toHaveURL(/\?project=/);
   const turnOn = page.getByRole("button", { name: "Turn on camera" });
   await expect(turnOn.or(page.getByRole("button", { name: "Camera off" }))).toBeVisible();
   if (await turnOn.isVisible()) await turnOn.click();

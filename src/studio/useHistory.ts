@@ -17,11 +17,14 @@ export function useHistory(projectId: string | null) {
   const subscribe = useCallback((listener: () => void) => history?.subscribe(listener) ?? (() => {}), [history]);
   const state = useSyncExternalStore(subscribe, () => history?.state() ?? NOTHING, () => NOTHING);
 
-  // Resolves once the change is saved (a failure is logged, not thrown: the timeline simply
-  // doesn't change; full storage gets its own message in step 20).
-  const run = useCallback(async (command: Command) => {
-    if (!history) return;
-    await history.run(command).then(applyResult, (error) => console.warn(`Couldn't ${command.label.toLowerCase()}`, error));
+  // Resolves once the change is saved: true, or false if it failed. A failure is logged, not
+  // thrown: the timeline simply doesn't change (full storage gets its own message in step 20).
+  const run = useCallback(async (command: Command): Promise<boolean> => {
+    if (!history) return false;
+    return history.run(command).then(
+      (result) => { applyResult(result); return true; },
+      (error) => { console.warn(`Couldn't ${command.label.toLowerCase()}`, error); return false; },
+    );
   }, [history]);
 
   const undo = useCallback(() => {

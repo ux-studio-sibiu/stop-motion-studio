@@ -1,5 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { formatSeconds, frameIndexAt, frameStarts, pxPerTick, rulerScale, secondsToTicks, ticksToSeconds, totalTicks } from "@/core/model";
+import { formatSeconds, frameIndexAt, frameStarts, pxPerTick, resizeHolds, rulerScale, secondsToTicks, ticksFromPx, ticksToSeconds, totalTicks } from "@/core/model";
+
+describe("ticksFromPx", () => {
+  it("snaps a drag to the nearest whole tick", () => {
+    expect(ticksFromPx(29, 20)).toBe(1);
+    expect(ticksFromPx(31, 20)).toBe(2);
+    expect(ticksFromPx(-41, 20)).toBe(-2);
+    expect(ticksFromPx(9, 20)).toBe(0);
+    expect(Object.is(ticksFromPx(-9, 20), 0)).toBe(true);   // not -0
+  });
+
+  it("is 0 for nonsense", () => {
+    expect(ticksFromPx(Number.NaN, 20)).toBe(0);
+    expect(ticksFromPx(40, 0)).toBe(0);
+  });
+});
+
+describe("resizeHolds", () => {
+  const frames = [{ id: "a", hold: 1 }, { id: "b", hold: 3 }];
+
+  it("changes every picture by the same amount", () => {
+    expect(resizeHolds(frames, 2)).toEqual([{ id: "a", from: 1, to: 3 }, { id: "b", from: 3, to: 5 }]);
+  });
+
+  it("keeps every picture at least 1 tick, and leaves out those that don't change", () => {
+    expect(resizeHolds(frames, -1)).toEqual([{ id: "b", from: 3, to: 2 }]);
+    expect(resizeHolds(frames, -5)).toEqual([{ id: "b", from: 3, to: 1 }]);
+    expect(resizeHolds(frames, 0)).toEqual([]);
+  });
+});
 
 const holds = (...values: number[]) => values.map((hold) => ({ hold }));
 

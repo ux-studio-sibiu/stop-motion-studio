@@ -54,6 +54,16 @@ length        = total ticks / fps            24 ticks at 8 fps = 3.0 s</code></p
 
   <h3>Thumbnails as a repeating background</h3>
   <p>A picture's thumbnail is its background, centred, at the track's height, repeating sideways. A short picture shows the middle of its thumbnail (cover-cropped); a long one shows it two or three times, which reads as "this picture stays a while". One CSS rule does both.</p>
+  <div class="note"><strong>Changed after step 13:</strong> pictures now look separate, and a long picture doesn't repeat its thumbnail.
+    <ul>
+      <li><strong>A 5 px gap after each picture.</strong> Each <code>&lt;li&gt;</code> is still exactly <code>hold × px per tick</code> wide. The visible <code>.picture</code> inside it stops 5 px early (<code>--frame-gap</code>), so every picture still starts exactly at its time on the ruler. A real margin between pictures would have pushed each later picture 5 px further off its time, 100 px by picture 20.</li>
+      <li><strong>The thumbnail shows once.</strong> It's a <code>.thumb</code> element at the project's shape (<code>aspect-ratio</code> from the project's width and height), never wider than the picture.</li>
+      <li><strong>A short picture</strong> shows the middle of its thumbnail, as before.</li>
+      <li><strong>A long picture</strong> shows its thumbnail at the start and a dotted outline for the rest of its time, on a slightly darker background. The thumbnail itself has square corners: the picture box is rounded and clips it (<code>overflow: hidden</code>), so it's round only where it meets the picture's edge.</li>
+      <li><strong>The selection ring</strong> goes around both parts.</li>
+    </ul>
+    <p>The resize grip, the length bubble and the capture dot moved to the visible edge or into the gap. <code>Studio.thumb(n)</code> in the page object finds the thumbnail. New test: "a long picture shows its thumbnail once and a gap before the next, still on time".</p>
+  </div>
 
   <h3>A listbox, for keyboards and screen readers</h3>
   <p>The track is <code>role="listbox"</code> and each picture is an <code>option</code> named "Picture 3" with <code>aria-selected</code>. The listbox gets keyboard focus (Tab), and the selected picture is announced through <code>aria-activedescendant</code>. Arrows move the selection, Home and End jump to the ends, and Escape clears it. Clicking a picture focuses the track, so the arrow keys work straight away. Selecting several pictures comes with the frame operations (step 12).</p>

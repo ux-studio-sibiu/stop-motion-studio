@@ -68,6 +68,21 @@ test("Ctrl + mouse wheel over the timeline zooms too", async ({ studio, page }) 
   await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(30, 0);
 });
 
+test("a long picture shows its thumbnail once and a gap before the next, still on time", async ({ studio, page }) => {
+  await studio.picture(1).click();
+  await studio.dragGrip(1, 140);   // 8 ticks: 160 px, wider than its thumbnail
+  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(160, 0);
+  const thumb = await studio.widthOf(studio.thumb(1));
+  expect(thumb).toBeGreaterThan(40);
+  expect(thumb).toBeLessThan(150);   // once, not repeated along the picture
+  expect(await studio.thumb(1).evaluate((element) => getComputedStyle(element).backgroundRepeat)).not.toContain("repeat-x");
+
+  // The next picture starts exactly at 1 s on the ruler, and its visible part 5 px after the first ends.
+  const [secondSlot, firstPicture, oneSecond] = await Promise.all([studio.picture(2).boundingBox(), studio.picture(1).locator(".picture").boundingBox(), page.locator(".ruler-label").nth(1).boundingBox()]);
+  expect(secondSlot!.x).toBeCloseTo(oneSecond!.x, 0);
+  expect(secondSlot!.x - (firstPicture!.x + firstPicture!.width)).toBeCloseTo(5, 0);
+});
+
 test("the thumbnails show the pictures that were taken", async ({ studio }) => {
   for (const number of [1, 2, 3]) {
     await expect.poll(() => studio.thumbnailOf(number)).toMatchObject({ type: "image/jpeg" });

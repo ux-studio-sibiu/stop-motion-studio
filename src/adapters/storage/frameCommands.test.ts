@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { addFrames, createHistory, deleteFrames, duplicateFrames, type History } from "@/core/commands";
+import { addFrames, createHistory, deleteFrames, duplicateFrames, setHold, type History } from "@/core/commands";
 import { createFrame, createProject, type Project, type ProjectRepository } from "@/core/model";
 import { openStudioDb, type StudioDb } from "@/adapters/storage/db";
 import { createDexieRepository } from "@/adapters/storage/dexieRepository";
@@ -118,6 +118,38 @@ describe("duplicateFrames", () => {
 
   it("isn't recorded when there's nothing to copy", async () => {
     await expect(history.run(duplicateFrames(project.id, [], []))).rejects.toThrow();
+    expect(history.state().canUndo).toBe(false);
+  });
+});
+
+describe("setHold", () => {
+  const holds = async () => {
+    const loaded = await repository.loadProject(project.id);
+    return (loaded?.project.frameIds ?? []).map((id) => loaded?.frames.find((frame) => frame.id === id)?.hold);
+  };
+
+  it("changes lengths in one step; undo puts them all back; redo again", async () => {
+    const [a, b, c] = await takePictures(3);
+    const result = await history.run(setHold(project.id, [{ id: a, from: 1, to: 4 }, { id: c, from: 1, to: 2 }]));
+    expect(result).toEqual({ select: [a, c] });
+    expect(await holds()).toEqual([4, 1, 2]);
+    expect(history.state().undoLabel).toBe("Change length of 2 pictures");
+
+    await history.undo();
+    expect(await holds()).toEqual([1, 1, 1]);
+    await history.redo();
+    expect(await holds()).toEqual([4, 1, 2]);
+    expect(await order()).toEqual([a, b, c]);   // lengths only, never the order
+  });
+
+  it("never saves a length under 1 tick", async () => {
+    const [a] = await takePictures(1);
+    await history.run(setHold(project.id, [{ id: a, from: 1, to: -3 }]));
+    expect(await holds()).toEqual([1]);
+  });
+
+  it("isn't recorded when nothing changes", async () => {
+    await expect(history.run(setHold(project.id, []))).rejects.toThrow();
     expect(history.state().canUndo).toBe(false);
   });
 });

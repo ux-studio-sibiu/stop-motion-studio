@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createFrame, createProject, type Frame, type Project } from "@/core/model";
-import { createEditorStore, MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, orderedFrames, type EditorStore } from "@/store/editorStore";
+import { createEditorStore, MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, orderedFrames, withHoldPreview, type EditorStore } from "@/store/editorStore";
 
 let store: EditorStore;
 let project: Project;
@@ -141,6 +141,45 @@ describe("ui slice", () => {
     store.getState().setTimelineZoom(200);
     store.getState().loadProject(project, []);
     expect(store.getState().timelineZoom).toBe(200);
+  });
+});
+
+describe("hold preview", () => {
+  beforeEach(() => store.getState().loadProject({ ...project, frameIds: [a.id, b.id] }, [a, b]));
+
+  it("shows new lengths without touching the frames, and only for known frames", () => {
+    store.getState().previewHolds({ [a.id]: 4, nope: 2, [b.id]: 0 });
+    expect(store.getState().holdPreview).toEqual({ [a.id]: 4, [b.id]: 1 });   // at least 1 tick
+    expect(store.getState().frames[a.id].hold).toBe(1);
+    const shown = withHoldPreview(orderedFrames(store.getState()), store.getState().holdPreview);
+    expect(shown.map((frame) => frame.hold)).toEqual([4, 1]);
+  });
+
+  it("drops an entry once the saved frame has that length", () => {
+    store.getState().previewHolds({ [a.id]: 4, [b.id]: 3 });
+    store.getState().syncProject({ ...project, frameIds: [a.id, b.id] }, [{ ...a, hold: 4 }, b]);
+    expect(store.getState().holdPreview).toEqual({ [b.id]: 3 });   // b isn't saved yet: still shown
+  });
+
+  it("drops entries of deleted frames, and everything when another project loads", () => {
+    store.getState().previewHolds({ [a.id]: 4, [b.id]: 3 });
+    store.getState().syncProject({ ...project, frameIds: [a.id] }, [a]);
+    expect(store.getState().holdPreview).toEqual({ [a.id]: 4 });
+    store.getState().loadProject(createProject(), []);
+    expect(store.getState().holdPreview).toEqual({});
+  });
+
+  it("clears some entries or all of them", () => {
+    store.getState().previewHolds({ [a.id]: 4, [b.id]: 3 });
+    store.getState().clearHoldPreview([a.id]);
+    expect(store.getState().holdPreview).toEqual({ [b.id]: 3 });
+    store.getState().clearHoldPreview();
+    expect(store.getState().holdPreview).toEqual({});
+  });
+
+  it("leaves frames without a preview as the very same objects", () => {
+    const frames = orderedFrames(store.getState());
+    expect(withHoldPreview(frames, {})[0]).toBe(frames[0]);
   });
 });
 

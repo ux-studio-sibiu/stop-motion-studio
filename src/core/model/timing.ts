@@ -1,3 +1,4 @@
+import { clampHold } from "./project";
 import type { Frame } from "./types";
 
 // Time on the timeline (PLAN.md §3). Everything is counted in ticks of 1/fps: a picture lasts
@@ -65,4 +66,20 @@ export function formatSeconds(seconds: number): string {
   const whole = Math.max(0, Math.round(seconds));
   if (whole < 60) return `${whole}s`;
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
+}
+
+// A drag of `px` pixels on the timeline, in whole ticks (snapped to the nearest).
+export function ticksFromPx(px: number, tickWidth: number): number {
+  if (!Number.isFinite(px) || !(tickWidth > 0)) return 0;
+  const ticks = Math.round(px / tickWidth);
+  return ticks === 0 ? 0 : ticks;   // never -0
+}
+
+// Every picture made `delta` ticks longer (or shorter), each at least 1 tick long. Several
+// pictures change by the same amount, so a shortened 1-tick picture stays at 1 while a 3-tick
+// one goes to 2. Only pictures whose length really changes are returned.
+export function resizeHolds(frames: readonly Pick<Frame, "id" | "hold">[], delta: number): { id: string; from: number; to: number }[] {
+  return frames
+    .map(({ id, hold }) => ({ id, from: hold, to: clampHold(hold + delta) }))
+    .filter(({ from, to }) => from !== to);
 }

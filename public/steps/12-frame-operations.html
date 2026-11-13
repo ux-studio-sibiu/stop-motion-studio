@@ -46,7 +46,7 @@
   <p>The copies are placed with <code>restoreFrames</code> (step 11), which puts frames at given final positions in one transaction. Undo removes them and selects the sources; redo puts the very same copies back.</p>
 
   <h3>The next picture goes after the selection</h3>
-  <p>A capture goes right after the rightmost selected picture, or at the end when nothing is selected. It then selects itself, so the next capture follows it: taking five pictures in a row after picture 3 keeps them in order. A thin capture-red bar on the selected picture's right edge shows where the next one will land; it's hidden when that is simply the end, next to the camera slot. Escape clears the selection, so the next picture goes at the end again.</p>
+  <p>A capture goes right after the rightmost selected picture, or at the end when nothing is selected. It then selects itself, so the next capture follows it: taking five pictures in a row after picture 3 keeps them in order. A capture-red marker on the selected picture's right edge shows where the next one will land (a bar at first, a dot above the edge since step 13, so it doesn't hide the resize grip); it's hidden when that is simply the end, next to the camera slot. Escape clears the selection, so the next picture goes at the end again.</p>
 
   <h3>Fast captures stay in order</h3>
   <p>The capture selects itself only once storage reports it back (storage is the truth, step 07). A second capture before that report would still see the old selection, and land before the first one. Two things prevent that:</p>
@@ -125,7 +125,7 @@ npm run dev</code></pre>
 
   <nav class="pager">
     <a href="11-undo.html">Previous: 11 · Commands and undo/redo</a>
-    <span>Next: 13 · Resize a picture's duration</span>
+    <a href="13-resize.html">Next: 13 · Resize a picture's duration</a>
   </nav>
 </main>
 </body>

@@ -96,6 +96,20 @@ export function createDexieRepository(db: StudioDb, now: () => number = Date.now
       return { project: saved, removed };
     }),
 
+    updateFrames: (projectId, changes) => db.transaction("rw", db.projects, db.frames, async () => {
+      const project = await requireProject(projectId);
+      const frames = await db.frames.bulkGet(changes.map((change) => change.id));
+      const updated = changes.map((change, i) => {
+        const frame = frames[i];
+        if (!frame || frame.projectId !== projectId) throw new Error(`Frame ${change.id} isn't in project ${projectId}.`);
+        return { ...frame, ...change };
+      });
+      const saved = { ...project, updatedAt: now() };
+      await db.frames.bulkPut(updated);
+      await db.projects.put(saved);
+      return saved;
+    }),
+
     restoreFrames: (projectId, removed) => db.transaction("rw", db.projects, db.frames, async () => {
       const project = await requireProject(projectId);
       if (removed.some(({ frame }) => frame.projectId !== projectId)) throw new Error("A frame belongs to another project.");
