@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from "react";
-import { Camera, ZoomIn, ZoomOut } from "lucide-react";
-import { formatSeconds, pxPerTick, rulerScale, ticksToSeconds, totalTicks, type Frame } from "@/core/model";
+import { Camera, Trash2, ZoomIn, ZoomOut } from "lucide-react";
+import { formatSeconds, neighbourAfterDelete, pxPerTick, rulerScale, ticksToSeconds, totalTicks, type Frame } from "@/core/model";
 import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM } from "@/store/editorStore";
 import { editorStore, useEditor, useOrderedFrames } from "@/store/useEditor";
 import { thumbs } from "./media";
@@ -13,7 +13,7 @@ const LABEL_MIN_WIDTH = 24;   // narrower pictures don't show their number
 // The timeline, drawn to time: a picture is as wide as it lasts (hold ticks × px per tick),
 // and a faint seconds ruler runs along the top. Zoom changes px per second; it's a way of
 // looking, not part of the animation, so it lives in the store and isn't saved.
-export function Timeline() {
+export function Timeline({ onDelete }: { onDelete: (frameIds: readonly string[]) => void }) {
   const frames = useOrderedFrames();
   const selection = useEditor((state) => state.selection);
   const fps = useEditor((state) => state.project?.fps ?? 8);
@@ -77,6 +77,21 @@ export function Timeline() {
     if (selectedId) document.getElementById(optionId(selectedId))?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [selectedId]);
 
+  // Delete moves the selection to the neighbour straight away, before the save comes back, so
+  // pressing Delete quickly several times deletes one picture after another. Pictures being
+  // deleted but still on screen are skipped as neighbours.
+  const deleting = useRef(new Set<string>());
+  const deleteSelection = () => {
+    if (selection.length === 0) return;
+    const shown = new Set(frames.map((frame) => frame.id));
+    for (const id of deleting.current) if (!shown.has(id)) deleting.current.delete(id);
+    const order = frames.map((frame) => frame.id).filter((id) => !deleting.current.has(id));
+    selection.forEach((id) => deleting.current.add(id));
+    const neighbour = neighbourAfterDelete(order, selection);
+    editorStore.getState().select(neighbour ? [neighbour] : []);
+    onDelete(selection);
+  };
+
   const onKeyDown = (event: KeyboardEvent<HTMLOListElement>) => {
     if (frames.length === 0) return;
     const current = frames.findIndex((frame) => frame.id === selectedId);
@@ -88,6 +103,10 @@ export function Timeline() {
     }[event.key];
     if (target === undefined) {
       if (event.key === "Escape") editorStore.getState().clearSelection();
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        deleteSelection();
+      }
       return;
     }
     event.preventDefault();
@@ -104,6 +123,7 @@ export function Timeline() {
       <div className="timeline-tools">
         <button type="button" className="icon-button is-small" aria-label="Zoom out" disabled={zoom <= MIN_TIMELINE_ZOOM} onClick={() => zoomTo(zoom / ZOOM_STEP)}><ZoomOut size={20} /></button>
         <button type="button" className="icon-button is-small" aria-label="Zoom in" disabled={zoom >= MAX_TIMELINE_ZOOM} onClick={() => zoomTo(zoom * ZOOM_STEP)}><ZoomIn size={20} /></button>
+        <button type="button" className="icon-button is-small" aria-label="Delete picture" title="Delete picture (Delete key)" disabled={selection.length === 0} onClick={deleteSelection}><Trash2 size={20} /></button>
         <span className="duration" aria-label="Length of the animation">{seconds < 10 ? `${seconds.toFixed(1)} s` : formatSeconds(seconds)}</span>
       </div>
 

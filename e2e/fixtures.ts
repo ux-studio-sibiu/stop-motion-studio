@@ -51,6 +51,16 @@ export class Studio {
     }
   }
 
+  readonly undoButton = () => this.page.getByRole("button", { name: "Undo" });
+  readonly redoButton = () => this.page.getByRole("button", { name: "Redo" });
+  readonly deleteButton = () => this.page.getByRole("button", { name: "Delete picture" });
+
+  // Which frames are on the timeline, in order, by their id (pictures are renumbered after
+  // a delete, so their names can't tell a picture that came back from a new one).
+  async order(): Promise<string[]> {
+    return this.pictures().evaluateAll((options) => options.map((option) => option.id));
+  }
+
   pictureCount(): Locator {
     return this.page.locator(".picture-count");
   }

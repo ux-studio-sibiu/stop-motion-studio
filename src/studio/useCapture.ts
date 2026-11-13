@@ -2,17 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { captureFrame } from "@/adapters/camera/capture";
-import { appRepository } from "@/adapters/storage/appRepository";
+import { addFrames, type Command } from "@/core/commands";
 import { createFrame, newId } from "@/core/model";
 import { editorStore } from "@/store/useEditor";
 import { thumbs } from "./media";
 
 // Taking a picture: grab the live video, save the photo, its thumbnail and a new frame at the
-// end of the animation in one transaction. The timeline updates from storage (useProject),
-// so a capture shows up the same way whether it was taken here or in another tab.
+// end of the animation in one transaction. It's a command (addFrames), so undo takes it back.
+// The timeline updates from storage (useProject), so a capture shows up the same way whether
+// it was taken here or in another tab.
 // Space does the same, unless the child is typing or a button has focus (Space already
 // presses that button).
-export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: boolean) {
+export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: boolean, run: (command: Command) => Promise<unknown>) {
   const [capturing, setCapturing] = useState(false);
   const busy = useRef(false);
 
@@ -29,18 +30,18 @@ export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: b
 
       const imageId = newId();
       thumbs.put(imageId, shot.thumb);   // in memory before the save, so the update finds it
-      await appRepository().insertFrames(project.id, {
+      await run(addFrames(project.id, {
         frames: [createFrame(project.id, imageId)],
         images: [{ id: imageId, projectId: project.id, blob: shot.image, width: shot.width, height: shot.height, createdAt: Date.now() }],
         thumbs: [{ imageId, projectId: project.id, blob: shot.thumb }],
-      });
+      }));
     } catch (error) {
       console.warn("Capture failed", error);   // no frame yet, or the save failed (full storage: step 20)
     } finally {
       busy.current = false;
       setCapturing(false);
     }
-  }, [video, enabled]);
+  }, [video, enabled, run]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {

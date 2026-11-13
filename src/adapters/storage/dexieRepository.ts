@@ -1,5 +1,5 @@
 import { liveQuery } from "dexie";
-import type { FrameInsert, Project, ProjectChanges, ProjectRepository } from "@/core/model";
+import { removeFromOrder, restoreToOrder, type FrameInsert, type Project, type ProjectChanges, type ProjectRepository, type RemovedFrame } from "@/core/model";
 import type { StudioDb } from "./db";
 
 // ProjectRepository on IndexedDB, through Dexie. `now` is injectable so tests control
@@ -76,6 +76,29 @@ export function createDexieRepository(db: StudioDb, now: () => number = Date.now
       await db.images.bulkPut(images);
       await db.thumbs.bulkPut(thumbs);
       await db.frames.bulkPut(frames);
+      await db.projects.put(saved);
+      return saved;
+    }),
+
+    removeFrames: (projectId, frameIds) => db.transaction("rw", db.projects, db.frames, async () => {
+      const project = await requireProject(projectId);
+      const { order, removed: entries } = removeFromOrder(project.frameIds, frameIds);
+      const frames = await db.frames.bulkGet(entries.map((entry) => entry.id));
+      const removed: RemovedFrame[] = entries.flatMap(({ index }, i) => {
+        const frame = frames[i];
+        return frame && frame.projectId === projectId ? [{ frame, index }] : [];
+      });
+      const saved = { ...project, frameIds: order, updatedAt: now() };
+      await db.frames.bulkDelete(removed.map(({ frame }) => frame.id));
+      await db.projects.put(saved);
+      return { project: saved, removed };
+    }),
+
+    restoreFrames: (projectId, removed) => db.transaction("rw", db.projects, db.frames, async () => {
+      const project = await requireProject(projectId);
+      if (removed.some(({ frame }) => frame.projectId !== projectId)) throw new Error("A frame belongs to another project.");
+      const saved = { ...project, frameIds: restoreToOrder(project.frameIds, removed.map(({ frame, index }) => ({ id: frame.id, index }))), updatedAt: now() };
+      await db.frames.bulkPut(removed.map(({ frame }) => frame));
       await db.projects.put(saved);
       return saved;
     }),

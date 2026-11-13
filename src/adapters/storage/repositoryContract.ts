@@ -99,6 +99,47 @@ export function describeRepositoryContract(name: string, setup: () => Promise<Re
       expect(await repository.getImage(stray.image.id)).toBeUndefined();
     });
 
+    it("removes frames, keeps their pictures, and says where they were", async () => {
+      const [a, b, c] = [await capture(project.id), await capture(project.id), await capture(project.id)];
+      tick(5);
+      const { project: saved, removed } = await repository.removeFrames(project.id, [c.frame.id, a.frame.id, "missing"]);
+      expect(saved.frameIds).toEqual([b.frame.id]);
+      expect(saved.updatedAt).toBe(5);
+      expect(removed).toEqual([{ frame: a.frame, index: 0 }, { frame: c.frame, index: 2 }]);
+      expect((await repository.loadProject(project.id))?.frames.map((f) => f.id)).toEqual([b.frame.id]);
+      expect(await repository.getImage(a.frame.imageId)).toBeDefined();   // undo needs it
+      expect(await repository.getThumb(c.frame.imageId)).toBeDefined();
+    });
+
+    it("restores removed frames exactly where they were", async () => {
+      const ids: string[] = [];
+      for (let i = 0; i < 5; i++) ids.push((await capture(project.id)).frame.id);
+      const { removed } = await repository.removeFrames(project.id, [ids[0], ids[2], ids[4]]);
+      const saved = await repository.restoreFrames(project.id, removed);
+      expect(saved.frameIds).toEqual(ids);
+      const loaded = await repository.loadProject(project.id);
+      expect(loaded?.frames.map((f) => f.id).sort()).toEqual([...ids].sort());
+      expect(loaded?.frames.find((f) => f.id === ids[2])).toEqual(removed[1].frame);
+    });
+
+    it("refuses to restore frames of another project and saves nothing", async () => {
+      const other = createProject();
+      await repository.createProject(other);
+      const theirs = await capture(other.id);
+      const { removed } = await repository.removeFrames(other.id, [theirs.frame.id]);
+      await expect(repository.restoreFrames(project.id, removed)).rejects.toThrow();
+      expect((await repository.getProject(project.id))?.frameIds).toEqual([]);
+    });
+
+    it("only removes frames of the project it's asked about", async () => {
+      const other = createProject();
+      await repository.createProject(other);
+      const theirs = await capture(other.id);
+      const { removed } = await repository.removeFrames(project.id, [theirs.frame.id]);
+      expect(removed).toEqual([]);
+      expect((await repository.loadProject(other.id))?.frames).toHaveLength(1);
+    });
+
     // Collects what a watcher reports, and waits until a condition on it holds.
     const watch = (id: string) => {
       const seen: (Awaited<ReturnType<ProjectRepository["loadProject"]>>)[] = [];

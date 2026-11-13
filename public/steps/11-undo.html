@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>11 Undo and redo · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 11 of 33 · Part 4 Timeline</p>
+  <h1>Commands and undo/redo</h1>
+  <p class="intro">Every change to an animation now goes through a <em>command</em>: an object that knows how to do the change and how to reverse it. A history of commands gives undo and redo. The first two commands are taking a picture and deleting pictures, so a child can delete a picture with the Delete key or the bin button, and get it back with Ctrl + Z or the undo arrow. All later edits (duplicate, resize, reorder, move, brighten) plug into the same history.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>src/core/commands/</code>, plain TypeScript:
+      <ul>
+        <li><code>command.ts</code>: the <code>Command</code> type: <code>label</code>, <code>do(repository)</code>, <code>undo(repository)</code>, and an optional "select these afterwards".</li>
+        <li><code>history.ts</code>: <code>createHistory(repository or a function returning it, limit = 100)</code> with <code>run</code>, <code>undo</code>, <code>redo</code>, <code>state()</code> (can undo / redo, and their labels) and <code>subscribe</code>. 10 tests.</li>
+        <li><code>frameCommands.ts</code>: <code>deleteFrames(projectId, ids)</code> and <code>addFrames(projectId, insert)</code> (a capture).</li>
+      </ul>
+    </li>
+    <li><code>ProjectRepository</code> gains <code>removeFrames()</code> (takes frames out, keeps their photos, says where each one stood) and <code>restoreFrames()</code> (puts them back there). 4 contract tests.</li>
+    <li><code>core/model/order.ts</code>: <code>removeFromOrder</code>, <code>restoreToOrder</code> and <code>neighbourAfterDelete</code>. 7 tests.</li>
+    <li><code>src/adapters/storage/frameCommands.test.ts</code>: the commands against real (in-memory) IndexedDB, do → undo → redo. 7 tests.</li>
+    <li><code>src/studio/useHistory.ts</code>: one history per open project, the undo and redo buttons, and the keyboard shortcuts. Capturing (<code>useCapture</code>) now runs <code>addFrames</code> through it.</li>
+    <li>The timeline gets a "Delete picture" button, and Delete / Backspace on the selected picture.</li>
+    <li><code>e2e/history.spec.ts</code> (5 tests), and <code>undoButton</code>, <code>redoButton</code>, <code>deleteButton</code> and <code>order()</code> in the page object.</li>
+  </ul>
+
+  <h3>How a command works</h3>
+  <pre><code>history.run(deleteFrames(projectId, ["b", "d"]))
+  do():   repository.removeFrames  → remembers [{ frame b, index 1 }, { frame d, index 3 }]
+undo()
+  undo(): repository.restoreFrames → b back at 1, d back at 3, both selected
+redo()
+  do() again</code></pre>
+
+  <h2>Decisions</h2>
+
+  <h3>Commands keep just enough to reverse themselves</h3>
+  <p>A delete remembers the frames it took out and where each one stood, nothing more. It doesn't copy the whole project before and after. Restoring inserts them in ascending index order, which rebuilds the old order exactly; if the animation got shorter meanwhile, a picture goes to the end at most. A redo simply runs <code>do()</code> again.</p>
+
+  <h3>Deleting a picture never deletes its photo</h3>
+  <p><code>removeFrames</code> deletes the frame and its place in the order, and leaves the photo and thumbnail in storage. That's what makes undo always possible, even many steps later, and it keeps the thumbnail in memory, so a restored picture shows up straight away. Photos no frame uses any more are cleaned up in step 21 (only once nothing in history can bring them back).</p>
+
+  <h3>One command, one transaction</h3>
+  <p>Each <code>do()</code> and <code>undo()</code> is a single repository call, and each of those is one Dexie transaction over the projects and frames tables. A delete either happens fully (frames gone and order updated) or not at all. The rollback test from step 06 still covers it.</p>
+
+  <h3>Taking a picture is a command too</h3>
+  <p>The roadmap only asked for delete, but a child who presses undo expects the picture they just took to go. <code>addFrames</code> saves the photo the first time, and after that undo and redo only move the frame in and out. It lets go of the photo's Blobs after the first save, so a hundred captures in the history don't hold a hundred photos in memory.</p>
+
+  <h3>History is per open project, in memory</h3>
+  <p>A new history starts when a project opens; leaving the studio or reloading starts empty again, and the pictures stay as they were saved. It keeps the last 100 commands; older ones drop off. A new command clears redo, as in every editor.</p>
+
+  <h3>One at a time</h3>
+  <p>Commands run in a queue: pressing Ctrl + Z three times quickly undoes three commands in order, never two at once against the same data. A command that fails isn't recorded. One whose undo or redo fails stays where it was, so the next press can try again.</p>
+
+  <h3>Delete moves the selection straight away</h3>
+  <p>Storage is still the source of truth (step 07): the timeline changes when the save comes back. But the selection moves to the next picture immediately, so pressing Delete three times quickly deletes three pictures. The first Playwright run caught this. Without it, the second press deleted the same, not yet vanished, picture again, and history recorded a step that did nothing. Deleting pictures that are already gone now fails instead of being recorded. Undo selects the pictures it brought back.</p>
+
+  <h3>Shortcuts</h3>
+  <ul>
+    <li><strong>Ctrl + Z</strong> (Cmd + Z on a Mac) undoes.</li>
+    <li><strong>Shift + Ctrl + Z</strong> or <strong>Ctrl + Y</strong> redoes.</li>
+    <li><strong>Delete</strong> or <strong>Backspace</strong> on the timeline deletes the selected picture.</li>
+  </ul>
+  <p>None of them act while typing in a text field, where the field's own undo wins. Hovering the undo button says what it will undo ("Undo: Delete picture").</p>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Every edit is a command from now on.</strong> Writing to the repository directly from the UI skips history, and undo then jumps over that change. Opening and repairing a project (<code>useProject</code>) are the exceptions: they aren't edits.</li>
+    <li><strong><code>do()</code> runs again for redo.</strong> A command must work a second time after its undo: <code>addFrames</code> restores the frame on redo instead of saving the photo again.</li>
+    <li><strong>Two tabs on the same project</strong> each have their own history. Undo in one tab reverses only that tab's commands, and restoring puts pictures back by index into whatever the order is now.</li>
+    <li><strong>Never open storage while rendering.</strong> The first version created the history with <code>createHistory(appRepository())</code> inside <code>useMemo</code>. In <code>npm run dev</code>, the server renders the studio with <code>?project=</code> in the address, so that opened IndexedDB on the server and failed ("Switched to client rendering"). The production build prerenders without the query, so the end-to-end tests didn't see it. Now <code>appRepository</code> is passed as a function and only called when a command runs (a history test checks that creating one touches no storage).</li>
+    <li><strong>Deleting several pictures at once</strong> works in the command (it takes a list), but selecting several comes in step 12.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm test
+npm run test:e2e
+npm run dev</code></pre>
+  <ul>
+    <li>Take five pictures, click the second, press Delete three times: two are left. Ctrl + Z three times: all five are back in the same order, with their thumbnails.</li>
+    <li>Take a picture, press the undo arrow: it goes; redo: it's back. Hover the arrows to see their labels.</li>
+    <li>Undo, then take a new picture: redo is off.</li>
+    <li>Reload: the pictures stay, and undo is off.</li>
+  </ul>
+  <div class="note">Checked while building: 136 unit tests pass; end-to-end 33 passed, 15 skipped (camera tests in WebKit on Windows), three runs in a row. Lint and typecheck are clean.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/commands/command.ts</code>, <code>history.ts</code>, <code>history.test.ts</code>, <code>frameCommands.ts</code>, <code>index.ts</code>; <code>src/core/model/order.ts</code>, <code>order.test.ts</code>, <code>repository.ts</code>; <code>src/adapters/storage/dexieRepository.ts</code>, <code>repositoryContract.ts</code>, <code>frameCommands.test.ts</code>; <code>src/studio/useHistory.ts</code>, <code>useCapture.ts</code>, <code>Studio.tsx</code>, <code>Timeline.tsx</code>; <code>e2e/history.spec.ts</code>, <code>e2e/fixtures.ts</code>; <code>public/steps/11-undo.html</code>, <code>index.html</code>, <code>10-timeline.html</code> (next link); <code>ROADMAP.md</code>.</p>
+  <p><strong>Tests added:</strong> unit: 10 for history, 7 for the frame commands against storage, 4 repository contract tests (remove, restore in place, refusing other projects' frames both ways), 7 for the order helpers (136 in total). End-to-end: 5 in <code>history.spec.ts</code> (undo and redo a capture, three deletes and three undos, the delete button, a new change clears redo, history is per visit). No existing test changed.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>every change to an animation goes through <code>history.run()</code></li>
+    <li>each <code>do()</code> / <code>undo()</code> is one repository call, so one transaction</li>
+    <li>deleting a frame never deletes its photo</li>
+    <li>do → undo → redo lands on exactly the saved state, tested against storage</li>
+    <li>a new command clears redo; history keeps 100 steps</li>
+    <li><code>npm test</code>, <code>npm run test:e2e</code>, <code>npm run lint</code>, <code>npm run typecheck</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="10-timeline.html">Previous: 10 · Time-scaled timeline and seconds ruler</a>
+    <span>Next: 12 · Frame operations</span>
+  </nav>
+</main>
+</body>
+</html>

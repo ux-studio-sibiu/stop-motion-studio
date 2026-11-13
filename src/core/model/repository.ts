@@ -29,6 +29,12 @@ export interface ProjectRepository {
   // New frames at `at` in the order (default: the end), with any new pictures they bring.
   // Duplicates share an existing picture, so `images` / `thumbs` may be empty.
   insertFrames(projectId: string, insert: FrameInsert): Promise<Project>;
+  // Takes frames out of the animation and says what they were and where they stood, so
+  // restoreFrames can put them back. Their pictures stay (undo needs them; unused pictures
+  // are cleaned up separately). Ids that aren't in the project are ignored.
+  removeFrames(projectId: string, frameIds: readonly string[]): Promise<{ project: Project; removed: RemovedFrame[] }>;
+  // Puts removed frames back at their places, in one transaction. Their pictures must still exist.
+  restoreFrames(projectId: string, removed: readonly RemovedFrame[]): Promise<Project>;
 
   getImage(imageId: string): Promise<Blob | undefined>;
   getThumb(imageId: string): Promise<Blob | undefined>;
@@ -38,6 +44,9 @@ export interface ProjectRepository {
 export type LoadedProject = { project: Project; frames: Frame[] };
 
 export type ProjectChanges = Partial<Pick<Project, "name" | "fps" | "frameIds">>;
+
+// A frame taken out of the order, and the index it had there.
+export type RemovedFrame = { frame: Frame; index: number };
 
 export type FrameInsert = {
   frames: Frame[];

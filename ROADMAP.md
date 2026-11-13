@@ -561,7 +561,7 @@ registry entry.
 - [x] 08 End-to-end tests with Playwright ([page](public/steps/08-playwright.html))
 - [x] 09 Projects page ([page](public/steps/09-projects.html))
 - [x] 10 Time-scaled timeline and seconds ruler ([page](public/steps/10-timeline.html))
-- [ ] 11 Commands and undo/redo
+- [x] 11 Commands and undo/redo ([page](public/steps/11-undo.html))
 - [ ] 12 Frame operations
 - [ ] 13 Resize a picture's duration
 - [ ] 14 Drag to reorder

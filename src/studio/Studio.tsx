@@ -11,7 +11,9 @@ import { CameraView } from "./CameraView";
 import { Timeline } from "./Timeline";
 import { useCamera } from "./useCamera";
 import { useCapture } from "./useCapture";
+import { useHistory } from "./useHistory";
 import { useProject } from "./useProject";
+import { deleteFrames } from "@/core/commands";
 import "./studio.scss";
 
 // The studio screen. Areas still holding a placeholder are filled by later steps
@@ -25,7 +27,8 @@ export function Studio() {
   const [videoReady, setVideoReady] = useState(false);
   const onVideo = useCallback((element: HTMLVideoElement | null) => { video.current = element; setVideoReady(element !== null); }, []);
   const canCapture = camera.status === "live" && status === "ready" && videoReady;
-  const { capture, capturing } = useCapture(video, canCapture);
+  const history = useHistory(projectId);
+  const { capture, capturing } = useCapture(video, canCapture, history.run);
 
   // Development only: poke at the store from the browser console (window.editorStore.getState()).
   useEffect(() => {
@@ -51,8 +54,8 @@ export function Studio() {
         <Link className="icon-button" href="/" aria-label="All projects"><ChevronLeft size={24} /></Link>
         <h1 className="project-name">{projectName ?? ""}</h1>
         <div className="toolbar-actions">
-          <button type="button" className="icon-button" aria-label="Undo" disabled><Undo2 size={24} /></button>
-          <button type="button" className="icon-button" aria-label="Redo" disabled><Redo2 size={24} /></button>
+          <button type="button" className="icon-button" aria-label="Undo" title={history.undoLabel ? `Undo: ${history.undoLabel}` : "Nothing to undo"} disabled={!history.canUndo} onClick={history.undo}><Undo2 size={24} /></button>
+          <button type="button" className="icon-button" aria-label="Redo" title={history.redoLabel ? `Redo: ${history.redoLabel}` : "Nothing to redo"} disabled={!history.canRedo} onClick={history.redo}><Redo2 size={24} /></button>
           <button type="button" className="icon-button" aria-label="Save as video" disabled><Download size={24} /><span className="desktop-only">Save as video</span></button>
         </div>
       </header>
@@ -70,7 +73,7 @@ export function Studio() {
         <p className="placeholder">Move, size and brightness for the selected picture (steps 18-20).</p>
       </aside>
 
-      <Timeline />
+      <Timeline onDelete={(ids) => projectId && history.run(deleteFrames(projectId, ids))} />
 
       <footer className="playback-bar">
         <button type="button" className="big-button is-play" aria-label="Play" disabled><Play size={40} /></button>
