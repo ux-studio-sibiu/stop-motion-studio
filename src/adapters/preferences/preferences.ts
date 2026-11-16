@@ -9,6 +9,7 @@ export const PREFERENCES = {
   cameraDevice: "stop-motion-studio:camera",
   cameraOff: "stop-motion-studio:camera-off",   // "1" once the child turned the camera off
   timelineZoom: "stop-motion-studio:timeline-zoom",
+  onionSkin: "stop-motion-studio:onion-skin",   // JSON: { on, opacity, count }
 } as const;
 
 export type PreferenceKey = (typeof PREFERENCES)[keyof typeof PREFERENCES] | `stop-motion-studio:view:${string}`;
@@ -54,6 +55,23 @@ export function readNumber(key: PreferenceKey, storage = browserStorage()): numb
   if (text === undefined || text.trim() === "") return undefined;
   const value = Number(text);
   return Number.isFinite(value) ? value : undefined;
+}
+
+// A saved object (settings with several values), or undefined if it's missing, not JSON, or not
+// an object. The caller still checks the values: storage is the user's, anything can be in it.
+export function readJson(key: PreferenceKey, storage = browserStorage()): Record<string, unknown> | undefined {
+  const text = readText(key, storage);
+  if (!text) return undefined;
+  try {
+    const value: unknown = JSON.parse(text);
+    return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function saveJson(key: PreferenceKey, value: object | null, storage = browserStorage()): void {
+  savePreference(key, value && JSON.stringify(value), storage);
 }
 
 // null or undefined forgets the setting.

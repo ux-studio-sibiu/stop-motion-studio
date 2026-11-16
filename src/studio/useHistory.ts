@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { appRepository } from "@/adapters/storage/appRepository";
 import { createHistory, type Command, type CommandResult, type HistoryState } from "@/core/commands";
 import { editorStore } from "@/store/useEditor";
+import { isTextEntry } from "./keyboard";
 
 const NOTHING: HistoryState = { canUndo: false, canRedo: false };
 
@@ -37,7 +38,7 @@ export function useHistory(projectId: string | null) {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.altKey || isTextField(event.target)) return;
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || isTextEntry(event.target)) return;
       const key = event.key.toLowerCase();
       if (key === "z") {
         event.preventDefault();
@@ -68,11 +69,4 @@ function applyResult(result: CommandResult | undefined) {
     editorStore.getState().select(ids);
   });
   const timeout = setTimeout(stop, 2000);   // they never arrived (another tab changed things): give up
-}
-
-// Fields with their own undo (typing). A slider or checkbox has none, so Ctrl+Z there is ours.
-function isTextField(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target instanceof HTMLInputElement) return !["range", "checkbox", "radio", "button", "submit", "color", "file"].includes(target.type);
-  return target.isContentEditable || target.tagName === "TEXTAREA";
 }

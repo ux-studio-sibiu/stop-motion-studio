@@ -12,6 +12,14 @@
   <h1>Playback</h1>
   <p class="intro">The animation plays. Press the big Play button (or Enter) and the stage shows it at its speed, over the live camera, while a red playhead runs along the timeline. A picture that lasts three ticks stays three times as long. The speed control goes from slow to fast, Loop starts it again at the end, and dragging along the ruler scrubs through it.</p>
 
+  <div class="note"><strong>Changed later:</strong>
+    <ul>
+      <li><strong>Play is a regular button</strong>, with a green icon. It keeps the same width when it switches to Pause.</li>
+      <li><strong>Speed and Loop</strong> moved into a dropdown on the arrow beside Play (<code>PlaybackBar.tsx</code>, with the open and close logic shared in <code>useDropdown</code>). Loop is now a checkbox there.</li>
+      <li><strong>See-through</strong> sits next to Play, with its own dropdown (step 17).</li>
+    </ul>
+  </div>
+
   <h2>What was built</h2>
   <ul>
     <li><code>src/core/playback/clock.ts</code>: <code>startClock</code> and <code>readClock</code>, which tick is on screen at a given moment. 6 tests with made-up time.</li>
@@ -107,7 +115,7 @@ npm run test:e2e</code></pre>
 
   <nav class="pager">
     <a href="15-renderer.html">Previous: 15 · Renderer</a>
-    <span>Next: 17 · Onion skin</span>
+    <a href="17-onion-skin.html">Next: 17 · Onion skin</a>
   </nav>
 </main>
 </body>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PREFERENCES, readNumber, readText, readTimelineView, savePreference, saveTimelineView, timelineViewKey, type PreferenceStorage } from "@/adapters/preferences/preferences";
+import { PREFERENCES, readJson, readNumber, readText, saveJson, readTimelineView, savePreference, saveTimelineView, timelineViewKey, type PreferenceStorage } from "@/adapters/preferences/preferences";
 
 function memoryStorage(): PreferenceStorage & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -40,6 +40,23 @@ describe("preferences", () => {
       expect(readNumber(PREFERENCES.timelineZoom, storage), junk).toBeUndefined();
     }
     expect(readNumber(PREFERENCES.timelineZoom, storage)).toBeUndefined();
+  });
+
+  it("saves and reads settings objects, and forgets them on null", () => {
+    const storage = memoryStorage();
+    saveJson(PREFERENCES.onionSkin, { on: false, opacity: 0.6 }, storage);
+    expect(readJson(PREFERENCES.onionSkin, storage)).toEqual({ on: false, opacity: 0.6 });
+    saveJson(PREFERENCES.onionSkin, null, storage);
+    expect(readJson(PREFERENCES.onionSkin, storage)).toBeUndefined();
+  });
+
+  it("reads a broken or odd settings object as not saved", () => {
+    const storage = memoryStorage();
+    for (const junk of ["{", "null", "[1, 2]", "3", '"text"']) {
+      storage.data.set(PREFERENCES.onionSkin, junk);
+      expect(readJson(PREFERENCES.onionSkin, storage), junk).toBeUndefined();
+    }
+    expect(readJson(PREFERENCES.onionSkin, broken)).toBeUndefined();
   });
 
   it("keeps each animation's timeline view apart", () => {

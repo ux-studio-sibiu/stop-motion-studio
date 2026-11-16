@@ -7,30 +7,31 @@ test("with the camera off, the stage shows the selected picture, drawn from the 
   await studio.open();
   await studio.cameraOn();
   await studio.takePictures(2);
-  await page.getByRole("button", { name: "Camera off" }).click();
+  await page.getByRole("button", { name: "Turn camera off" }).click();
 
   const stage = page.getByRole("img", { name: /^Picture \d+$/ });
   await expect(stage).toHaveAccessibleName("Picture 2");   // the last picture taken is selected
   await studio.picture(1).click();
   await expect(stage).toHaveAccessibleName("Picture 1");
 
-  // The fake camera films a green background: once decoded, the middle-left of the stage is
-  // green, not the black the canvas starts with.
+  // The fake camera films a moving white square on green: once decoded, most of the stage is
+  // green, not the black the canvas starts with. (Several points, since the square may cover one.)
   await expect.poll(() => stage.evaluate((canvas: HTMLCanvasElement) => {
-    const [r, g, b] = canvas.getContext("2d")!.getImageData(40, canvas.height / 2, 1, 1).data;
-    return g > 100 && g > r + 40 && g > b + 40;
-  })).toBe(true);
+    const ctx = canvas.getContext("2d")!;
+    const points = [0.1, 0.3, 0.5, 0.7, 0.9].map((x) => ctx.getImageData(Math.round(canvas.width * x), Math.round(canvas.height * 0.8), 1, 1).data);
+    return points.filter(([r, g, b]) => g > 100 && g > r + 40 && g > b + 40).length;
+  })).toBeGreaterThanOrEqual(3);
 
   // Nothing covers the picture: turning the camera back on is in the camera box beside it.
   await expect(page.getByRole("button", { name: "Turn on camera" })).toBeHidden();
-  await expect(page.getByRole("button", { name: "Camera on" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Turn camera on" })).toBeVisible();
 });
 
 test("on a phone, where there's no camera box, the stage keeps a small bar to turn the camera on", async ({ studio, page }) => {
   await studio.open();
   await studio.cameraOn();
   await studio.takePictures(1);
-  await page.getByRole("button", { name: "Camera off" }).click();
+  await page.getByRole("button", { name: "Turn camera off" }).click();
   await page.setViewportSize({ width: 390, height: 800 });   // the camera box is hidden on phones (its drawer comes later)
   await expect(page.getByRole("button", { name: "Turn on camera" })).toBeVisible();
 });
@@ -42,4 +43,71 @@ test("with the camera on, the stage stays live even with a picture selected", as
   await studio.picture(1).click();
   await expect(page.locator("video")).toBeVisible();
   await expect(page.locator(".stage-picture")).toHaveCount(0);
+});
+
+test("see-through shows the last picture faintly over the live camera, and remembers its settings", async ({ studio, page }) => {
+  await studio.open();
+  await studio.cameraOn();
+  const ghost = page.locator(".onion-skin");
+  await expect(ghost).toHaveCount(0);   // nothing to see through before the first picture
+  await studio.takePictures(1);
+  await expect(ghost).toBeVisible();
+  // Drawn and see-through: the middle of the ghost is about 40% opaque.
+  await expect.poll(() => ghost.evaluate((canvas: HTMLCanvasElement) => canvas.getContext("2d")!.getImageData(40, canvas.height / 2, 1, 1).data[3])).toBeGreaterThan(90);
+  expect(await ghost.evaluate((canvas: HTMLCanvasElement) => canvas.getContext("2d")!.getImageData(40, canvas.height / 2, 1, 1).data[3])).toBeLessThan(115);
+
+  // Its options are in a dropdown on the button.
+  await page.getByRole("button", { name: "See-through options" }).click();
+  const options = page.getByRole("group", { name: "See-through options" });
+  await options.getByRole("button", { name: "2 pictures" }).click();
+  await expect(options.getByRole("button", { name: "2 pictures" })).toHaveAttribute("aria-pressed", "true");
+  await options.getByRole("checkbox", { name: "Outline only" }).check();
+  // The ghost is now black and white: no colour left in the fake camera's green.
+  await expect.poll(() => ghost.evaluate((canvas: HTMLCanvasElement) => {
+    const [r, g, b] = canvas.getContext("2d")!.getImageData(40, canvas.height * 0.8, 1, 1).data;
+    return Math.max(r, g, b) - Math.min(r, g, b);
+  })).toBeLessThanOrEqual(3);
+  await page.keyboard.press("Escape");
+  await expect(options).toHaveCount(0);
+
+  const toggle = page.getByRole("button", { name: "See-through", exact: true });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await expect(ghost).toHaveCount(0);
+
+  await page.reload();   // still off after a reload
+  await expect(studio.pictures()).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "See-through", exact: true })).toHaveAttribute("aria-pressed", "false");
+});
+
+test("with the camera off, see-through shows the picture before the one on the stage", async ({ studio, page }) => {
+  await studio.open();
+  await studio.cameraOn();
+  await studio.takePictures(2);
+  await page.getByRole("button", { name: "Turn camera off" }).click();
+  const ghost = page.locator(".onion-skin");
+  await expect(ghost).toBeVisible();          // over picture 2: picture 1, faintly
+  await studio.picture(1).click();
+  await expect(ghost).toHaveCount(0);         // nothing before picture 1
+  await studio.picture(2).click();
+  await expect(ghost).toBeVisible();
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  await expect(ghost).toHaveCount(0);         // hidden while it plays
+});
+
+test("the side panel's tabs switch between camera and picture, and the arrow keys move between them", async ({ studio, page }) => {
+  await studio.open();
+  const cameraTab = page.getByRole("tab", { name: "Camera" });
+  const pictureTab = page.getByRole("tab", { name: "Picture" });
+  await expect(cameraTab).toHaveAttribute("aria-selected", "true");   // open to start with
+  await expect(page.getByRole("button", { name: /^Turn camera (on|off)$/ })).toBeVisible();
+
+  await pictureTab.click();
+  await expect(pictureTab).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tabpanel", { name: "Picture" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Turn camera (on|off)$/ })).toBeHidden();
+
+  await page.keyboard.press("ArrowUp");
+  await expect(cameraTab).toHaveAttribute("aria-selected", "true");
+  await expect(cameraTab).toBeFocused();
 });

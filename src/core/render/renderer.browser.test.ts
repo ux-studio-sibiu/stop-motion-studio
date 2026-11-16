@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createFrame, DEFAULT_ADJUST, DEFAULT_TRANSFORM, type Adjust, type Transform } from "@/core/model";
-import { drawFrame, renderAt, type DrawableImage } from "@/core/render";
+import { drawFrame, drawOnionSkin, renderAt, type DrawableImage } from "@/core/render";
 
 // Pixel tests: the renderer draws into a real canvas (Vitest browser mode, Chromium), and we
 // read back the colour at chosen points. The source is a synthetic picture of four solid
@@ -108,6 +108,23 @@ describe("renderer, on a real canvas", () => {
     const ctx = draw(image, {}, { brightness: 0.5 });
     expectColour(ctx, 20, 20, [128, 0, 0], 3);
     expectColour(draw(image), 20, 20, RED);   // the source is unchanged
+  });
+
+  it("draws the onion skin see-through, on a transparent canvas", () => {
+    const ctx = target();
+    drawOnionSkin(ctx, { width: W, height: H, frames: [createFrame("p", "red")] }, () => solid(RED), 1, { opacity: 0.4 });
+    const [r, , , alpha] = ctx.getImageData(80, 45, 1, 1).data;
+    expect(Math.abs(alpha - 102)).toBeLessThanOrEqual(2);   // 40% of 255: the camera shows through
+    expect(r).toBeGreaterThan(250);
+  });
+
+  it("draws the outline look without colour: shapes in black and white", () => {
+    const ctx = target();
+    drawOnionSkin(ctx, { width: W, height: H, frames: [createFrame("p", "q")] }, () => quadrants(), 1, { opacity: 0.9, outline: true });
+    for (const [x, y] of [[20, 20], [140, 20], [20, 70], [140, 70]]) {
+      const [r, g, b] = ctx.getImageData(x, y, 1, 1).data;
+      expect(Math.max(r, g, b) - Math.min(r, g, b), `pixel (${x}, ${y}) is rgb(${r}, ${g}, ${b})`).toBeLessThanOrEqual(3);   // grey
+    }
   });
 
   it("renderAt shows the picture on screen at that time, and black when none is decoded", () => {

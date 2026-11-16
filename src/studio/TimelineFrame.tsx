@@ -1,0 +1,58 @@
+"use client";
+
+import type { MouseEvent, PointerEvent, ReactNode } from "react";
+import { ticksToSeconds, type Frame } from "@/core/model";
+import { thumbs } from "./media";
+import type { Drag } from "./useReorder";
+import { optionId } from "./useTimelineSelection";
+
+const LABEL_MIN_WIDTH = 24;   // narrower pictures don't show their number
+
+// One picture, as wide as it lasts. The slot (the <li>) is exactly that wide; inside it the
+// picture leaves a small gap at its end, so pictures look separate while every one still starts
+// exactly at its time on the ruler. The thumbnail is shown once: a short picture shows the
+// middle of it (cover-cropped), a long one shows it at the start and a dotted outline for the
+// rest of its time. Children: the resize grip and its bubble, when selected.
+type TimelineFrameProps = {
+  frame: Frame;
+  number: number;
+  width: number;
+  selected: boolean;
+  insertAfter: boolean;
+  dragging: boolean;
+  onPick: (id: string, event: MouseEvent) => void;
+  onPress: (id: string, event: PointerEvent<HTMLElement>) => void;
+  children?: ReactNode;
+};
+
+export function TimelineFrame({ frame, number, width, selected, insertAfter, dragging, onPick, onPress, children }: TimelineFrameProps) {
+  const url = thumbs.url(frame.imageId);
+  const className = `frame${selected ? " is-selected" : ""}${insertAfter ? " is-insert-point" : ""}${dragging ? " is-dragging" : ""}`;
+  return (
+    <li id={optionId(frame.id)} role="option" aria-selected={selected} aria-label={`Picture ${number}`} className={className} style={{ width }} onClick={(event) => onPick(frame.id, event)} onPointerDown={(event) => onPress(frame.id, event)}>
+      <span className="picture">
+        <span className="thumb" style={{ backgroundImage: url ? `url("${url}")` : undefined }} />
+        {width >= LABEL_MIN_WIDTH && <span className="frame-number">{number}</span>}
+      </span>
+      {children}
+    </li>
+  );
+}
+
+// The small copy that follows the pointer while reordering: always thumbnail-sized, however
+// long the pictures are, with a count when several move together.
+export function DragGhost({ drag, frames }: { drag: Drag; frames: readonly Frame[] }) {
+  const first = frames.find((frame) => frame.id === drag.ids[0]);
+  const url = first ? thumbs.url(first.imageId) : undefined;
+  return (
+    <div className="drag-ghost" aria-hidden="true" style={{ left: drag.x, top: drag.y }}>
+      <span className="thumb" style={{ backgroundImage: url ? `url("${url}")` : undefined }} />
+      {drag.ids.length > 1 && <span className="drag-count">{drag.ids.length}</span>}
+    </div>
+  );
+}
+
+// A picture's length for the resize bubble: "1.5 s", "0.13 s", "2 s".
+export function formatHold(hold: number, fps: number): string {
+  return `${Number(ticksToSeconds(hold, fps).toFixed(2))} s`;
+}

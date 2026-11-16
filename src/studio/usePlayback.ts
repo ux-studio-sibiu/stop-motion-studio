@@ -5,6 +5,7 @@ import { frameIndexAt, frameStarts, inOrder, totalTicks } from "@/core/model";
 import { readClock, startClock } from "@/core/playback/clock";
 import { orderedFrames } from "@/store/editorStore";
 import { editorStore, useEditor } from "@/store/useEditor";
+import { ownsKey } from "./keyboard";
 import { bitmaps } from "./media";
 
 const PRELOAD = 4;   // pictures decoded ahead of the playhead
@@ -69,7 +70,7 @@ export function usePlayback() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Enter" || event.repeat || isControl(event.target)) return;
+      if (event.key !== "Enter" || event.repeat || ownsKey(event.target)) return;
       event.preventDefault();
       togglePlay();
     };
@@ -81,9 +82,4 @@ export function usePlayback() {
 export function togglePlay(): void {
   const state = editorStore.getState();
   if (state.isPlaying) state.pause(); else state.play();
-}
-
-function isControl(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON", "A"].includes(target.tagName);
 }

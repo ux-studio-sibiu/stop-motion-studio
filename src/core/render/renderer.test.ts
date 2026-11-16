@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createFrame, DEFAULT_TRANSFORM, type Transform } from "@/core/model";
-import { adjustFilter, applyMatrix, containSize, frameMatrix, renderAt, startTick, type DrawableImage } from "@/core/render";
+import { adjustFilter, applyMatrix, containSize, drawOnionSkin, frameMatrix, onionOpacity, outlineFilter, renderAt, startTick, type DrawableImage } from "@/core/render";
 
 // The renderer's maths, in Node. What it really looks like on a canvas is checked pixel by
 // pixel in renderer.browser.test.ts.
@@ -65,6 +65,60 @@ function recordingContext() {
   };
   return { ctx: ctx as unknown as CanvasRenderingContext2D, drawn };
 }
+
+describe("drawOnionSkin", () => {
+  const frames = ["a", "b", "c"].map((id) => createFrame("p", `img-${id}`));
+  const scene = { ...canvas, frames };
+
+  // Records what was drawn and how strongly.
+  function ghostContext() {
+    const drawn: string[] = [];
+    const ctx = {
+      globalAlpha: 1, filter: "none",
+      save() {}, restore() {}, setTransform() {}, clearRect() { drawn.push("clear"); },
+      drawImage(image: { name: string }) { drawn.push(`${image.name}@${ctx.globalAlpha}`); },
+    };
+    return { ctx: ctx as unknown as CanvasRenderingContext2D, drawn };
+  }
+  const images = (id: string) => ({ name: id.slice(4).toUpperCase(), width: 160, height: 90 }) as unknown as DrawableImage;
+
+  it("draws the picture before the next shot, faintly, on a cleared canvas", () => {
+    const { ctx, drawn } = ghostContext();
+    expect(drawOnionSkin(ctx, scene, images, 3)).toEqual([]);
+    expect(drawn).toEqual(["clear", "C@0.4"]);
+  });
+
+  it("draws older pictures fainter, oldest first so the nearest is on top", () => {
+    const { ctx, drawn } = ghostContext();
+    drawOnionSkin(ctx, scene, images, 3, { count: 3, opacity: 0.6 });
+    expect(drawn).toEqual(["clear", "A@0.15", "B@0.3", "C@0.6"]);
+  });
+
+  it("draws nothing before the first picture, and reports pictures not decoded yet", () => {
+    const { ctx, drawn } = ghostContext();
+    expect(drawOnionSkin(ctx, scene, images, 0)).toEqual([]);
+    expect(drawn).toEqual(["clear"]);
+    expect(drawOnionSkin(ghostContext().ctx, scene, () => undefined, 2, { count: 2 })).toEqual(["img-a", "img-b"]);
+  });
+
+  it("draws the outline look as blurred, black-and-white, high-contrast shapes", () => {
+    const filters: string[] = [];
+    const ctx = {
+      globalAlpha: 1, filter: "none",
+      save() {}, restore() {}, setTransform() {}, clearRect() {},
+      drawImage() { filters.push(ctx.filter); },
+    };
+    drawOnionSkin(ctx as unknown as CanvasRenderingContext2D, scene, images, 3, { outline: true });
+    expect(filters).toEqual(["blur(1px) grayscale(1) contrast(8)"]);   // a 160 px canvas: the 1 px minimum
+    expect(outlineFilter(1280)).toBe("blur(4px) grayscale(1) contrast(8)");
+  });
+
+  it("keeps the strength between 0 and 1", () => {
+    expect(onionOpacity(2, 1)).toBe(1);
+    expect(onionOpacity(-1, 1)).toBe(0);
+    expect(onionOpacity(0.4, 2)).toBe(0.2);
+  });
+});
 
 describe("renderAt", () => {
   const a = createFrame("p", "img-a", { hold: 2 });

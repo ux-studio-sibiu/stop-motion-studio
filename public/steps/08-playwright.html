@@ -150,7 +150,9 @@ projects: [
     <li><strong>One lint override</strong>: the React hooks rule mistakes Playwright's fixture function <code>use()</code> for React's <code>use()</code> hook, so it's off for <code>e2e/</code>.</li>
   </ul>
 
-  <h2>Watch out</h2>
+    <div class="note"><strong>Added later (after step 17):</strong> most tests no longer take pictures with the fake camera. <code>Studio.seedPictures(n)</code> in <code>e2e/fixtures.ts</code> writes small generated pictures straight into the app's IndexedDB, in the same shape the app saves them, then reloads. Only tests about taking pictures still use <code>cameraOn()</code> and <code>takePictures()</code>: camera, persistence, capture order, undoing a capture. The Chromium suite went from 53 tests in about 35 s to 62 tests in 28 s, with fewer flaky camera starts.</div>
+
+<h2>Watch out</h2>
   <ul>
     <li><strong>A stale server.</strong> Locally, a server already on port 3200 is reused, and it serves whatever is in <code>out/</code>. If tests behave like old code, stop that server (or run <code>npm run build</code>) and run again.</li>
     <li><strong>Browsers are per machine.</strong> After cloning, or after a Playwright upgrade: <code>npx playwright install chromium webkit</code>.</li>

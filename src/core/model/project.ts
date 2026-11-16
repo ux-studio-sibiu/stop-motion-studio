@@ -64,20 +64,6 @@ export function cloneFrame(frame: Frame): Frame {
   return { ...frame, id: newId(), transform: { ...frame.transform }, adjust: { ...frame.adjust } };
 }
 
-// How long a frame stays on screen, in ms.
-export function frameDuration(project: Pick<Project, "fps">, frame: Pick<Frame, "hold">): number {
-  return (frame.hold * 1000) / project.fps;
-}
-
-// Total length of the animation in ms. Ids without a frame are skipped, the same way
-// loading repairs drift between frameIds and the frames table (step 07).
-export function projectDuration(project: Pick<Project, "fps" | "frameIds">, frames: ReadonlyMap<string, Pick<Frame, "hold">>): number {
-  return project.frameIds.reduce((total, id) => {
-    const frame = frames.get(id);
-    return frame ? total + frameDuration(project, frame) : total;
-  }, 0);
-}
-
 export function clampFps(fps: number): number {
   return Number.isFinite(fps) ? Math.min(MAX_FPS, Math.max(MIN_FPS, Math.round(fps))) : DEFAULT_FPS;
 }

@@ -568,7 +568,7 @@ registry entry.
 - [x] 14 Drag to reorder ([page](public/steps/14-reorder.html))
 - [x] 15 Renderer ([page](public/steps/15-renderer.html))
 - [x] 16 Playback ([page](public/steps/16-playback.html))
-- [ ] 17 Onion skin
+- [x] 17 Onion skin ([page](public/steps/17-onion-skin.html))
 - [ ] 18 Move, scale, rotate, flip
 - [ ] 19 Line up with other pictures
 - [ ] 20 Brightness and contrast

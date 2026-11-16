@@ -5,16 +5,17 @@ import { expect, test } from "./fixtures";
 
 test.beforeEach(async ({ studio }) => {
   await studio.open();
-  await studio.cameraOn();
 });
 
 test("a capture selects itself, so the next one follows it", async ({ studio }) => {
+  await studio.cameraOn();
   await studio.takePictures(2);
   await expect(studio.picture(2)).toHaveAttribute("aria-selected", "true");
   await expect(studio.selected()).toHaveCount(1);
 });
 
 test("with a picture selected, new pictures go right after it, in the order they're taken", async ({ studio, page }) => {
+  await studio.cameraOn();
   await studio.takePictures(3);
   const [a, b, c] = await studio.order();
 
@@ -28,7 +29,7 @@ test("with a picture selected, new pictures go right after it, in the order they
 });
 
 test("Shift+click selects a range, Ctrl+click adds or removes one; Delete removes them all, one undo brings them back", async ({ studio, page }) => {
-  await studio.takePictures(5);
+  await studio.seedPictures(5);
   const taken = await studio.order();
 
   await studio.picture(2).click();
@@ -48,7 +49,7 @@ test("Shift+click selects a range, Ctrl+click adds or removes one; Delete remove
 });
 
 test("Shift+arrows extend the selection, Ctrl+A selects everything", async ({ studio, page }) => {
-  await studio.takePictures(4);
+  await studio.seedPictures(4);
   const taken = await studio.order();
   await studio.picture(2).click();
   await page.keyboard.press("Shift+ArrowRight");
@@ -61,7 +62,7 @@ test("Shift+arrows extend the selection, Ctrl+A selects everything", async ({ st
 });
 
 test("a duplicate is an exact copy, right after its source, and is selected", async ({ studio, page }) => {
-  await studio.takePictures(2);
+  await studio.seedPictures(2);
   const [a, b] = await studio.order();
   await studio.picture(1).click();
   await studio.duplicateButton().click();
@@ -80,7 +81,7 @@ test("a duplicate is an exact copy, right after its source, and is selected", as
 });
 
 test("Ctrl+D duplicates every selected picture, each after its own source", async ({ studio, page }) => {
-  await studio.takePictures(2);
+  await studio.seedPictures(2);
   const [a, b] = await studio.order();
   await studio.picture(1).click();
   await page.keyboard.press("ControlOrMeta+a");

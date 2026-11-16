@@ -12,8 +12,6 @@ beforeEach(() => {
   [a, b, c] = ["i1", "i2", "i3"].map((imageId) => createFrame(project.id, imageId));
 });
 
-const ids = () => store.getState().project?.frameIds;
-
 describe("project slice", () => {
   it("starts empty", () => {
     expect(store.getState()).toMatchObject({ project: null, frames: {}, selection: [], isPlaying: false, playhead: 0 });
@@ -48,35 +46,6 @@ describe("project slice", () => {
     const other = createProject();
     store.getState().syncProject(other, []);
     expect(store.getState()).toMatchObject({ project: other, selection: [], playhead: 0 });
-  });
-
-  it("inserts at the end by default, or at a position", () => {
-    store.getState().loadProject(project, []);
-    store.getState().insertFrames([a, b]);
-    store.getState().insertFrames([c], 1);
-    expect(ids()).toEqual([a.id, c.id, b.id]);
-  });
-
-  it("clamps the insert position into the list", () => {
-    store.getState().loadProject(project, []);
-    store.getState().insertFrames([a]);
-    store.getState().insertFrames([b], 99);
-    store.getState().insertFrames([c], -3);
-    expect(ids()).toEqual([c.id, a.id, b.id]);
-  });
-
-  it("replaces state instead of editing it, so the previous state stays intact", () => {
-    store.getState().loadProject(project, []);
-    const before = store.getState();
-    store.getState().insertFrames([a]);
-    expect(before.project?.frameIds).toEqual([]);
-    expect(before.frames).toEqual({});
-    expect(store.getState().project).not.toBe(before.project);
-  });
-
-  it("does nothing without a project", () => {
-    store.getState().insertFrames([a]);
-    expect(store.getState().project).toBeNull();
   });
 
   it("skips ids that have no frame when listing in order", () => {
@@ -151,6 +120,25 @@ describe("ui slice", () => {
   });
 });
 
+describe("onion skin", () => {
+  it("is on at 40%, one picture back, by default", () => {
+    expect(store.getState().onionSkin).toEqual({ on: true, opacity: 0.4, count: 1, outline: false });
+  });
+
+  it("changes, kept to sensible limits", () => {
+    store.getState().setOnionSkin({ on: false });
+    expect(store.getState().onionSkin.on).toBe(false);
+    store.getState().setOnionSkin({ opacity: 2, count: 9 });
+    expect(store.getState().onionSkin).toMatchObject({ opacity: 0.9, count: 3 });
+    store.getState().setOnionSkin({ opacity: 0, count: 0.2 });
+    expect(store.getState().onionSkin).toMatchObject({ opacity: 0.1, count: 1 });
+    store.getState().setOnionSkin({ outline: true });
+    expect(store.getState().onionSkin.outline).toBe(true);
+    store.getState().setOnionSkin({ opacity: Number.NaN });
+    expect(store.getState().onionSkin.opacity).toBe(0.4);
+  });
+});
+
 describe("hold preview", () => {
   beforeEach(() => store.getState().loadProject({ ...project, frameIds: [a.id, b.id] }, [a, b]));
 
@@ -199,7 +187,7 @@ describe("subscriptions", () => {
     store.getState().select([a.id]);   // selection only
     store.getState().seek(2);          // playback only
     expect(calls).toBe(0);
-    store.getState().insertFrames([b]);
+    store.getState().syncProject({ ...project, frameIds: [a.id, b.id] }, [a, b]);   // the project itself
     expect(calls).toBe(1);
   });
 });

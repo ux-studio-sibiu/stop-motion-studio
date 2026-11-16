@@ -5,8 +5,7 @@ import { expect, test } from "./fixtures";
 
 test.beforeEach(async ({ studio }) => {
   await studio.open();
-  await studio.cameraOn();
-  await studio.takePictures(3);
+  await studio.seedPictures(3);
 });
 
 test("dragging the grip makes a picture longer, the next ones slide along, and one undo restores it", async ({ studio, page }) => {
@@ -43,7 +42,7 @@ test("Escape while dragging puts it back and saves nothing", async ({ studio, pa
   await page.keyboard.press("Escape");
   await page.mouse.up();
   await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(20, 0);
-  await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Take picture");
+  await expect(studio.undoButton()).toBeDisabled();   // nothing was saved
   await expect(studio.picture(1)).toHaveAttribute("aria-selected", "true");   // still selected
 });
 

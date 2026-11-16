@@ -5,8 +5,7 @@ import { expect, test } from "./fixtures";
 
 test.beforeEach(async ({ studio }) => {
   await studio.open();
-  await studio.cameraOn();
-  await studio.takePictures(3);
+  await studio.seedPictures(3);
 });
 
 test("each picture is as wide as it lasts, and the ruler counts seconds", async ({ studio, page }) => {
@@ -35,13 +34,14 @@ test("clicking selects a picture; arrow keys, Home and End move the selection", 
   await page.keyboard.press("End");
   await expect(studio.picture(3)).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("option", { selected: true })).toHaveCount(0);
+  await expect(studio.selected()).toHaveCount(0);
 });
 
 test("the previous and next buttons step through the pictures, round past either end", async ({ studio, page }) => {
   const next = page.getByRole("button", { name: "Next picture" });
   const previous = page.getByRole("button", { name: "Previous picture" });
-  await expect(studio.picture(3)).toHaveAttribute("aria-selected", "true");   // the last capture
+  await previous.click();   // nothing selected: Previous goes to the last picture
+  await expect(studio.picture(3)).toHaveAttribute("aria-selected", "true");
   await next.click();
   await expect(studio.picture(1)).toHaveAttribute("aria-selected", "true");   // round to the start
   await next.click();
@@ -75,7 +75,7 @@ test("each animation remembers its own zoom and scroll position after a reload",
   const scroller = page.locator(".timeline-scroll");
   const scrollLeft = () => scroller.evaluate((element) => element.scrollLeft);
   for (let i = 0; i < 4; i++) await page.getByRole("button", { name: "Zoom in" }).click();   // 640 px/s: 80 px a picture
-  await studio.takePictures(13);   // 16 pictures, 1280 px: wider than the timeline
+  await studio.seedPictures(13);   // 16 pictures, 1280 px: wider than the timeline
   await scroller.evaluate((element) => { element.scrollLeft = 300; });
   await page.waitForTimeout(400);   // the scroll is saved once it stops
   const animation = page.url();
@@ -86,8 +86,7 @@ test("each animation remembers its own zoom and scroll position after a reload",
   await expect.poll(scrollLeft).toBeCloseTo(300, -1);
 
   await studio.open();   // a new animation: the last zoom used, scrolled to the start
-  await studio.cameraOn();
-  await studio.takePictures(1);
+  await studio.seedPictures(1);
   await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(80, 0);
   await page.getByRole("button", { name: "Zoom out" }).click();   // this one gets its own zoom
   await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(53.3, 0);
@@ -106,8 +105,7 @@ test("the zoom is remembered after a reload, and in a new animation", async ({ s
   await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(30, 0);
 
   await studio.open();   // a new, empty animation
-  await studio.cameraOn();
-  await studio.takePictures(1);
+  await studio.seedPictures(1);
   await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(30, 0);
 });
 

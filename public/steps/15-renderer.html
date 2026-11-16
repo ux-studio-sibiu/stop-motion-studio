@@ -12,6 +12,14 @@
   <h1>Renderer</h1>
   <p class="intro">One function now draws the animation at any moment: <code>renderAt(ctx, scene, images, tick)</code>. It finds the picture on screen at that time, fits it into the canvas, and applies its position, turn, size, mirroring and brightness. Playback (16), onion skin (17) and export (25–27) will all draw through it, so what a child sees is what ends up in the video. For now the stage uses it: with the camera off, it shows the selected picture. This step also adds a third kind of test: pixel tests that run in a real browser.</p>
 
+  <div class="note"><strong>Changed later:</strong>
+    <ul>
+      <li><strong>One side panel.</strong> The camera box beside the stage is now the Camera tab of a single side panel on the right (<code>SidePanel.tsx</code>), whose tabs stick out of its left edge.</li>
+      <li><strong>The camera-off bar.</strong> With the camera off, the small "Turn on the camera" bar over the picture only shows on phones, where that panel is hidden. Elsewhere the panel has the button, and a short note when the camera can't start.</li>
+      <li><strong>One drawing hook.</strong> Drawing a canvas and redrawing once pictures are decoded is now one hook, <code>useCanvasDraw</code>, shared by the stage and see-through. It only redraws if something was actually decoded.</li>
+    </ul>
+  </div>
+
   <h2>What was built</h2>
   <ul>
     <li><code>src/core/render/renderer.ts</code>:

@@ -24,6 +24,9 @@ fast, logic is never "trust the edit".
   - WebKit (`npm run test:e2e:all`, both browsers) only when asked, or for a change aimed at Safari:
     on Windows its camera tests all skip, so it adds time and little coverage.
   Say in the summary which of these ran.
+  - **Seed pictures, don't photograph them**, unless the test is about taking pictures:
+    `studio.seedPictures(n)` writes them straight into storage, much faster and steadier than
+    `cameraOn()` + `takePictures(n)`.
   - **Run it once.** Repeat runs (`--repeat-each`, or the suite several times) only while chasing
     a test that fails now and then, and then only that test, not the whole suite.
 - **Never weaken a test to make it pass.** If a test fails, either the code is wrong or the behaviour

@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, Download, Redo2, Undo2 } from "lucide-react";
+import { Camera, ChevronLeft, Download, Image as ImageIcon, Redo2, Undo2 } from "lucide-react";
 import { editorStore, useEditor } from "@/store/useEditor";
 import { CameraMessage } from "./CameraMessage";
 import { CameraPanel } from "./CameraPanel";
 import { CameraView } from "./CameraView";
+import { OnionSkin, useOnionSkinPreference } from "./OnionSkin";
 import { PlaybackBar } from "./PlaybackBar";
+import { PanelTab, SidePanel } from "./SidePanel";
 import { StagePicture } from "./StagePicture";
 import { Timeline } from "./Timeline";
 import { useCamera } from "./useCamera";
@@ -34,6 +36,13 @@ export function Studio() {
   const history = useHistory(projectId);
   const { capture, capturing } = useCapture(video, canCapture, history.run);
   usePlayback();
+  useOnionSkinPreference();
+  // What the stage shows:
+  //   playing  the animation at the playhead (over the camera, if it's on)
+  //   camera   the live camera, with the see-through ghost over it
+  //   frame    the camera is off: the selected (or last) picture
+  //   empty    the camera is off and there are no pictures: the camera message
+  const stageMode = isPlaying ? "playing" : camera.stream ? "camera" : hasPictures ? "frame" : "empty";
   const duplicate = (ids: readonly string[]) => {
     const { project, frames } = editorStore.getState();
     if (!project) return;
@@ -70,28 +79,32 @@ export function Studio() {
         </div>
       </header>
 
-      <CameraPanel camera={camera} canCapture={canCapture} onCapture={capture} capturing={capturing} />
-
       <main className="stage" aria-label="Stage">
         <div className={`stage-frame${capturing ? " is-capturing" : ""}`}>
           {camera.stream ? (
             <>
               <CameraView stream={camera.stream} onVideo={onVideo} />
-              {isPlaying && <StagePicture />}
+              {stageMode === "camera" && <OnionSkin mode="camera" />}
+              {stageMode === "playing" && <StagePicture />}
             </>
-          ) : hasPictures ? (
+          ) : stageMode !== "empty" ? (
             <>
               <StagePicture />
+              {stageMode === "frame" && <OnionSkin mode="frame" />}
               <div className="stage-note"><CameraMessage camera={camera} more /></div>
             </>
           ) : <CameraMessage camera={camera} />}
         </div>
       </main>
 
-      <aside className="properties-panel" aria-label="Picture settings">
-        <h2 className="panel-title">Picture</h2>
-        <p className="placeholder">Move, size and brightness for the selected picture (steps 18-20).</p>
-      </aside>
+      <SidePanel>
+        <PanelTab id="camera" label="Camera" icon={<Camera size={31} />}>
+          <CameraPanel camera={camera} canCapture={canCapture} onCapture={capture} capturing={capturing} />
+        </PanelTab>
+        <PanelTab id="picture" label="Picture" icon={<ImageIcon size={31} />}>
+          <p className="placeholder">Move, size and brightness for the selected picture (steps 18-20).</p>
+        </PanelTab>
+      </SidePanel>
 
       <Timeline onDelete={(ids) => projectId && history.run(deleteFrames(projectId, ids))} onDuplicate={(ids) => duplicate(ids)} onResize={(changes) => (projectId ? history.run(setHold(projectId, changes)) : Promise.resolve(false))} onReorder={(before, after, moved) => { if (projectId) void history.run(reorderFrames(projectId, before, after, moved)); }} />
 

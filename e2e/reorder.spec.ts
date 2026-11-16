@@ -5,8 +5,7 @@ import { expect, test } from "./fixtures";
 
 test.beforeEach(async ({ studio }) => {
   await studio.open();
-  await studio.cameraOn();
-  await studio.takePictures(4);
+  await studio.seedPictures(4);
 });
 
 test("dragging a picture puts it somewhere else; it's saved, and one undo puts it back", async ({ studio, page }) => {
@@ -60,7 +59,7 @@ test("Escape while dragging cancels: nothing moves and nothing is saved", async 
   await page.mouse.up();
   await expect(page.locator(".drag-ghost")).toHaveCount(0);
   expect(await studio.order()).toEqual(before);
-  await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Take picture");
+  await expect(studio.undoButton()).toBeDisabled();   // nothing was saved
 });
 
 test("dragging the grip resizes and never reorders", async ({ studio }) => {
@@ -89,7 +88,7 @@ test("Ctrl+arrows move the selected pictures one place", async ({ studio, page }
 
 test("dragging near the timeline's edge scrolls it", async ({ studio, page }) => {
   for (let i = 0; i < 4; i++) await page.getByRole("button", { name: "Zoom in" }).click();   // 640 px/s: 80 px a picture
-  await studio.takePictures(12);   // 16 × 80 px: wider than the timeline
+  await studio.seedPictures(12);   // 16 × 80 px: wider than the timeline
   const scroller = page.locator(".timeline-scroll");
   await scroller.evaluate((element) => { element.scrollLeft = 0; });
   await expect.poll(() => scroller.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);

@@ -4,32 +4,42 @@ import { expect, test } from "./fixtures";
 
 test.beforeEach(async ({ studio }) => {
   await studio.open();
-  await studio.cameraOn();
-  await studio.takePictures(3);
+  await studio.seedPictures(3);
+  await studio.cameraOn();   // playback is checked over the live camera
 });
 
-test("Play shows the animation on the stage and stops at the end when not looping", async ({ page }) => {
-  await page.getByRole("button", { name: "Loop" }).click();   // looping is on by default
-  await expect(page.getByRole("button", { name: "Loop" })).toHaveAttribute("aria-pressed", "false");
-  await page.getByRole("button", { name: "Play" }).click();
+test("Play shows the animation on the stage and stops at the end when not looping", async ({ studio, page }) => {
+  await studio.picture(1).click();
+  for (let i = 0; i < 7; i++) await page.keyboard.press("]");   // picture 1 lasts 8 ticks: the whole thing plays for 1.25 s
+  await page.keyboard.press("Escape");                         // nothing selected: play from the start
+  await page.getByRole("button", { name: "Playback options" }).click();   // speed and loop are in a dropdown
+  const loop = page.getByRole("checkbox", { name: /^Loop/ });
+  await expect(loop).toBeChecked();   // looping is on by default
+  await loop.uncheck();
+  await page.keyboard.press("Escape");   // close the options
+  await page.getByRole("button", { name: "Play", exact: true }).click();
   await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
   await expect(page.locator(".stage-picture")).toBeVisible();      // over the live camera while playing
   await expect(page.locator(".playhead.is-playing")).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "Play" })).toBeVisible({ timeout: 3000 });   // it ended by itself
+  await expect(page.getByRole("button", { name: "Play", exact: true })).toBeVisible({ timeout: 3000 });   // it ended by itself
   await expect(page.locator(".stage-picture")).toHaveCount(0);   // the live camera again
 });
 
 test("Enter plays and pauses; pausing selects the picture it stopped on", async ({ studio, page }) => {
   await studio.track().focus();
   await page.keyboard.press("Escape");   // nothing selected: play from the start
+  const playSize = await page.getByRole("button", { name: "Play", exact: true }).boundingBox();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
+  const pauseSize = await page.getByRole("button", { name: "Pause" }).boundingBox();
+  expect([pauseSize?.width, pauseSize?.height]).toEqual([playSize?.width, playSize?.height]);   // the button doesn't change size
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("button", { name: "Play" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Play", exact: true })).toBeVisible();
   await expect(studio.selected()).toHaveCount(1);
 });
 
 test("the speed control changes how fast it plays, scaling the timeline; undo puts it back", async ({ studio, page }) => {
+  await page.getByRole("button", { name: "Playback options" }).click();
   const speed = page.getByRole("slider", { name: "Speed" });
   await expect(speed).toHaveAttribute("aria-valuetext", "8 pictures per second");
   await speed.fill("4");   // the fastest: 15

@@ -5,6 +5,7 @@ import { captureFrame } from "@/adapters/camera/capture";
 import { addFrames, type Command } from "@/core/commands";
 import { createFrame, inOrder, newId } from "@/core/model";
 import { editorStore } from "@/store/useEditor";
+import { ownsKey } from "./keyboard";
 import { thumbs } from "./media";
 
 // Taking a picture: grab the live video, save the photo, its thumbnail and a new frame right
@@ -56,7 +57,7 @@ export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: b
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.code !== "Space" || event.repeat || isTypingTarget(event.target)) return;
+      if (event.code !== "Space" || event.repeat || ownsKey(event.target)) return;
       event.preventDefault();   // don't scroll the page
       void capture();
     };
@@ -65,9 +66,4 @@ export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: b
   }, [capture]);
 
   return { capture, capturing };
-}
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON", "A"].includes(target.tagName);
 }

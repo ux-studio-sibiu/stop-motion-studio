@@ -37,15 +37,55 @@ export function renderAt(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderin
 
 // One frame's picture with its position and look. Exposed for onion skin (step 17), which
 // draws neighbouring frames faintly on top of each other.
-export function drawFrame(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, scene: Pick<Scene, "width" | "height">, frame: Pick<Frame, "transform" | "adjust">, image: DrawableImage): void {
+// `style` is an extra canvas filter applied after the picture's own adjustments (the onion
+// skin's outline look).
+export function drawFrame(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, scene: Pick<Scene, "width" | "height">, frame: Pick<Frame, "transform" | "adjust">, image: DrawableImage, style = "none"): void {
   const size = containSize(image.width, image.height, scene.width, scene.height);
   if (size.width === 0) return;
   ctx.save();
   ctx.setTransform(...frameMatrix(frame.transform, size, scene));
-  const filter = adjustFilter(frame.adjust);
+  const filter = [adjustFilter(frame.adjust), style].filter((part) => part !== "none").join(" ") || "none";
   if (filter !== "none" && "filter" in ctx) ctx.filter = filter;
   ctx.drawImage(image, 0, 0, size.width, size.height);
   ctx.restore();
+}
+
+// Onion skin ("see-through"): the pictures before `index` drawn faintly on a transparent canvas
+// that sits over the live camera, so the next pose can be lined up with them. The nearest one
+// is drawn at `opacity`, older ones fainter (× 0.5 each). Returns the pictures that weren't
+// decoded yet (and so were left out), so the caller can decode them and draw again.
+// `outline` turns the ghosts into broad black-and-white shapes (outlineFilter).
+export function drawOnionSkin(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, scene: Pick<Scene, "width" | "height" | "frames">, images: ImageSource, index: number, { count = 1, opacity = 0.4, outline = false } = {}): string[] {
+  const style = outline ? outlineFilter(scene.width) : "none";
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, scene.width, scene.height);
+  ctx.restore();
+  const missing: string[] = [];
+  // Oldest first, so the nearest ghost ends up on top.
+  for (let back = Math.min(count, index); back >= 1; back--) {
+    const frame = scene.frames[index - back];
+    const image = frame && images(frame.imageId);
+    if (!frame) continue;
+    if (!image) { missing.push(frame.imageId); continue; }
+    ctx.save();
+    ctx.globalAlpha = onionOpacity(opacity, back);
+    drawFrame(ctx, scene, frame, image, style);
+    ctx.restore();
+  }
+  return missing;
+}
+
+// The onion skin's outline look: blur away the details, drop the colour, then push the contrast
+// so far that what's left is broad light and dark shapes: where the toy was, not what it looks
+// like. The blur scales with the canvas (4 px at 1280 wide), so it looks the same at any size.
+export function outlineFilter(canvasWidth: number): string {
+  return `blur(${round(Math.max(1, canvasWidth / 320))}px) grayscale(1) contrast(8)`;
+}
+
+// How strong the ghost `back` pictures away is: the nearest at `opacity`, each older one half that.
+export function onionOpacity(opacity: number, back: number): number {
+  return Math.min(1, Math.max(0, opacity)) * 0.5 ** (back - 1);
 }
 
 function clear(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, scene: Scene): void {

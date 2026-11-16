@@ -62,5 +62,4 @@
   &:disabled { opacity: 0.45; cursor: not-allowed; }
 
   &.is-capture { background: var(--color-accent); color: var(--color-accent-ink); }
-  &.is-play { background: var(--color-go); color: var(--color-go-ink); }
 }

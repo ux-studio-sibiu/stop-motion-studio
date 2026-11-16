@@ -17,7 +17,6 @@ export type ProjectSlice = {
   // one is loaded fresh.
   syncProject: (project: Project, frames: Frame[]) => void;
   unloadProject: () => void;
-  insertFrames: (frames: Frame[], at?: number) => void;
 };
 
 export type SelectionSlice = {
@@ -43,15 +42,22 @@ export type UiSlice = {
   // frame id. Only the screen uses them; the saved frames are unchanged until the command
   // runs. An entry goes once the saved frame has that length (syncProject) or is cleared.
   holdPreview: Readonly<Record<string, number>>;
+  // See-through: the picture(s) before the next shot drawn faintly over the live camera.
+  onionSkin: OnionSkin;
+  setOnionSkin: (changes: Partial<OnionSkin>) => void;
   previewHolds: (holds: Readonly<Record<string, number>>) => void;
   clearHoldPreview: (ids?: readonly string[]) => void;
 };
+
+// outline: the ghost as broad black-and-white shapes instead of a faint photo.
+export type OnionSkin = { on: boolean; opacity: number; count: number; outline: boolean };
 
 export type EditorState = ProjectSlice & SelectionSlice & PlaybackSlice & UiSlice;
 
 export const MIN_TIMELINE_ZOOM = 40;
 export const MAX_TIMELINE_ZOOM = 640;
-export const DEFAULT_TIMELINE_ZOOM = 160;   // a tick at the default 8 fps is 20 px wide
+export const DEFAULT_TIMELINE_ZOOM = 160;
+export const DEFAULT_ONION_SKIN: OnionSkin = { on: true, opacity: 0.4, count: 1, outline: false };   // a tick at the default 8 fps is 20 px wide
 
 const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0, holdPreview: {} } as const;
 
@@ -61,6 +67,7 @@ export function createEditorStore() {
     ...EMPTY,
     timelineZoom: DEFAULT_TIMELINE_ZOOM,
     loop: true,
+    onionSkin: DEFAULT_ONION_SKIN,
 
     loadProject: (project, frames) => set({ ...EMPTY, project, frames: byId(frames) }),
 
@@ -73,16 +80,6 @@ export function createEditorStore() {
     },
 
     unloadProject: () => set(EMPTY),
-
-    // Adds frames to the animation at `at` (default: the end). The project and frames
-    // objects are replaced, never edited, so the previous state stays intact.
-    insertFrames: (frames, at) => {
-      const { project } = get();
-      if (!project || frames.length === 0) return;
-      const index = clampIndex(at ?? project.frameIds.length, project.frameIds.length);
-      const frameIds = [...project.frameIds.slice(0, index), ...frames.map((frame) => frame.id), ...project.frameIds.slice(index)];
-      set((state) => ({ project: { ...project, frameIds }, frames: { ...state.frames, ...byId(frames) } }));
-    },
 
     select: (ids) => {
       const { frames } = get();
@@ -98,6 +95,12 @@ export function createEditorStore() {
     seek: (tick) => set({ playhead: Number.isFinite(tick) ? Math.max(0, Math.round(tick)) : 0 }),
 
     setLoop: (loop) => set({ loop }),
+
+    // Strength 10-90% (never invisible, never hiding the camera), 1 to 3 pictures back.
+    setOnionSkin: (changes) => {
+      const next = { ...get().onionSkin, ...changes };
+      set({ onionSkin: { on: Boolean(next.on), outline: Boolean(next.outline), opacity: clamp(next.opacity, 0.1, 0.9, 0.4), count: Math.round(clamp(next.count, 1, 3, 1)) } });
+    },
 
     setTimelineZoom: (pxPerSecond) => set({ timelineZoom: Math.min(MAX_TIMELINE_ZOOM, Math.max(MIN_TIMELINE_ZOOM, pxPerSecond)) }),
 
@@ -117,7 +120,8 @@ export function createEditorStore() {
 
 export type EditorStore = ReturnType<typeof createEditorStore>;
 
-// The frames in animation order. Ids without a frame are skipped (see projectDuration).
+// The frames in animation order. Ids without a frame are skipped, the same way loading repairs
+// drift between frameIds and the frames table (step 07).
 export function orderedFrames(state: Pick<EditorState, "project" | "frames">): Frame[] {
   return (state.project?.frameIds ?? []).flatMap((id) => state.frames[id] ?? []);
 }
@@ -133,6 +137,8 @@ function byId(frames: Frame[]): Record<string, Frame> {
   return Object.fromEntries(frames.map((frame) => [frame.id, frame]));
 }
 
-function clampIndex(index: number, length: number): number {
-  return Number.isFinite(index) ? Math.min(length, Math.max(0, Math.round(index))) : length;
+
+
+function clamp(value: number, min: number, max: number, fallback: number): number {
+  return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
 }

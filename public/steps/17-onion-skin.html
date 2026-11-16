@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>17 Onion skin · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 17 of 33 · Part 5 Playback</p>
+  <h1>Onion skin ("see-through")</h1>
+  <p class="intro">While the camera is live, the last picture is drawn faintly over it, so a child can move a toy a little and see exactly where it was. That's the heart of stop motion. The See-through button turns it on and off. When it's on, a slider sets how strong it is (40% to start) and a menu shows 1, 2 or 3 pictures back. The settings are remembered on the device.</p>
+
+  <div class="note"><strong>Changed after review:</strong>
+    <ul>
+      <li><strong>A dropdown.</strong> The options moved into a dropdown on the See-through button (<code>SeeThroughMenu.tsx</code>). The button still turns it on and off; the arrow beside it opens how strong, Outline only, and 1, 2 or 3 pictures. Escape or a click outside closes it.</li>
+      <li><strong>With the camera off too.</strong> See-through also works on existing pictures. Over the picture on the stage, the one(s) before it show faintly, to check or fix how it matches them.</li>
+      <li><strong>Outline only</strong> (a checkbox). It draws the ghost blurred, in black and white, at very high contrast (<code>outlineFilter</code>: <code>blur(4px) grayscale(1) contrast(8)</code> at 1280 px wide). What's left is the broad shapes, where the toy was, not its details. One Node test and one pixel test check it.</li>
+    </ul>
+  </div>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>drawOnionSkin</code> and <code>onionOpacity</code> in <code>src/core/render/renderer.ts</code>. 4 Node tests and 1 pixel test in the browser (the ghost really is 40% see-through).</li>
+    <li>The store: <code>onionSkin</code> (<code>on</code>, <code>opacity</code>, <code>count</code>) and <code>setOnionSkin</code>, which keeps them in range. 2 tests.</li>
+    <li><code>src/studio/OnionSkin.tsx</code>: the ghost canvas over the video, and <code>useOnionSkinPreference</code>, which remembers the settings in <code>localStorage</code>.</li>
+    <li>The See-through button in the playback bar works, with its strength slider and "pictures shown" menu.</li>
+    <li>The stage's modes are explicit in <code>Studio.tsx</code>:
+      <ul>
+        <li><code>playing</code>: the animation at the playhead;</li>
+        <li><code>camera</code>: the live camera, with the ghost over it;</li>
+        <li><code>frame</code>: the camera is off, showing the selected picture;</li>
+        <li><code>empty</code>: the camera is off and there are no pictures.</li>
+      </ul>
+    </li>
+    <li>A test in <code>e2e/stage.spec.ts</code>.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+
+  <h3>The ghost is the picture the next shot follows</h3>
+  <p>A new picture goes right after the selected one (step 12), so the ghost is the picture before that place:</p>
+  <ul>
+    <li>usually the last picture taken;</li>
+    <li>after clicking picture 3, picture 3, because that's what the next shot continues from.</li>
+  </ul>
+  <p>Before the first picture there's nothing to see through, so nothing is drawn.</p>
+
+  <h3>Same renderer, same crop</h3>
+  <p>The ghost is a transparent canvas at the project's size, drawn by the same renderer as playback and export, so a moved or brightened picture's ghost is moved and brightened too. It sits exactly over the <code>&lt;video&gt;</code>, and both fill the stage with <code>object-fit: cover</code>. That's the same centred crop capture uses (step 05), so the ghost and the live camera line up.</p>
+
+  <h3>Older ghosts fainter</h3>
+  <p>With 2 or 3 pictures shown, the nearest is at the chosen strength, and each older one at half the one before. They're drawn oldest first, so the nearest is on top. The strength goes from 10% to 90%: never invisible, never hiding the camera.</p>
+
+  <h3>On by default, remembered on the device</h3>
+  <p>Most stop-motion apps start with onion skin on, and a child who doesn't know about it benefits most. Like the zoom and the camera choice, the settings are a way of working, not part of the animation, so they're kept in <code>localStorage</code>. Playback hides the ghost, since the animation covers the stage then.</p>
+  <p>It's written directly into the studio here. Step 22 turns it into the first plugin.</p>
+
+  <h2>Tests that needed fixing</h2>
+  <ul>
+    <li><strong>A collision.</strong> The "pictures shown" menu is a <code>&lt;select&gt;</code> with a selected <code>&lt;option&gt;</code>, and the page object's <code>selected()</code> looked for any selected option on the page. It now looks only inside the timeline.</li>
+    <li><strong>Two timing-sensitive tests</strong> failed once the page did a little more work:
+      <ul>
+        <li>Playback's "stops at the end" test (step 16) played only 0.375 s. Its first picture now lasts 8 ticks.</li>
+        <li>The stage colour test (step 15) checked one pixel, which the fake camera's moving white square can cover. It now samples five points and needs most of them green.</li>
+      </ul>
+    </li>
+  </ul>
+  <p>Both still check the same behaviour.</p>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Pictures with another shape</strong> (an imported 4:3 photo, step 28) are letterboxed by the renderer, and the ghost shows the same bars. The live video is always cropped to the project's shape, so they still line up.</li>
+    <li><strong>Moving a picture (step 18)</strong> moves its ghost too. That's what you want when lining up the next shot.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm test
+npm run test:browser
+npm run test:e2e</code></pre>
+  <ul>
+    <li>Take a picture of a toy, then move the toy: its ghost stays where it was.</li>
+    <li>Drag the strength slider, pick 3 pictures: older ones are fainter.</li>
+    <li>Turn See-through off and reload: it stays off.</li>
+  </ul>
+  <div class="note">Checked while building: 210 unit tests and 9 browser tests pass. End-to-end in Chromium: the full run found the collision and the two timing-sensitive tests, which were fixed and rerun on their own (<code>playback.spec.ts</code> and <code>stage.spec.ts</code>, 8 passed). Not checked: a real webcam and toy, screenshots.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/render/renderer.ts</code>, <code>renderer.test.ts</code>, <code>renderer.browser.test.ts</code>; <code>src/store/editorStore.ts</code>, <code>editorStore.test.ts</code>; <code>src/adapters/preferences/preferences.ts</code>; <code>src/studio/OnionSkin.tsx</code>, <code>Studio.tsx</code>, <code>PlaybackBar.tsx</code>, <code>studio.scss</code>; <code>e2e/stage.spec.ts</code>, <code>e2e/fixtures.ts</code>, <code>e2e/timeline.spec.ts</code>, <code>e2e/playback.spec.ts</code>; <code>public/steps/17-onion-skin.html</code>, <code>index.html</code>, <code>16-playback.html</code> (next link); <code>ROADMAP.md</code>.</p>
+  <p><strong>Tests added:</strong> unit, 4 for onion drawing and 2 for its settings (210 in total); browser, 1 (see-through strength); end-to-end, 1 (ghost over the camera, toggle, remembered after a reload). <strong>Changed:</strong> <code>Studio.selected()</code> is scoped to the timeline, and two timing-sensitive tests were made robust (see above).</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>the ghost is drawn by the shared renderer, at the project's size, with the same crop as the video</li>
+    <li>it shows the picture the next capture follows</li>
+    <li>it's hidden while playing and before the first picture</li>
+    <li><code>npm test</code>, <code>npm run test:browser</code>, <code>npm run test:e2e</code>, <code>npm run lint</code>, <code>npm run typecheck</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="16-playback.html">Previous: 16 · Playback</a>
+    <span>Next: 18 · Move, scale, rotate, flip</span>
+  </nav>
+</main>
+</body>
+</html>

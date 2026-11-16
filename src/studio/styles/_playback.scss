@@ -1,0 +1,93 @@
+@use "@/styles/breakpoints" as *;
+
+// The bar under the stage: Play and See-through, each with its options dropdown.
+.nsc-studio {
+  .playback-bar {
+    grid-area: playback;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+
+    @include respond-to("tablet") { gap: var(--space-4); }
+  }
+
+  // Play: a button like See-through, with a green play icon, joined to the arrow for its
+  // options, which open above, from the left.
+  .nsc-playback-options {
+    .play svg { color: var(--color-go); }
+
+    // "Play" and "Pause" stacked in one grid cell, the other one invisible but still taking room.
+    .play-label {
+      display: inline-grid;
+      text-align: left;
+
+      > span { grid-area: 1 / 1; }
+      .is-hidden { visibility: hidden; }
+    }
+    .options { right: auto; left: 0; }
+    .range-ends {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      color: var(--color-muted);
+      font-weight: 600;
+      font-size: 0.8125rem;
+
+      input { flex: 1; min-width: 0; }
+    }
+  }
+
+  // A main button joined to an arrow that opens its options above the bar (playback, see-through).
+  .option-menu {
+    position: relative;
+    display: flex;
+
+    .toggle { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+    .more { min-width: 2.5rem; padding-inline: var(--space-1); margin-left: -1px; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+
+    .options {
+      position: absolute;
+      bottom: calc(100% + var(--space-2));
+      right: 0;
+      display: grid;
+      min-width: 17rem;
+      padding: var(--space-2) var(--space-4);
+      background: var(--color-surface);
+      border: 1px solid var(--color-line);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgb(0 0 0 / 0.15);
+      z-index: 20;
+    }
+
+    // One setting per row, label above its control, rows split by a thin line.
+    .option {
+      display: grid;
+      gap: var(--space-2);
+      padding-block: var(--space-3);
+      font-weight: 700;
+      font-size: 0.875rem;
+
+      & + .option { border-top: 1px solid var(--color-line); }
+
+      input[type="range"] { width: 100%; margin: 0; accent-color: var(--color-focus); }
+    }
+
+    .option.is-check {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+
+      input { width: 1.25rem; height: 1.25rem; margin: 0; accent-color: var(--color-focus); }
+    }
+
+    .counts { display: flex; gap: var(--space-2); }
+  }
+
+  // The loop toggle, when on.
+  .playback-bar .icon-button.is-on {
+    border-color: var(--color-focus);
+    color: var(--color-focus);
+  }
+
+}

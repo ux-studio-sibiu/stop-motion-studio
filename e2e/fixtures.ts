@@ -16,7 +16,7 @@ export class Studio {
   readonly track = () => this.page.getByRole("listbox", { name: "Pictures" });
   readonly pictures = () => this.page.getByRole("option", { name: /^Picture \d+$/ });
   readonly picture = (number: number) => this.page.getByRole("option", { name: `Picture ${number}`, exact: true });
-  readonly cameraToggle = () => this.page.getByRole("button", { name: /^Camera (on|off)$/ });
+  readonly cameraToggle = () => this.page.getByRole("button", { name: /^Turn camera (on|off)$/ });
   readonly video = () => this.page.locator("video");
 
   async open(path = "/studio"): Promise<void> {
@@ -35,7 +35,7 @@ export class Studio {
       test.skip(!canStream, "This browser build has no media streams, so no camera can be faked (Playwright's WebKit on Windows).");
     }
     const turnOn = this.page.getByRole("button", { name: "Turn on camera" });
-    const live = this.page.getByRole("button", { name: "Camera off" });
+    const live = this.page.getByRole("button", { name: "Turn camera off" });
     await expect(turnOn.or(live)).toBeVisible();
     if (await turnOn.isVisible()) await turnOn.click();
     // Starting a camera can take a few seconds when the machine is busy (both browsers running
@@ -53,12 +53,58 @@ export class Studio {
     }
   }
 
+  // Puts `count` pictures into the open project without the camera: much faster than taking them,
+  // for tests about what happens to pictures, not how they're taken. Each is a small generated
+  // JPEG (a different colour each, with a white square), saved straight into the app's IndexedDB
+  // in the same shape the app saves them, then the page reloads to read them. Nothing ends up
+  // selected, and the undo history is empty, as after any reload.
+  async seedPictures(count: number): Promise<void> {
+    const projectId = new URL(this.page.url()).searchParams.get("project");
+    if (!projectId) throw new Error("Open the studio before seeding pictures");
+    const before = await this.pictures().count();
+    await this.page.evaluate(async ({ projectId, count }) => {
+      const jpeg = async (width: number, height: number, hue: number) => {
+        const canvas = new OffscreenCanvas(width, height);
+        const ctx = canvas.getContext("2d")!;
+        ctx.fillStyle = `hsl(${hue} 70% 45%)`;
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(width * 0.2, height * 0.3, width * 0.15, height * 0.25);
+        return canvas.convertToBlob({ type: "image/jpeg", quality: 0.8 });
+      };
+      const request = <T,>(r: IDBRequest<T>) => new Promise<T>((resolve, reject) => { r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
+      const db = await request(indexedDB.open("stop-motion-studio"));
+      const project = await request(db.transaction("projects").objectStore("projects").get(projectId));
+      const records = [];
+      for (let i = 0; i < count; i++) {
+        const imageId = crypto.randomUUID();
+        const hue = (i * 47) % 360;
+        records.push({
+          frame: { id: crypto.randomUUID(), projectId, imageId, hold: 1, transform: { x: 0, y: 0, scale: 1, rotation: 0, flipX: false, flipY: false }, adjust: { brightness: 1, contrast: 1 } },
+          image: { id: imageId, projectId, blob: await jpeg(1280, 720, hue), width: 1280, height: 720, createdAt: Date.now() },
+          thumb: { imageId, projectId, blob: await jpeg(160, 90, hue) },
+        });
+      }
+      const tx = db.transaction(["projects", "frames", "images", "thumbs"], "readwrite");
+      for (const { frame, image, thumb } of records) {
+        tx.objectStore("frames").put(frame);
+        tx.objectStore("images").put(image);
+        tx.objectStore("thumbs").put(thumb);
+      }
+      tx.objectStore("projects").put({ ...project, frameIds: [...project.frameIds, ...records.map(({ frame }) => frame.id)], updatedAt: Date.now() });
+      await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+      db.close();
+    }, { projectId, count });
+    await this.page.reload();
+    await expect(this.pictures()).toHaveCount(before + count);
+  }
+
   readonly undoButton = () => this.page.getByRole("button", { name: "Undo" });
   readonly redoButton = () => this.page.getByRole("button", { name: "Redo" });
   // "Delete picture" or "Delete 3 pictures", depending on the selection; the same for Duplicate.
   readonly deleteButton = () => this.page.getByRole("button", { name: /^Delete (picture|\d+ pictures)$/ });
   readonly duplicateButton = () => this.page.getByRole("button", { name: /^Duplicate (picture|\d+ pictures)$/ });
-  readonly selected = () => this.page.getByRole("option", { selected: true });
+  readonly selected = () => this.track().getByRole("option", { selected: true });   // in the timeline, not any <select>
 
   // The resize grip on a selected picture's right edge.
   readonly grip = (number: number) => this.picture(number).locator(".grip");

@@ -1,22 +1,18 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
 import { Camera, ChevronLeft, ChevronRight, CopyPlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
-import { formatSeconds, frameIndexAt, frameStarts, inOrder, moveIds, neighbourAfterDelete, nudgeGap, pxPerTick, rulerScale, sameOrder, selectRange, ticksToSeconds, toggleInSelection, totalTicks, type Frame } from "@/core/model";
+import { formatSeconds, inOrder, moveIds, neighbourAfterDelete, nudgeGap, pxPerTick, rulerScale, sameOrder, ticksToSeconds, totalTicks } from "@/core/model";
 import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, withHoldPreview } from "@/store/editorStore";
 import { editorStore, useEditor, useOrderedFrames } from "@/store/useEditor";
-import { thumbs } from "./media";
-import { useReorder, type Drag } from "./useReorder";
+import { DragGhost, TimelineFrame, formatHold } from "./TimelineFrame";
+import { useReorder } from "./useReorder";
 import { useResize, type HoldChange } from "./useResize";
+import { useScrub } from "./useScrub";
+import { optionId, useTimelineSelection } from "./useTimelineSelection";
 import { useTimelineView } from "./useTimelineView";
+import { ZOOM_STEP, useTimelineZoom } from "./useTimelineZoom";
 
-const ZOOM_STEP = 1.5;
-const LABEL_MIN_WIDTH = 24;   // narrower pictures don't show their number
-
-// The timeline, drawn to time: a picture is as wide as it lasts (hold ticks × px per tick),
-// and a faint seconds ruler runs along the top. Zoom changes px per second; it's a way of
-// looking, not part of the animation, so it lives in the store and is remembered per device
-// (useTimelineView), not saved in the project.
 type TimelineProps = {
   onDelete: (frameIds: readonly string[]) => void;
   onDuplicate: (frameIds: readonly string[]) => void;
@@ -24,66 +20,53 @@ type TimelineProps = {
   onReorder: (before: string[], after: string[], moved: string[]) => void;
 };
 
+// The timeline, drawn to time: a picture is as wide as it lasts (hold ticks × px per tick), and a
+// faint seconds ruler runs along the top. This component lays it out and maps the keys; the
+// behaviour lives in hooks:
+//   useTimelineSelection  selecting, the focus, previous / next
+//   useTimelineZoom       zoom around a point; useTimelineView remembers zoom and scroll
+//   useResize             the grip on a picture's edge, [ and ]
+//   useReorder            dragging pictures to a new place
+//   useScrub              the playhead, scrubbing along the ruler
 export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: TimelineProps) {
   const saved = useOrderedFrames();
   const holdPreview = useEditor((state) => state.holdPreview);
   const frames = useMemo(() => withHoldPreview(saved, holdPreview), [saved, holdPreview]);   // with any resize in progress
   const selection = useEditor((state) => state.selection);
   const fps = useEditor((state) => state.project?.fps ?? 8);
-  const zoom = useEditor((state) => state.timelineZoom);
+  const projectId = useEditor((state) => state.project?.id);
   const thumbRatio = useEditor((state) => (state.project ? `${state.project.width} / ${state.project.height}` : "16 / 9"));
 
   const scroller = useRef<HTMLDivElement>(null);
   const track = useRef<HTMLOListElement>(null);
   const next = useRef<HTMLLIElement>(null);
-  const anchor = useRef<{ seconds: number; x: number } | null>(null);
   useTimelineView(scroller);
+  const { zoom, zoomTo } = useTimelineZoom(scroller);
 
+  const order = frames.map((frame) => frame.id);
   const tickWidth = pxPerTick(zoom, fps);
   const seconds = ticksToSeconds(totalTicks(frames), fps);
   const { markSeconds, labelSeconds } = rulerScale(zoom);
   const rulerSeconds = Math.ceil(seconds) + 2;   // a little past the end, under the "next" slot
   const labels = Array.from({ length: Math.floor(rulerSeconds / labelSeconds) + 1 }, (_, i) => i * labelSeconds);
 
-  // Zoom around a point in time: whatever was under the pointer (or the selection) stays put.
-  const zoomTo = (pxPerSecond: number, x?: number) => {
-    const element = scroller.current;
-    if (!element) return;
-    const at = x ?? anchorX(element);
-    anchor.current = { seconds: (element.scrollLeft + at) / zoom, x: at };
-    editorStore.getState().setTimelineZoom(pxPerSecond);
+  const select = useTimelineSelection(order, selection);
+  const reorder = useReorder(frames, selection, tickWidth, scroller, track, onReorder);
+
+  const onPick = (id: string, event: MouseEvent) => {
+    if (reorder.takeClick()) return;   // this click ended a drag
+    editorStore.getState().pause();    // picking a picture while it plays stops there
+    if (event.shiftKey) select.extendTo(id);
+    else if (event.ctrlKey || event.metaKey) select.toggle(id);
+    else select.selectOnly(id);
+    track.current?.focus({ preventScroll: true });   // so the arrow keys work straight after a click
   };
 
-  useLayoutEffect(() => {
-    const element = scroller.current;
-    if (!element || !anchor.current) return;
-    element.scrollLeft = anchor.current.seconds * zoom - anchor.current.x;
-    anchor.current = null;
-  }, [zoom]);
+  const resize = useResize(frames, selection, tickWidth, onResize, onPick);
+  const scrub = useScrub(frames, selection, tickWidth, scroller, select.selectOnly);
 
-  // Ctrl/Cmd + wheel zooms. A native listener, because React's wheel events are passive and
-  // can't stop the browser's own page zoom.
-  useEffect(() => {
-    const element = scroller.current;
-    if (!element) return;
-    const onWheel = (event: WheelEvent) => {
-      if (!event.ctrlKey && !event.metaKey) return;
-      event.preventDefault();
-      const current = editorStore.getState().timelineZoom;
-      const factor = event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
-      zoomAt(current * factor, event.clientX - element.getBoundingClientRect().left);
-    };
-    const zoomAt = (pxPerSecond: number, x: number) => {
-      anchor.current = { seconds: (element.scrollLeft + x) / editorStore.getState().timelineZoom, x };
-      editorStore.getState().setTimelineZoom(pxPerSecond);
-    };
-    element.addEventListener("wheel", onWheel, { passive: false });
-    return () => element.removeEventListener("wheel", onWheel);
-  }, []);
-
-  // New pictures: keep the end (and the slot for the next one) in view. Not for the pictures
-  // an animation opens with: there the saved view (useTimelineView) decides where it's scrolled.
-  const projectId = useEditor((state) => state.project?.id);
+  // New pictures: keep the end (and the slot for the next one) in view. Not for the pictures an
+  // animation opens with: there the saved view (useTimelineView) decides where it's scrolled.
   const seen = useRef<{ projectId?: string; length: number }>({ length: 0 });
   useEffect(() => {
     const opened = seen.current.projectId !== projectId;
@@ -91,24 +74,6 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: Timelin
     seen.current = { projectId, length: frames.length };
     if (!opened && grew) next.current?.scrollIntoView({ block: "nearest", inline: "end", behavior: "smooth" });
   }, [frames.length, projectId]);
-
-  // Selection: a click selects one picture, Shift+click a range from the anchor (where the
-  // range started), Ctrl/Cmd+click adds or removes one. The focus is the end that moves
-  // (arrow keys, the screen reader's "current" picture). The selection can also change from
-  // elsewhere (a capture or undo selects pictures), so both fall back to the selection's end.
-  const order = frames.map((frame) => frame.id);
-  const [cursor, setCursor] = useState<{ anchor: string; focus: string } | null>(null);
-  const focusId = cursor && selection.includes(cursor.focus) ? cursor.focus : selection.at(-1);
-  const anchorId = cursor && selection.includes(cursor.anchor) ? cursor.anchor : focusId;
-
-  const selectOnly = (id: string) => { editorStore.getState().select([id]); setCursor({ anchor: id, focus: id }); };
-  const extendTo = (id: string) => { editorStore.getState().select(selectRange(order, anchorId, id)); setCursor({ anchor: anchorId ?? id, focus: id }); };
-  const toggle = (id: string) => { editorStore.getState().select(toggleInSelection(order, selection, id)); setCursor({ anchor: id, focus: id }); };
-
-  // A new focus: bring it into view.
-  useEffect(() => {
-    if (focusId) document.getElementById(optionId(focusId))?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [focusId]);
 
   // Delete moves the selection to the neighbour straight away, before the save comes back, so
   // pressing Delete quickly several times deletes one picture after another. Pictures being
@@ -127,109 +92,40 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: Timelin
 
   const duplicateSelection = () => { if (selection.length > 0) onDuplicate(selection); };
 
-  const reorder = useReorder(frames, selection, tickWidth, scroller, track, onReorder);
-
-  const onPick = (id: string, event: MouseEvent) => {
-    if (reorder.takeClick()) return;   // this click ended a drag
-    editorStore.getState().pause();    // picking a picture while it plays stops there
-    if (event.shiftKey) extendTo(id);
-    else if (event.ctrlKey || event.metaKey) toggle(id);
-    else selectOnly(id);
-    track.current?.focus({ preventScroll: true });   // so the arrow keys work straight after a click
+  // Ctrl/Cmd + arrow: the selected pictures one place along.
+  const moveSelection = (direction: -1 | 1) => {
+    if (selection.length === 0) return;
+    const moved = inOrder(order, selection);
+    const after = moveIds(order, moved, nudgeGap(order, moved, direction));
+    if (!sameOrder(order, after)) onReorder(order, after, moved);
   };
 
-  const resize = useResize(frames, selection, tickWidth, onResize, onPick);
+  const step = (direction: -1 | 1) => { editorStore.getState().pause(); select.moveFocus(direction, { wrap: true }); };
 
-  // The previous / next picture buttons: one picture along, round to the other end past the
-  // first or last. With nothing selected, Next goes to the first picture and Previous to the last.
-  const step = (direction: -1 | 1) => {
-    if (order.length === 0) return;
-    editorStore.getState().pause();
-    const current = focusId ? order.indexOf(focusId) : -1;
-    const target = current < 0 ? (direction > 0 ? 0 : order.length - 1) : (current + direction + order.length) % order.length;
-    selectOnly(order[target]);
+  // The keys, while the timeline has the keyboard. "Mod" is Ctrl, or Cmd on a Mac; Shift with
+  // the arrows, Home and End grows the selection.
+  const keys: Record<string, (extend: boolean) => void> = {
+    "Mod+ArrowLeft": () => moveSelection(-1),
+    "Mod+ArrowRight": () => moveSelection(1),
+    "Mod+a": () => select.selectAll(),
+    "Mod+d": () => duplicateSelection(),   // instead of the browser's "bookmark this page"
+    Escape: () => { if (!resize.cancel()) editorStore.getState().clearSelection(); },   // first Escape cancels a drag
+    "[": () => resize.nudge(-1),
+    "]": () => resize.nudge(1),
+    Delete: () => deleteSelection(),
+    Backspace: () => deleteSelection(),
+    ArrowLeft: (extend) => select.moveFocus(-1, { extend }),
+    ArrowRight: (extend) => select.moveFocus(1, { extend }),
+    Home: (extend) => select.moveFocusTo(0, { extend }),
+    End: (extend) => select.moveFocusTo(order.length - 1, { extend }),
   };
-
-  // The playhead: where playback is while playing; otherwise where Play will start (the first
-  // selected picture). Dragging along the ruler scrubs: it stops playback and selects the
-  // picture under the pointer, which the stage then shows.
-  const isPlaying = useEditor((state) => state.isPlaying);
-  const playhead = useEditor((state) => state.playhead);
-  const firstSelected = inOrder(order, selection)[0];
-  const playFrom = isPlaying ? playhead : firstSelected ? frameStarts(frames)[order.indexOf(firstSelected)] : undefined;
-  const scrubbing = useRef<number | null>(null);
-  const scrubTo = (clientX: number, ruler: HTMLElement) => {
-    const total = totalTicks(frames);
-    if (total === 0) return;
-    const tick = Math.min(total - 1, Math.max(0, Math.floor((clientX - ruler.getBoundingClientRect().left) / tickWidth)));
-    editorStore.getState().seek(tick);
-    selectOnly(frames[frameIndexAt(frames, tick)].id);
-  };
-  const onRulerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || frames.length === 0) return;
-    editorStore.getState().pause();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    scrubbing.current = event.pointerId;
-    scrubTo(event.clientX, event.currentTarget);
-  };
-  const onRulerMove = (event: PointerEvent<HTMLDivElement>) => { if (scrubbing.current === event.pointerId) scrubTo(event.clientX, event.currentTarget); };
-  const onRulerUp = () => { scrubbing.current = null; };
-
-  // While playing, keep the playhead in view: when it reaches the right edge, page along.
-  useEffect(() => {
-    const element = scroller.current;
-    if (!isPlaying || !element) return;
-    const x = playhead * tickWidth;
-    if (x < element.scrollLeft || x > element.scrollLeft + element.clientWidth - 48) element.scrollTo({ left: Math.max(0, x - 48) });
-  }, [isPlaying, playhead, tickWidth]);
-
   const onKeyDown = (event: KeyboardEvent<HTMLOListElement>) => {
     if (order.length === 0) return;
-    const command = event.ctrlKey || event.metaKey;
-    const key = event.key.toLowerCase();
-    if (command && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
-      event.preventDefault();   // Ctrl/Cmd + arrow moves the selected pictures one place
-      if (selection.length === 0) return;
-      const moved = inOrder(order, selection);
-      const after = moveIds(order, moved, nudgeGap(order, moved, event.key === "ArrowLeft" ? -1 : 1));
-      if (!sameOrder(order, after)) onReorder(order, after, moved);
-      return;
-    }
-    if (command && key === "a") {
-      event.preventDefault();
-      editorStore.getState().select(order);
-      setCursor({ anchor: order[0], focus: order[order.length - 1] });
-      return;
-    }
-    if (command && key === "d") {
-      event.preventDefault();   // not the browser's "bookmark this page"
-      duplicateSelection();
-      return;
-    }
-    if (event.key === "Escape") {
-      if (!resize.cancel()) editorStore.getState().clearSelection();   // first Escape cancels a drag
-      return;
-    }
-    if (event.key === "[" || event.key === "]") {
-      event.preventDefault();
-      resize.nudge(event.key === "]" ? 1 : -1);
-      return;
-    }
-    if (event.key === "Delete" || event.key === "Backspace") {
-      event.preventDefault();
-      deleteSelection();
-      return;
-    }
-    const current = focusId ? order.indexOf(focusId) : -1;
-    const target = {
-      ArrowRight: current < 0 ? 0 : Math.min(order.length - 1, current + 1),
-      ArrowLeft: current < 0 ? order.length - 1 : Math.max(0, current - 1),
-      Home: 0,
-      End: order.length - 1,
-    }[event.key];
-    if (target === undefined) return;
+    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    const action = keys[`${event.ctrlKey || event.metaKey ? "Mod+" : ""}${key}`];
+    if (!action) return;
     event.preventDefault();
-    if (event.shiftKey) extendTo(order[target]); else selectOnly(order[target]);
+    action(event.shiftKey);
   };
 
   // The next capture goes after the rightmost selected picture. When that isn't the last one,
@@ -253,19 +149,19 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: Timelin
       </div>
 
       <div ref={scroller} className="timeline-scroll">
-        {playFrom !== undefined && <div className={`playhead${isPlaying ? " is-playing" : ""}`} aria-hidden="true" style={{ left: playFrom * tickWidth }} />}
-        <div className="ruler" aria-hidden="true" title="Drag along here to scrub through the animation" style={{ width: rulerSeconds * zoom, backgroundSize: `${markSeconds * zoom}px 100%` }} onPointerDown={onRulerDown} onPointerMove={onRulerMove} onPointerUp={onRulerUp} onPointerCancel={onRulerUp}>
+        {scrub.playFrom !== undefined && <div className={`playhead${scrub.isPlaying ? " is-playing" : ""}`} aria-hidden="true" style={{ left: scrub.playFrom * tickWidth }} />}
+        <div className="ruler" aria-hidden="true" title="Drag along here to scrub through the animation" style={{ width: rulerSeconds * zoom, backgroundSize: `${markSeconds * zoom}px 100%` }} {...scrub.rulerHandlers}>
           {labels.map((at) => <span key={at} className="ruler-label" style={{ left: at * zoom }}>{formatSeconds(at)}</span>)}
         </div>
 
-        <ol ref={track} className="track" role="listbox" aria-label="Pictures" aria-orientation="horizontal" aria-multiselectable="true" tabIndex={0} aria-activedescendant={focusId ? optionId(focusId) : undefined} onKeyDown={onKeyDown} style={{ "--thumb-ratio": thumbRatio } as CSSProperties}>
+        <ol ref={track} className="track" role="listbox" aria-label="Pictures" aria-orientation="horizontal" aria-multiselectable="true" tabIndex={0} aria-activedescendant={select.focusId ? optionId(select.focusId) : undefined} onKeyDown={onKeyDown} style={{ "--thumb-ratio": thumbRatio } as CSSProperties}>
           {frames.map((frame, index) => (
-            <FrameThumb key={frame.id} frame={frame} number={index + 1} width={frame.hold * tickWidth} selected={selection.includes(frame.id)} insertAfter={!reorder.drag && frame.id === markerId} dragging={reorder.drag?.ids.includes(frame.id) ?? false} onPick={onPick} onPress={reorder.onFramePointerDown}>
+            <TimelineFrame key={frame.id} frame={frame} number={index + 1} width={frame.hold * tickWidth} selected={selection.includes(frame.id)} insertAfter={!reorder.drag && frame.id === markerId} dragging={reorder.drag?.ids.includes(frame.id) ?? false} onPick={onPick} onPress={reorder.onFramePointerDown}>
               {selection.includes(frame.id) && (
                 <span className="grip" aria-hidden="true" title="Drag to make it shorter or longer ([ and ] keys)" onPointerDown={(event) => resize.onGripDown(frame.id, event)} onPointerMove={resize.onGripMove} onPointerUp={(event) => resize.onGripUp(frame.id, event)} onPointerCancel={resize.cancel} onClick={(event) => event.stopPropagation()} />
               )}
               {resize.grabbed === frame.id && <span className="hold-bubble" role="status">{formatHold(frame.hold, fps)}</span>}
-            </FrameThumb>
+            </TimelineFrame>
           ))}
           {reorder.drag && <li className="drop-marker" aria-hidden="true" style={{ left: reorder.drag.markerX }} />}
           <li ref={next} className="next-slot" aria-hidden={frames.length > 0}>
@@ -277,65 +173,4 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: Timelin
       {reorder.drag && <DragGhost drag={reorder.drag} frames={frames} />}
     </section>
   );
-}
-
-// One picture, as wide as it lasts. The slot (the <li>) is exactly that wide; inside it the
-// picture leaves a small gap at its end, so pictures look separate while every one still starts
-// exactly at its time on the ruler. The thumbnail is shown once: a short picture shows the
-// middle of it (cover-cropped), a long one shows it at the start and a dotted outline for the
-// rest of its time.
-// Children: the resize grip and its bubble, when selected.
-type FrameThumbProps = {
-  frame: Frame;
-  number: number;
-  width: number;
-  selected: boolean;
-  insertAfter: boolean;
-  dragging: boolean;
-  onPick: (id: string, event: MouseEvent) => void;
-  onPress: (id: string, event: PointerEvent<HTMLElement>) => void;
-  children?: ReactNode;
-};
-
-function FrameThumb({ frame, number, width, selected, insertAfter, dragging, onPick, onPress, children }: FrameThumbProps) {
-  const url = thumbs.url(frame.imageId);
-  const className = `frame${selected ? " is-selected" : ""}${insertAfter ? " is-insert-point" : ""}${dragging ? " is-dragging" : ""}`;
-  return (
-    <li id={optionId(frame.id)} role="option" aria-selected={selected} aria-label={`Picture ${number}`} className={className} style={{ width }} onClick={(event) => onPick(frame.id, event)} onPointerDown={(event) => onPress(frame.id, event)}>
-      <span className="picture">
-        <span className="thumb" style={{ backgroundImage: url ? `url("${url}")` : undefined }} />
-        {width >= LABEL_MIN_WIDTH && <span className="frame-number">{number}</span>}
-      </span>
-      {children}
-    </li>
-  );
-}
-
-// The small copy that follows the pointer while reordering: always thumbnail-sized, however
-// long the pictures are, with a count when several move together.
-function DragGhost({ drag, frames }: { drag: Drag; frames: readonly Frame[] }) {
-  const first = frames.find((frame) => frame.id === drag.ids[0]);
-  const url = first ? thumbs.url(first.imageId) : undefined;
-  return (
-    <div className="drag-ghost" aria-hidden="true" style={{ left: drag.x, top: drag.y }}>
-      <span className="thumb" style={{ backgroundImage: url ? `url("${url}")` : undefined }} />
-      {drag.ids.length > 1 && <span className="drag-count">{drag.ids.length}</span>}
-    </div>
-  );
-}
-
-// A picture's length for the drag bubble: "1.5 s", "0.13 s", "2 s".
-function formatHold(hold: number, fps: number): string {
-  return `${Number(ticksToSeconds(hold, fps).toFixed(2))} s`;
-}
-
-function optionId(frameId: string): string {
-  return `frame-${frameId}`;
-}
-
-// Zoom buttons keep the selected picture in place, or the middle of the view.
-function anchorX(element: HTMLDivElement): number {
-  const selected = element.querySelector<HTMLElement>(".frame.is-selected");
-  if (selected) return selected.offsetLeft + selected.offsetWidth / 2 - element.scrollLeft;
-  return element.clientWidth / 2;
 }

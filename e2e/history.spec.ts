@@ -4,10 +4,10 @@ import { expect, test } from "./fixtures";
 
 test.beforeEach(async ({ studio }) => {
   await studio.open();
-  await studio.cameraOn();
 });
 
 test("undo takes back the last picture, redo brings it back", async ({ studio }) => {
+  await studio.cameraOn();
   await expect(studio.undoButton()).toBeDisabled();
   await studio.takePictures(2);
   const taken = await studio.order();
@@ -23,7 +23,7 @@ test("undo takes back the last picture, redo brings it back", async ({ studio })
 });
 
 test("delete three pictures with the Delete key, undo three times: all back in place", async ({ studio, page }) => {
-  await studio.takePictures(5);
+  await studio.seedPictures(5);
   const taken = await studio.order();
 
   await studio.picture(2).click();
@@ -40,11 +40,9 @@ test("delete three pictures with the Delete key, undo three times: all back in p
   await expect(studio.pictures()).toHaveCount(4);
 });
 
-test("the delete button removes the selected picture, and is off with nothing selected", async ({ studio, page }) => {
-  await studio.takePictures(2);
+test("the delete button removes the selected picture, and is off with nothing selected", async ({ studio }) => {
+  await studio.seedPictures(2);
   const taken = await studio.order();
-  await studio.track().focus();
-  await page.keyboard.press("Escape");   // a capture selects itself (step 12): clear that
   await expect(studio.deleteButton()).toBeDisabled();
 
   await studio.picture(1).click();
@@ -53,18 +51,26 @@ test("the delete button removes the selected picture, and is off with nothing se
   await expect(studio.picture(1)).toHaveAttribute("aria-selected", "true");
 });
 
-test("a new change clears redo", async ({ studio }) => {
-  await studio.takePictures(2);
+test("a new change clears redo", async ({ studio, page }) => {
+  await studio.seedPictures(2);
+  await studio.picture(1).click();
+  await page.keyboard.press("Delete");
   await studio.undoButton().click();
   await expect(studio.redoButton()).toBeEnabled();
-  await expect(studio.pictures()).toHaveCount(1);   // the undo has reached the timeline (takePictures counts from here)
-  await studio.takePictures(1);
+  await expect(studio.pictures()).toHaveCount(2);
+  await studio.picture(1).click();
+  await studio.duplicateButton().click();   // a new change
+  await expect(studio.pictures()).toHaveCount(3);
   await expect(studio.redoButton()).toBeDisabled();
 });
 
 test("history is per visit: after a reload the pictures stay and there's nothing to undo", async ({ studio, page }) => {
-  await studio.takePictures(2);
+  await studio.seedPictures(2);
+  await studio.picture(1).click();
+  await page.keyboard.press("Delete");   // a change that could be undone
+  await expect(studio.undoButton()).toBeEnabled();
+  await expect(studio.pictures()).toHaveCount(1);
   await page.reload();
-  await expect(studio.pictures()).toHaveCount(2);
+  await expect(studio.pictures()).toHaveCount(1);
   await expect(studio.undoButton()).toBeDisabled();
 });

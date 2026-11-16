@@ -1,0 +1,116 @@
+@use "@/styles/breakpoints" as *;
+
+// The stage: the 16:9 frame, the live camera, the picture drawn on it, see-through, the capture flash.
+.nsc-studio {
+  // The stage keeps the project's 16:9 frame centred in whatever space the grid gives it.
+  .stage {
+    grid-area: stage;
+    display: grid;
+    place-items: center;
+    min-height: 0;
+    container-type: size;
+  }
+
+  .stage-frame {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: min(100cqw, 100cqh * 16 / 9);
+    aspect-ratio: 16 / 9;
+    padding: var(--space-3);
+    overflow: hidden;
+    background: var(--color-stage);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius);
+    color: var(--color-stage-ink);
+    text-align: center;
+  }
+
+  // Cover-fit, like the capture in step 05: a 4:3 webcam is cropped to the 16:9 frame,
+  // so the preview shows exactly what a picture will contain.
+  .camera-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  // The picture on the stage while the camera is off: drawn at the project's size, scaled to fit.
+  .stage-picture {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  // The see-through ghost over the live camera: same size and fit as the video, so they line up.
+  .onion-skin {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+  }
+
+  // Over a picture, the camera message is a small bar along the bottom. Phones only: elsewhere
+  // the camera box beside the stage has the on/off button and says what's wrong.
+  .stage-note {
+    @include respond-to("tablet") { display: none !important; }
+
+    position: absolute;
+    right: var(--space-2);
+    bottom: var(--space-2);
+    left: var(--space-2);
+    display: flex;
+    justify-content: center;
+    padding: var(--space-2);
+    border-radius: var(--radius-small);
+    background: rgb(0 0 0 / 0.55);
+    color: #fff;
+
+    .camera-message {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      max-width: none;
+
+      > svg { display: none; }
+      p { font-size: 0.9375rem; }
+    }
+
+    &:empty { display: none; }
+  }
+
+  .camera-message {
+    display: grid;
+    justify-items: center;
+    gap: var(--space-3);
+    max-width: 28rem;
+
+    p { margin: 0; font-size: 1.125rem; }
+  }
+
+  // A short white flash on the stage when a picture is taken.
+  .stage-frame::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .stage-frame.is-capturing::after {
+    animation: capture-flash 0.25s ease-out;
+
+    @media (prefers-reduced-motion: reduce) { animation: none; }
+  }
+}
+
+@keyframes capture-flash {
+  from { opacity: 0.7; }
+  to { opacity: 0; }
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanName, cloneFrame, createFrame, createProject, DEFAULT_ADJUST, DEFAULT_NAME, MAX_NAME_LENGTH, DEFAULT_TRANSFORM, frameDuration, MAX_HEIGHT, MAX_WIDTH, projectDuration, SCHEMA_VERSION, type Frame } from "@/core/model";
+import { cleanName, cloneFrame, createFrame, createProject, DEFAULT_ADJUST, DEFAULT_NAME, MAX_NAME_LENGTH, DEFAULT_TRANSFORM, MAX_HEIGHT, MAX_WIDTH, SCHEMA_VERSION, type Frame } from "@/core/model";
 
 describe("createProject", () => {
   it("uses the defaults", () => {
@@ -70,29 +70,6 @@ describe("createFrame", () => {
   it("keeps hold a whole number of at least one tick", () => {
     expect(createFrame("p1", "i1", { hold: 0 }).hold).toBe(1);
     expect(createFrame("p1", "i1", { hold: 2.4 }).hold).toBe(2);
-  });
-});
-
-describe("durations", () => {
-  it("a frame lasts hold ticks of 1/fps", () => {
-    expect(frameDuration({ fps: 8 }, { hold: 1 })).toBe(125);
-    expect(frameDuration({ fps: 12 }, { hold: 3 })).toBe(250);
-  });
-
-  it("changing fps keeps the rhythm: a held frame stays 3x as long", () => {
-    const held = { hold: 3 };
-    const single = { hold: 1 };
-    for (const fps of [5, 8, 15]) {
-      expect(frameDuration({ fps }, held)).toBeCloseTo(3 * frameDuration({ fps }, single));
-    }
-  });
-
-  it("sums the animation in frameIds order and skips missing frames", () => {
-    const a = createFrame("p1", "i1");
-    const b = createFrame("p1", "i1", { hold: 2 });
-    const frames = new Map<string, Frame>([[a.id, a], [b.id, b]]);
-    const project = { fps: 10, frameIds: [a.id, b.id, "missing", a.id] };
-    expect(projectDuration(project, frames)).toBe(400);
   });
 });
 
