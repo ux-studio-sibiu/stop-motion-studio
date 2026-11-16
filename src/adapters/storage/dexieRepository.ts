@@ -124,5 +124,22 @@ export function createDexieRepository(db: StudioDb, now: () => number = Date.now
     getThumb: async (imageId) => (await db.thumbs.get(imageId))?.blob,
 
     listThumbs: (projectId) => db.thumbs.where("projectId").equals(projectId).toArray(),
+
+    removeUnusedImages: (projectId) => db.transaction("rw", db.frames, db.images, db.thumbs, async () => {
+      const used = new Set((await db.frames.where("projectId").equals(projectId).toArray()).map((frame) => frame.imageId));
+      const images = (await db.images.where("projectId").equals(projectId).primaryKeys()).filter((id) => !used.has(id));
+      const thumbs = (await db.thumbs.where("projectId").equals(projectId).primaryKeys()).filter((id) => !used.has(id));
+      await db.images.bulkDelete(images);
+      await db.thumbs.bulkDelete(thumbs);
+      return images.length;
+    }),
+
+    projectSizes: () => db.transaction("r", db.images, db.thumbs, async () => {
+      const sizes: Record<string, number> = {};
+      const add = (projectId: string, blob: Blob | undefined) => { sizes[projectId] = (sizes[projectId] ?? 0) + (blob?.size ?? 0); };
+      await db.images.each((image) => add(image.projectId, image.blob));
+      await db.thumbs.each((thumb) => add(thumb.projectId, thumb.blob));
+      return sizes;
+    }),
   };
 }

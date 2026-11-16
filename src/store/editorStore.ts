@@ -68,7 +68,13 @@ export type UiSlice = {
   // when another animation opens (remembered.ts restores each animation's own).
   stageView: StageView;
   setStageView: (view: Partial<StageView>) => void;
+  // Storage running out (step 21): a save failed for lack of space, or the device is past 80%.
+  // The studio shows a message until it's closed (null).
+  storageNotice: StorageNotice;
+  setStorageNotice: (notice: StorageNotice) => void;
 };
+
+export type StorageNotice = "full" | "almost-full" | null;
 
 // outline: the ghost as broad black-and-white shapes instead of a faint photo.
 // difference (step 19): "spot the difference": what lines up goes black, what doesn't glows.
@@ -104,6 +110,7 @@ export function createEditorStore() {
     onionSkin: DEFAULT_ONION_SKIN,
     panelTab: null,
     safeMarginPreview: null,
+    storageNotice: null,
 
     loadProject: (project, frames) => set({ ...EMPTY, project, frames: byId(frames) }),
 
@@ -143,6 +150,9 @@ export function createEditorStore() {
     },
 
     setPanelTab: (id) => set({ panelTab: id || null }),
+
+    // "Full" is the stronger message: an "almost full" estimate never replaces it.
+    setStorageNotice: (notice) => { if (!(notice === "almost-full" && get().storageNotice === "full")) set({ storageNotice: notice }); },
 
     setStageView: (view) => set({ stageView: clampView({ ...get().stageView, ...view }) }),
 

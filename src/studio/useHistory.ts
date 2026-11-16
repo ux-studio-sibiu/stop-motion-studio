@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { appRepository } from "@/adapters/storage/appRepository";
+import { isStorageFull } from "@/adapters/storage/storageFull";
 import { createHistory, type Command, type CommandResult, type HistoryState } from "@/core/commands";
 import { editorStore } from "@/store/useEditor";
 import { isTextEntry } from "./keyboard";
@@ -19,21 +20,21 @@ export function useHistory(projectId: string | null) {
   const state = useSyncExternalStore(subscribe, () => history?.state() ?? NOTHING, () => NOTHING);
 
   // Resolves once the change is saved: true, or false if it failed. A failure is logged, not
-  // thrown: the timeline simply doesn't change (full storage gets its own message in step 20).
+  // thrown: the timeline simply doesn't change. Full storage also shows a message (StorageNotice).
   const run = useCallback(async (command: Command): Promise<boolean> => {
     if (!history) return false;
     return history.run(command).then(
       (result) => { applyResult(result); return true; },
-      (error) => { console.warn(`Couldn't ${command.label.toLowerCase()}`, error); return false; },
+      (error) => { failed(`Couldn't ${command.label.toLowerCase()}`, error); return false; },
     );
   }, [history]);
 
   const undo = useCallback(() => {
-    if (history) void history.undo().then(applyResult, (error) => console.warn("Couldn't undo", error));
+    if (history) void history.undo().then(applyResult, (error) => failed("Couldn't undo", error));
   }, [history]);
 
   const redo = useCallback(() => {
-    if (history) void history.redo().then(applyResult, (error) => console.warn("Couldn't redo", error));
+    if (history) void history.redo().then(applyResult, (error) => failed("Couldn't redo", error));
   }, [history]);
 
   useEffect(() => {
@@ -53,6 +54,12 @@ export function useHistory(projectId: string | null) {
   }, [undo, redo]);
 
   return { ...state, run, undo, redo };
+}
+
+// A change that couldn't be saved: logged, and if storage is full, the studio says so.
+function failed(what: string, error: unknown) {
+  console.warn(what, error);
+  if (isStorageFull(error)) editorStore.getState().setStorageNotice("full");
 }
 
 // The store learns about a change from storage a moment after the command finished

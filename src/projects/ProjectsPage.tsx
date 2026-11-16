@@ -60,7 +60,7 @@ export function ProjectsPage() {
         <section aria-labelledby="projects-title">
           <h2 id="projects-title" className="section-title">Your animations</h2>
           <ul className="projects">
-            {list.projects.map((project) => <ProjectCard key={project.id} project={project} coverUrl={coverUrl(project)} onDelete={() => setDeleting(project)} />)}
+            {list.projects.map((project) => <ProjectCard key={project.id} project={project} coverUrl={coverUrl(project)} size={list.sizeOf[project.id] ?? 0} onDelete={() => setDeleting(project)} />)}
           </ul>
         </section>
       )}

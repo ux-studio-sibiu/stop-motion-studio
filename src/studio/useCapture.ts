@@ -7,6 +7,7 @@ import { createFrame, inOrder, newId } from "@/core/model";
 import { editorStore } from "@/store/useEditor";
 import { ownsKey } from "./keyboard";
 import { thumbs } from "./media";
+import { checkStorage } from "./useStorageWatch";
 
 // Taking a picture: grab the live video, save the photo, its thumbnail and a new frame right
 // after the selected picture (or at the end) in one transaction. It's a command (addFrames), so undo takes it back.
@@ -41,14 +42,15 @@ export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: b
       previous.current = { selection, frameId: frame.id };
 
       thumbs.put(imageId, shot.thumb);   // in memory before the save, so the update finds it
-      await run(addFrames(project.id, {
+      const saved = await run(addFrames(project.id, {
         after,
         frames: [frame],
         images: [{ id: imageId, projectId: project.id, blob: shot.image, width: shot.width, height: shot.height, createdAt: Date.now() }],
         thumbs: [{ imageId, projectId: project.id, blob: shot.thumb }],
       }));
+      if (saved) void checkStorage();   // every picture brings the device closer to full
     } catch (error) {
-      console.warn("Capture failed", error);   // no frame yet, or the save failed (full storage: step 20)
+      console.warn("Capture failed", error);   // no frame yet (a failed save shows its own message: useHistory)
     } finally {
       busy.current = false;
       setCapturing(false);

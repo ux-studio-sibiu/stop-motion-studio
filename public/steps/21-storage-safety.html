@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>21 Storage safety · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 21 of 33 · Part 6 Editing</p>
+  <h1>Storage safety</h1>
+  <p class="intro">Photos take space, and a device fills up. This step makes sure the studio never wastes space and never loses work without saying so:</p>
+  <ul>
+    <li><strong>Deleted pictures' photos are cleaned up</strong> once no undo can bring them back: when the animation is left, or opened again.</li>
+    <li><strong>A full device gets a message</strong> ("There's no room left on this device. That wasn't saved…") instead of a picture that silently isn't there.</li>
+    <li><strong>Past 80% full</strong>, the studio warns, and so does the storage section on the projects page. Each animation's card says how much space it takes, so a child can see what to delete.</li>
+  </ul>
+
+  <h2>What was built</h2>
+  <ul>
+    <li>Two repository methods, held to the contract (4 tests):
+      <ul>
+        <li><code>removeUnusedImages(projectId)</code> deletes the photos and thumbnails no frame uses, in one transaction. A photo shared by duplicates stays while any frame uses it. Other animations are never touched.</li>
+        <li><code>projectSizes()</code>: the bytes each animation's photos take.</li>
+      </ul>
+    </li>
+    <li><code>src/adapters/storage/projectSession.ts</code>: when the clean-up may run, with Web Locks across tabs. 4 tests, against Node's own Web Locks.</li>
+    <li><code>src/adapters/storage/storageFull.ts</code>: <code>isStorageFull(error)</code> recognises the browser's quota error, also when Dexie has wrapped it. 2 tests.</li>
+    <li>A storage notice in the store (<code>storageNotice</code>: full, almost full or none). 1 test.</li>
+    <li><code>useHistory</code> shows "full" when any save, undo or redo fails for lack of space.</li>
+    <li><code>useStorageWatch</code> checks the browser's estimate when the studio opens and after each picture.</li>
+    <li><code>StorageNotice.tsx</code>: the message at the top of the studio.</li>
+    <li><code>useProject</code> opens the session, so the clean-up runs on opening and leaving an animation.</li>
+    <li>On the projects page, each card shows its size (<code>ProjectCard</code>, <code>useProjects</code>), and <code>StorageMeter</code> warns past 80% (<code>ALMOST_FULL</code> in <code>storageInfo.ts</code>).</li>
+    <li><code>e2e/storage.spec.ts</code> (3 tests).</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>The clean-up never runs while an undo could still need a photo.</strong> Each studio holds a shared Web Lock on the animation it has open, and the clean-up only runs when it can take that lock alone. This tab's history is empty when the animation opens, and gone once it's left. If another tab has the same animation open, with its own undo history, nothing is deleted.</li>
+    <li><strong>Without Web Locks, never clean up.</strong> Keeping a few photos too many is safe; deleting one an undo still needs isn't.</li>
+    <li><strong>One message, two levels.</strong> "Full" (a save failed) is an alert, and an "almost full" estimate never replaces it. "Almost full" shows once per visit to the studio.</li>
+    <li><strong>Nothing is half-saved.</strong> Every write is already one transaction (step 07), so a full disk leaves the animation as it was. The message says the change wasn't saved.</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li>Duplicates share their photo, so the clean-up looks for photos no frame uses, not photos of deleted frames. A contract test covers it.</li>
+    <li>Browsers only estimate how much space is used and allowed. The 80% warning is a hint, not a promise.</li>
+    <li>Next adds its own empty <code>role="alert"</code> element (it announces route changes). Tests pick the studio's alert by its text.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li>Delete pictures, go back to all projects, open the animation again: the photos are gone from storage, and the card's size drops.</li>
+    <li>In a test, make every write fail as a full disk does: the message shows, and the timeline is unchanged.</li>
+  </ul>
+  <div class="note">Checked while building:
+    <ul>
+      <li>261 unit tests pass.</li>
+      <li>End-to-end, against the dev server: <code>storage.spec.ts</code> 3 passed. The specs of the other flows the step touched (persistence, history, camera, projects) passed, 22 tests.</li>
+      <li>The other specs and the full suite weren't run.</li>
+      <li>A screenshot of the full-storage message.</li>
+    </ul>
+  </div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/model/repository.ts</code>; <code>src/adapters/storage/dexieRepository.ts</code>, <code>repositoryContract.ts</code>, <code>projectSession.ts</code>, <code>projectSession.test.ts</code>, <code>storageFull.ts</code>, <code>storageFull.test.ts</code>, <code>storageInfo.ts</code>; <code>src/store/editorStore.ts</code>, <code>editorStore.test.ts</code>; <code>src/studio/useProject.ts</code>, <code>useHistory.ts</code>, <code>useCapture.ts</code>, <code>useStorageWatch.ts</code>, <code>StorageNotice.tsx</code>, <code>Studio.tsx</code>, <code>studio.scss</code>; <code>src/projects/useProjects.ts</code>, <code>ProjectsPage.tsx</code>, <code>ProjectCard.tsx</code>, <code>StorageMeter.tsx</code>, <code>projects.scss</code>; <code>e2e/storage.spec.ts</code>; <code>CLAUDE.md</code> (the spec map); <code>public/steps/21-storage-safety.html</code>, <code>index.html</code>, <code>20-brightness-contrast.html</code> (next link); <code>ROADMAP.md</code>.</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit (261 in total):
+      <ul>
+        <li>4 in the repository contract (clean-up, duplicates, other animations, sizes);</li>
+        <li>4 for the session;</li>
+        <li>2 for <code>isStorageFull</code>;</li>
+        <li>1 for the notice.</li>
+      </ul>
+    </li>
+    <li>End-to-end, 3 in <code>storage.spec.ts</code>:
+      <ul>
+        <li>the clean-up, and undo before it;</li>
+        <li>a full device;</li>
+        <li>the 80% warnings and card sizes.</li>
+      </ul>
+    </li>
+  </ul>
+  <p>No existing test changed.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>a photo a frame or an undo can still need is never deleted</li>
+    <li>another tab with the same animation open stops the clean-up</li>
+    <li>a full device shows a message, and nothing is half-saved</li>
+    <li><code>npm test</code>, <code>npm run lint</code>, <code>npm run typecheck</code> and the relevant specs pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="20-brightness-contrast.html">Previous: 20 · Brightness and contrast</a>
+    <span>Next: 22 · Plugin registry</span>
+  </nav>
+</main>
+</body>
+</html>

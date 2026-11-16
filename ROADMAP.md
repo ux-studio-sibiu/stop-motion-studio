@@ -581,7 +581,7 @@ registry entry.
 - [x] 18 Move, scale, rotate, flip ([page](public/steps/18-transform.html))
 - [x] 19 Line up with other pictures
 - [x] 20 Brightness and contrast
-- [ ] 21 Storage safety
+- [x] 21 Storage safety
 - [ ] 22 Plugin registry
 - [ ] 23 Speech bubbles on pictures
 - [ ] 24 Overlay layer: text and shapes in time

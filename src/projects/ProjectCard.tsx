@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useState } from "react";
 import { Clapperboard, Pencil, Trash2 } from "lucide-react";
 import { appRepository } from "@/adapters/storage/appRepository";
+import { formatBytes } from "@/adapters/storage/storageInfo";
 import { cleanName, type Project } from "@/core/model";
 
-// One saved animation: its first picture, name, picture count and when it was last changed.
+// One saved animation: its first picture, name, picture count, how much space it takes (step 21)
+// and when it was last changed.
 // The name can be renamed in place (Enter or leaving the field saves, Escape cancels).
-export function ProjectCard({ project, coverUrl, onDelete }: { project: Project; coverUrl?: string; onDelete: () => void }) {
+export function ProjectCard({ project, coverUrl, size, onDelete }: { project: Project; coverUrl?: string; size: number; onDelete: () => void }) {
   const [editing, setEditing] = useState(false);
   const href = `/studio?project=${project.id}`;
   const count = project.frameIds.length;
@@ -36,7 +38,7 @@ export function ProjectCard({ project, coverUrl, onDelete }: { project: Project;
         ) : (
           <Link className="name" href={href}>{project.name}</Link>
         )}
-        <p className="meta">{count === 1 ? "1 picture" : `${count} pictures`} · {new Date(project.updatedAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</p>
+        <p className="meta">{count === 1 ? "1 picture" : `${count} pictures`} · <span className="size">{formatBytes(size)}</span> · {new Date(project.updatedAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</p>
       </div>
 
       <div className="actions">

@@ -178,6 +178,18 @@ describe("stage view", () => {
   });
 });
 
+describe("storage notice", () => {
+  it("shows full or almost full until closed; almost full never hides full", () => {
+    expect(store.getState().storageNotice).toBeNull();
+    store.getState().setStorageNotice("full");
+    store.getState().setStorageNotice("almost-full");
+    expect(store.getState().storageNotice).toBe("full");
+    store.getState().setStorageNotice(null);
+    store.getState().setStorageNotice("almost-full");
+    expect(store.getState().storageNotice).toBe("almost-full");
+  });
+});
+
 describe("brightness and contrast preview", () => {
   beforeEach(() => store.getState().loadProject({ ...project, frameIds: [a.id, b.id] }, [a, b]));
 

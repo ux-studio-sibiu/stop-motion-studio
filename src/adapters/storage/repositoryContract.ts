@@ -268,5 +268,51 @@ export function describeRepositoryContract(name: string, setup: () => Promise<Re
       expect((await repository.loadProject(other.id))?.frames.map((f) => f.id)).toEqual([theirs.frame.id]);
       expect(await repository.getImage(theirs.frame.imageId)).toBeDefined();
     });
+
+    describe("removeUnusedImages (step 21)", () => {
+      it("deletes the pictures and thumbnails no frame uses, and keeps the rest", async () => {
+        const kept = await capture(project.id);
+        const gone = await capture(project.id);
+        await repository.removeFrames(project.id, [gone.frame.id]);
+        expect(await repository.getImage(gone.frame.imageId)).toBeDefined();   // kept for undo until now
+
+        expect(await repository.removeUnusedImages(project.id)).toBe(1);
+        expect(await repository.getImage(gone.frame.imageId)).toBeUndefined();
+        expect(await repository.getThumb(gone.frame.imageId)).toBeUndefined();
+        expect(await repository.getImage(kept.frame.imageId)).toBeDefined();
+        expect(await repository.getThumb(kept.frame.imageId)).toBeDefined();
+        expect(await repository.removeUnusedImages(project.id)).toBe(0);   // nothing left to remove
+      });
+
+      it("never deletes a picture a duplicate still uses", async () => {
+        const original = await capture(project.id);
+        const copy = createFrame(project.id, original.frame.imageId);
+        await repository.insertFrames(project.id, { frames: [copy] });
+        await repository.removeFrames(project.id, [original.frame.id]);
+
+        expect(await repository.removeUnusedImages(project.id)).toBe(0);
+        expect(await repository.getImage(original.frame.imageId)).toBeDefined();
+      });
+
+      it("only touches its own project", async () => {
+        const other = createProject({ name: "Robot dance", now: 0 });
+        await repository.createProject(other);
+        const theirs = await capture(other.id);
+        await repository.removeFrames(other.id, [theirs.frame.id]);
+
+        expect(await repository.removeUnusedImages(project.id)).toBe(0);
+        expect(await repository.getImage(theirs.frame.imageId)).toBeDefined();
+      });
+    });
+
+    it("tells how many bytes each project's pictures take (step 21)", async () => {
+      const other = createProject({ name: "Robot dance", now: 0 });
+      await repository.createProject(other);
+      await capture(project.id);
+      await capture(project.id);
+      await capture(other.id);
+      const one = new Blob(["jpeg"]).size + new Blob(["thumb"]).size;   // what capture() stores
+      expect(await repository.projectSizes()).toEqual({ [project.id]: 2 * one, [other.id]: one });
+    });
   });
 }

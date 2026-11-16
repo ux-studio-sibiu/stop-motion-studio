@@ -18,12 +18,14 @@ import { StageEditor } from "./StageEditor";
 import { PanelTab, SidePanel } from "./SidePanel";
 import { StagePicture } from "./StagePicture";
 import { StageView } from "./StageView";
+import { StorageNotice } from "./StorageNotice";
 import { Timeline } from "./Timeline";
 import { useCamera } from "./useCamera";
 import { useCapture } from "./useCapture";
 import { useHistory } from "./useHistory";
 import { usePlayback } from "./usePlayback";
 import { useProject } from "./useProject";
+import { useStorageWatch } from "./useStorageWatch";
 import { useStudioCommands } from "./useStudioCommands";
 import "./studio.scss";
 
@@ -44,6 +46,7 @@ export function Studio() {
   const history = useHistory(projectId);
   const { capture, capturing } = useCapture(video, canCapture, history.run);
   usePlayback();
+  useStorageWatch();   // the "almost full" warning
   useRememberedStudio();   // see-through, loop and selection, as they were left (remembered.ts)
   // What the stage shows:
   //   playing  the animation at the playhead (over the camera, if it's on)
@@ -84,6 +87,8 @@ export function Studio() {
           <button type="button" className="icon-button" aria-label="Save as video" disabled><Download size={24} /><span className="desktop-only">Save as video</span></button>
         </div>
       </header>
+
+      <StorageNotice />
 
       <main className="stage" aria-label="Stage">
         <div className={`stage-frame${capturing ? " is-capturing" : ""}`}>

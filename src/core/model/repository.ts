@@ -41,6 +41,14 @@ export interface ProjectRepository {
   // frame ends up. Their pictures must exist.
   restoreFrames(projectId: string, removed: readonly RemovedFrame[]): Promise<Project>;
 
+  // Deletes the project's pictures and thumbnails that no frame uses any more: what deleting left
+  // behind for undo. A picture shared by duplicates stays while any frame uses it. Call it only
+  // when no undo history can still need them (adapters/storage/projectSession.ts). Returns how many
+  // pictures it removed.
+  removeUnusedImages(projectId: string): Promise<number>;
+  // How many bytes each project's pictures and thumbnails take, by project id.
+  projectSizes(): Promise<Record<string, number>>;
+
   getImage(imageId: string): Promise<Blob | undefined>;
   getThumb(imageId: string): Promise<Blob | undefined>;
   listThumbs(projectId: string): Promise<StoredThumb[]>;

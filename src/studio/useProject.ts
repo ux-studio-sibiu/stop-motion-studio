@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { appRepository } from "@/adapters/storage/appRepository";
+import { openProjectSession } from "@/adapters/storage/projectSession";
 import { repairFrameOrder, sameOrder } from "@/core/model";
 import { createSavedProject } from "@/projects/createSavedProject";
 import { editorStore } from "@/store/useEditor";
@@ -32,6 +33,9 @@ export function useProject(projectId: string | null): ProjectStatus {
     if (!projectId) return;
     const repository = appRepository();
     let latest = 0;
+    // Unused pictures (kept for undo after a delete) go when the animation opens and when it's
+    // left, unless another tab has it open (projectSession.ts).
+    const closeSession = openProjectSession(projectId, () => repository.removeUnusedImages(projectId));
 
     const stop = repository.watchProject(projectId, async (loaded) => {
       const mine = ++latest;
@@ -53,6 +57,7 @@ export function useProject(projectId: string | null): ProjectStatus {
     return () => {
       latest++;
       stop();
+      closeSession();
       editorStore.getState().unloadProject();
       clearMedia();
     };

@@ -80,3 +80,30 @@
   }
 
 }
+// Storage running out (step 21): a message over the top of the studio, until it's closed.
+.nsc-storage-notice {
+  position: fixed;
+  top: var(--space-3);
+  left: 50%;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: min(36rem, calc(100vw - 2 * var(--space-3)));
+  padding: var(--space-2) var(--space-3);
+  translate: -50% 0;
+  border: var(--line-width) solid var(--color-line);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.15);
+  color: var(--color-ink);
+
+  > svg { flex: none; color: var(--color-muted); }
+  p { flex: 1; margin: 0; font-size: 0.9375rem; }
+
+  &.is-full {
+    border-color: var(--color-accent);
+
+    > svg { color: var(--color-accent); }
+  }
+}

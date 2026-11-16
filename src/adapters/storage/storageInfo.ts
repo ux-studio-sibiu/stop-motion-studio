@@ -4,6 +4,9 @@
 
 export type StorageEstimate = { usage: number; quota: number; ratio: number };
 
+// Past this share of what the browser lets the studio use, it warns (step 21).
+export const ALMOST_FULL = 0.8;
+
 export async function estimateStorage(): Promise<StorageEstimate | null> {
   try {
     const estimate = await navigator.storage?.estimate?.();
