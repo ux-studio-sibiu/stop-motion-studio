@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { frameIndexAt, inOrder } from "@/core/model";
 import { renderAt, startTick } from "@/core/render";
-import { withTransformPreview } from "@/store/editorStore";
-import { useEditor, useOrderedFrames } from "@/store/useEditor";
+import { useEditor, useShownFrames } from "@/store/useEditor";
 import { bitmaps } from "./media";
 import { useCanvasDraw } from "./useCanvasDraw";
 
@@ -13,9 +12,7 @@ import { useCanvasDraw } from "./useCanvasDraw";
 //   - otherwise the selected picture (or the last one), when the camera is off.
 // The canvas is the project's resolution; CSS scales it to fit the stage.
 export function StagePicture() {
-  const saved = useOrderedFrames();
-  const preview = useEditor((state) => state.transformPreview);
-  const frames = useMemo(() => withTransformPreview(saved, preview), [saved, preview]);   // with any move in progress
+  const frames = useShownFrames();   // with any change not saved yet
   const selection = useEditor((state) => state.selection);
   const isPlaying = useEditor((state) => state.isPlaying);
   const playhead = useEditor((state) => state.playhead);

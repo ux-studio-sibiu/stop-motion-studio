@@ -1,7 +1,8 @@
 import { expect, test } from "./fixtures";
 
-// Moving, sizing, turning and flipping a picture (step 18), and lining it up (step 19: snapping,
-// zooming the stage), on the stage with the camera off and in the Picture tab. The Picture tab's fields show where the picture is, in project pixels.
+// Editing a picture: moving, sizing, turning and flipping it (step 18), lining it up (step 19:
+// snapping, zooming the stage) and its brightness and contrast (step 20), on the stage with the
+// camera off and in the Picture tab. The Picture tab's fields show where the picture is, in project pixels.
 
 test.beforeEach(async ({ studio, page }) => {
   await studio.withoutCamera();   // editing is on the picture, not the live camera
@@ -164,4 +165,50 @@ test("Ctrl + wheel zooms the stage without changing the picture; Space-drag look
 
   await page.getByRole("tab", { name: "Camera" }).click();   // only while the Picture tab is open
   await expect(view).not.toHaveClass(/is-zoomed/);
+});
+
+// Brightness and contrast (step 20), in the Picture tab.
+
+// The colour in the middle of the stage picture, as drawn.
+const stageColour = (page: import("@playwright/test").Page) => page.locator(".stage-picture").evaluate((canvas: HTMLCanvasElement) => [...canvas.getContext("2d")!.getImageData(canvas.width / 2, canvas.height / 2, 1, 1).data.slice(0, 3)]);
+const brightness = (page: import("@playwright/test").Page) => page.getByRole("slider", { name: "Brightness" });
+
+test("brightness shows on the stage and the thumbnail; a run of arrow presses is one undo; it's saved", async ({ studio, page }) => {
+  const before = await stageColour(page);
+  await brightness(page).focus();
+  for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowRight");
+  await expect(page.getByText("Brightness: 120%")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Undo" })).toHaveAttribute("title", "Undo: Change brightness");
+  const after = await stageColour(page);
+  expect(after.reduce((a, b) => a + b)).toBeGreaterThan(before.reduce((a, b) => a + b));   // brighter
+  await expect(studio.picture(1).locator(".thumb")).toHaveCSS("filter", "brightness(1.2)");
+
+  await page.getByRole("button", { name: "Undo" }).click();   // the four presses, in one step
+  await expect(page.getByText("Brightness: 100%")).toBeVisible();
+  await expect.poll(() => stageColour(page)).toEqual(before);
+  await page.getByRole("button", { name: "Redo" }).click();
+  await expect(page.getByText("Brightness: 120%")).toBeVisible();
+
+  await page.reload();
+  await studio.picture(1).click();
+  await expect(page.getByText("Brightness: 120%")).toBeVisible();
+});
+
+test("with several selected, the sliders change them all as one undo; Reset puts them back", async ({ studio, page }) => {
+  await studio.picture(2).click({ modifiers: ["Shift"] });
+  await page.getByRole("slider", { name: "Contrast" }).focus();
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.getByText("Contrast: 90%")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Undo" })).toHaveAttribute("title", "Undo: Change contrast (2 pictures)");
+  await studio.picture(2).click();   // just picture 2 now
+  await expect(page.getByText("Contrast: 90%")).toBeVisible();
+
+  await studio.picture(1).click({ modifiers: ["Shift"] });
+  await page.getByRole("button", { name: "Reset brightness and contrast" }).click();
+  await expect(page.getByText("Contrast: 100%")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Undo" })).toHaveAttribute("title", "Undo: Reset brightness and contrast (2 pictures)");
+  await expect(page.getByRole("button", { name: "Reset brightness and contrast" })).toBeDisabled();
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByText("Contrast: 90%")).toBeVisible();
 });

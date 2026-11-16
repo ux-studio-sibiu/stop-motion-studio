@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { clampHold, clampSafeMargin, safeMargin, sameTransform, type Frame, type Project, type Transform } from "@/core/model";
+import { clampAdjust, clampHold, clampSafeMargin, safeMargin, sameAdjust, sameTransform, type Frame, type Project } from "@/core/model";
 import { clampView, FIT_VIEW, type StageView } from "@/core/render";
 
 // Live editor state (PLAN.md §1): what the studio is showing and doing right now.
@@ -39,16 +39,20 @@ export type PlaybackSlice = {
 export type UiSlice = {
   timelineZoom: number;                      // px per second on the timeline
   setTimelineZoom: (pxPerSecond: number) => void;
-  // Lengths shown while a resize is in progress (dragging, or a key press not saved yet), by
-  // frame id. Only the screen uses them; the saved frames are unchanged until the command
-  // runs. An entry goes once the saved frame has that length (syncProject) or is cleared.
-  holdPreview: Readonly<Record<string, number>>;
-  previewHolds: (holds: Readonly<Record<string, number>>) => void;
+  // Previews: values shown while an edit is in progress (a drag, a slider, key presses not saved
+  // yet), by frame id. Only the screen uses them (withPreview); the saved frames are unchanged
+  // until the command runs. An entry goes once the saved frame has that value (syncProject) or is
+  // cleared. One each for a picture's length (step 13), its position (step 18) and its brightness
+  // and contrast (step 20); PREVIEWS says how each is kept in range and compared.
+  holdPreview: Preview<"hold">;
+  previewHolds: (holds: Preview<"hold">) => void;
   clearHoldPreview: (ids?: readonly string[]) => void;
-  // The same for moving, sizing and turning pictures on the stage (step 18).
-  transformPreview: Readonly<Record<string, Transform>>;
-  previewTransforms: (transforms: Readonly<Record<string, Transform>>) => void;
+  transformPreview: Preview<"transform">;
+  previewTransforms: (transforms: Preview<"transform">) => void;
   clearTransformPreview: (ids?: readonly string[]) => void;
+  adjustPreview: Preview<"adjust">;
+  previewAdjusts: (adjusts: Preview<"adjust">) => void;
+  clearAdjustPreview: (ids?: readonly string[]) => void;
   // See-through: the picture(s) before the next shot drawn faintly over the live camera.
   onionSkin: OnionSkin;
   setOnionSkin: (changes: Partial<OnionSkin>) => void;
@@ -73,12 +77,23 @@ export type OnionSkin = { on: boolean; opacity: number; count: number; outline: 
 
 export type EditorState = ProjectSlice & SelectionSlice & PlaybackSlice & UiSlice;
 
+// The frame fields that can be previewed, and a preview of one: a value by frame id.
+export type PreviewField = "hold" | "transform" | "adjust";
+export type Preview<F extends PreviewField> = Readonly<Record<string, Frame[F]>>;
+
+// How each preview's values are kept in range, and when one is the same as the saved value.
+const PREVIEWS: { [F in PreviewField]: { clean: (value: Frame[F]) => Frame[F]; same: (a: Frame[F], b: Frame[F]) => boolean } } = {
+  hold: { clean: clampHold, same: (a, b) => a === b },
+  transform: { clean: (transform) => ({ ...transform }), same: sameTransform },
+  adjust: { clean: clampAdjust, same: sameAdjust },
+};
+
 export const MIN_TIMELINE_ZOOM = 40;
 export const MAX_TIMELINE_ZOOM = 640;
 export const DEFAULT_TIMELINE_ZOOM = 160;   // a tick at the default 8 fps is 20 px wide
 export const DEFAULT_ONION_SKIN: OnionSkin = { on: true, opacity: 0.4, count: 1, outline: false, difference: false };
 
-const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0, holdPreview: {}, transformPreview: {}, stageView: FIT_VIEW } as const;
+const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0, holdPreview: {}, transformPreview: {}, adjustPreview: {}, stageView: FIT_VIEW } as const;
 
 // A factory, so every test (and, if ever needed, a second studio) gets its own store.
 export function createEditorStore() {
@@ -96,10 +111,11 @@ export function createEditorStore() {
       const state = get();
       if (state.project?.id !== project.id) return state.loadProject(project, frames);
       const next = byId(frames);
-      const holdPreview = Object.fromEntries(Object.entries(state.holdPreview).filter(([id, hold]) => id in next && next[id].hold !== hold));
-      const transformPreview = Object.fromEntries(Object.entries(state.transformPreview).filter(([id, transform]) => id in next && !sameTransform(next[id].transform, transform)));
+      const holdPreview = unsaved("hold", state.holdPreview, next);
+      const transformPreview = unsaved("transform", state.transformPreview, next);
+      const adjustPreview = unsaved("adjust", state.adjustPreview, next);
       const safeMarginPreview = state.safeMarginPreview !== null && safeMargin(project) !== state.safeMarginPreview ? state.safeMarginPreview : null;
-      set({ project, frames: next, selection: state.selection.filter((id) => id in next), holdPreview, transformPreview, safeMarginPreview });
+      set({ project, frames: next, selection: state.selection.filter((id) => id in next), holdPreview, transformPreview, adjustPreview, safeMarginPreview });
     },
 
     unloadProject: () => set(EMPTY),
@@ -134,29 +150,12 @@ export function createEditorStore() {
 
     setTimelineZoom: (pxPerSecond) => set({ timelineZoom: Math.min(MAX_TIMELINE_ZOOM, Math.max(MIN_TIMELINE_ZOOM, pxPerSecond)) }),
 
-    previewHolds: (holds) => {
-      const { frames, holdPreview } = get();
-      const known = Object.entries(holds).filter(([id]) => id in frames).map(([id, hold]) => [id, clampHold(hold)]);
-      set({ holdPreview: { ...holdPreview, ...Object.fromEntries(known) } });
-    },
-
-    clearHoldPreview: (ids) => {
-      if (!ids) return set({ holdPreview: {} });
-      const drop = new Set(ids);
-      set({ holdPreview: Object.fromEntries(Object.entries(get().holdPreview).filter(([id]) => !drop.has(id))) });
-    },
-
-    previewTransforms: (transforms) => {
-      const { frames, transformPreview } = get();
-      const known = Object.entries(transforms).filter(([id]) => id in frames).map(([id, transform]) => [id, { ...transform }]);
-      set({ transformPreview: { ...transformPreview, ...Object.fromEntries(known) } });
-    },
-
-    clearTransformPreview: (ids) => {
-      if (!ids) return set({ transformPreview: {} });
-      const drop = new Set(ids);
-      set({ transformPreview: Object.fromEntries(Object.entries(get().transformPreview).filter(([id]) => !drop.has(id))) });
-    },
+    previewHolds: (holds) => set({ holdPreview: added("hold", get().holdPreview, get().frames, holds) }),
+    clearHoldPreview: (ids) => set({ holdPreview: without(get().holdPreview, ids) }),
+    previewTransforms: (transforms) => set({ transformPreview: added("transform", get().transformPreview, get().frames, transforms) }),
+    clearTransformPreview: (ids) => set({ transformPreview: without(get().transformPreview, ids) }),
+    previewAdjusts: (adjusts) => set({ adjustPreview: added("adjust", get().adjustPreview, get().frames, adjusts) }),
+    clearAdjustPreview: (ids) => set({ adjustPreview: without(get().adjustPreview, ids) }),
   }));
 }
 
@@ -168,23 +167,35 @@ export function orderedFrames(state: Pick<EditorState, "project" | "frames">): F
   return (state.project?.frameIds ?? []).flatMap((id) => state.frames[id] ?? []);
 }
 
-// The frames as they should look right now: any length being resized shown at its new
-// length. A plain function, applied while rendering (a selector making new objects every
-// call would re-render forever). Frames without a preview are returned as they are.
-export function withHoldPreview(frames: readonly Frame[], holdPreview: Readonly<Record<string, number>>): Frame[] {
-  return frames.map((frame) => (frame.id in holdPreview ? { ...frame, hold: holdPreview[frame.id] } : frame));
+// The frames as they should look right now, with a preview's values in place (a length being
+// resized, a picture being moved...). A plain function, applied while rendering (a selector
+// making new objects every call would re-render forever). Frames without a preview are returned
+// as they are.
+export function withPreview<F extends PreviewField>(frames: readonly Frame[], field: F, preview: Preview<F>): Frame[] {
+  return frames.map((frame) => (frame.id in preview ? { ...frame, [field]: preview[frame.id] } : frame));
 }
 
-// The same for transforms: pictures being moved shown where they're being moved to.
-export function withTransformPreview(frames: readonly Frame[], transformPreview: Readonly<Record<string, Transform>>): Frame[] {
-  return frames.map((frame) => (frame.id in transformPreview ? { ...frame, transform: transformPreview[frame.id] } : frame));
+// A preview with more values, kept in range; ids without a frame are left out.
+function added<F extends PreviewField>(field: F, preview: Preview<F>, frames: Readonly<Record<string, Frame>>, values: Preview<F>): Preview<F> {
+  const known = Object.entries(values).filter(([id]) => id in frames).map(([id, value]) => [id, PREVIEWS[field].clean(value)]);
+  return { ...preview, ...Object.fromEntries(known) };
+}
+
+// A preview without these ids (all of them, without ids).
+function without<T>(preview: Readonly<Record<string, T>>, ids?: readonly string[]): Readonly<Record<string, T>> {
+  if (!ids) return {};
+  const drop = new Set(ids);
+  return Object.fromEntries(Object.entries(preview).filter(([id]) => !drop.has(id)));
+}
+
+// What's still to be saved, once the saved frames arrive: entries whose frame has that value go.
+function unsaved<F extends PreviewField>(field: F, preview: Preview<F>, frames: Readonly<Record<string, Frame>>): Preview<F> {
+  return Object.fromEntries(Object.entries(preview).filter(([id, value]) => id in frames && !PREVIEWS[field].same(frames[id][field], value)));
 }
 
 function byId(frames: Frame[]): Record<string, Frame> {
   return Object.fromEntries(frames.map((frame) => [frame.id, frame]));
 }
-
-
 
 function clamp(value: number, min: number, max: number, fallback: number): number {
   return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;

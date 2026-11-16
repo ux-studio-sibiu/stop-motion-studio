@@ -1,5 +1,6 @@
 import { inOrder, sameTransform, type Transform } from "@/core/model";
 import { editorStore, useEditor } from "@/store/useEditor";
+import { saveSoon, settleSoon } from "./saveSoon";
 import { shownIndex } from "./StagePicture";
 
 // Moving, sizing and turning pictures (step 18), shared by the stage and the Picture tab.
@@ -7,12 +8,10 @@ import { shownIndex } from "./StagePicture";
 // Every change is first a preview in the store (the stage redraws from it, nothing is saved);
 // then one command saves it, from the saved transform to the previewed one. A drag saves when the
 // pointer lets go; a burst of arrow presses, wheel turns or typed numbers saves once, a moment
-// after it stops, so it's one undo step, not sixty.
+// after it stops (saveSoon), so it's one undo step, not sixty.
 
 export type TransformChange = { id: string; from: Transform; to: Transform };
 export type SaveTransforms = (changes: TransformChange[], label: string) => Promise<boolean>;
-
-export const BURST_DELAY = 600;   // ms of quiet before a burst is saved
 
 // Where a picture is shown now: being moved (preview), or as saved.
 export function shownTransform(id: string): Transform | undefined {
@@ -31,12 +30,10 @@ export function previewEach(ids: readonly string[], change: (transform: Transfor
   editorStore.getState().previewTransforms(next);
 }
 
-let pending: { timer: ReturnType<typeof setTimeout>; ids: readonly string[]; label: string; save: SaveTransforms } | null = null;
-
 // Saves what's previewed for these pictures now (one command), or forgets it if nothing changed.
 // If the save fails, the preview goes, and the pictures show where they're saved.
 export function commitPreview(ids: readonly string[], label: string, save: SaveTransforms): void {
-  if (pending) { clearTimeout(pending.timer); pending = null; }
+  settleSoon("transform");
   const state = editorStore.getState();
   const changes = ids.flatMap((id) => {
     const to = state.transformPreview[id];
@@ -47,16 +44,15 @@ export function commitPreview(ids: readonly string[], label: string, save: SaveT
   void save(changes, label).then((saved) => { if (!saved) editorStore.getState().clearTransformPreview(ids); });
 }
 
-// Saves a burst a moment after its last change. A burst on other pictures saves the earlier one first.
-export function commitSoon(ids: readonly string[], label: string, save: SaveTransforms, delay = BURST_DELAY): void {
-  if (pending && (pending.label !== label || pending.ids.join() !== ids.join())) commitPreview(pending.ids, pending.label, pending.save);
-  if (pending) clearTimeout(pending.timer);
-  pending = { ids, label, save, timer: setTimeout(() => commitPreview(ids, label, save), delay) };
+// Saves a burst a moment after its last change. A burst on other pictures, or another change,
+// saves the earlier one first.
+export function commitSoon(ids: readonly string[], label: string, save: SaveTransforms, delay?: number): void {
+  saveSoon("transform", `${label}:${ids.join()}`, () => commitPreview(ids, label, save), delay);
 }
 
 // Escape: forget what isn't saved yet.
 export function cancelPreview(ids: readonly string[]): void {
-  if (pending) { clearTimeout(pending.timer); pending = null; }
+  settleSoon("transform");
   editorStore.getState().clearTransformPreview(ids);
 }
 

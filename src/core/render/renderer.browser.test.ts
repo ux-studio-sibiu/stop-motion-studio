@@ -141,6 +141,28 @@ describe("renderer, on a real canvas", () => {
   });
 });
 
+describe("brightness and contrast (step 20)", () => {
+  const grey = () => solid([100, 150, 200]);
+  const adjusted = (canvasFilter: boolean, adjust: Partial<Adjust>) => {
+    const ctx = target();
+    drawFrame(ctx, { width: W, height: H }, { transform: DEFAULT_TRANSFORM, adjust: { ...DEFAULT_ADJUST, ...adjust } }, grey(), "none", { canvasFilter });
+    return [...ctx.getImageData(80, 45, 1, 1).data.slice(0, 3)];
+  };
+
+  it("the pixel fallback looks the same as the canvas filter", () => {
+    for (const adjust of [{ brightness: 1.4 }, { brightness: 0.6 }, { contrast: 1.5 }, { contrast: 0.5 }, { brightness: 1.3, contrast: 1.3 }]) {
+      const filter = adjusted(true, adjust);
+      const fallback = adjusted(false, adjust);
+      fallback.forEach((value, i) => expect(Math.abs(value - filter[i]), `${JSON.stringify(adjust)}: ${fallback} vs ${filter}`).toBeLessThanOrEqual(2));
+    }
+  });
+
+  it("brightens and darkens", () => {
+    expect(adjusted(true, { brightness: 1.5 })).toEqual([150, 225, 255]);
+    expect(adjusted(false, { brightness: 0.5 })).toEqual([50, 75, 100]);
+  });
+});
+
 describe("spot the difference (step 19)", () => {
   it("draws only the nearest picture before, at full strength, with its own position", () => {
     const ctx = target();

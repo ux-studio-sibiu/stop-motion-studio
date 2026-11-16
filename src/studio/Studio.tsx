@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Camera, ChevronLeft, Download, Image as ImageIcon, Redo2, Undo2 } from "lucide-react";
 import { editorStore, useEditor } from "@/store/useEditor";
+import { AdjustControls } from "./AdjustControls";
 import { CameraMessage } from "./CameraMessage";
 import { CameraPanel } from "./CameraPanel";
 import { CameraView } from "./CameraView";
@@ -114,6 +115,7 @@ export function Studio() {
         </PanelTab>
         <PanelTab id="picture" label="Picture" title="Adjust your picture" icon={<ImageIcon size={31} />}>
           <PictureControls save={commands.transformPictures} />
+          <AdjustControls save={commands.adjustPictures} />
         </PanelTab>
       </SidePanel>
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampSafeMargin, cleanName, cloneFrame, safeMargin, createFrame, createProject, DEFAULT_ADJUST, DEFAULT_NAME, MAX_NAME_LENGTH, DEFAULT_TRANSFORM, MAX_HEIGHT, MAX_WIDTH, SCHEMA_VERSION, type Frame } from "@/core/model";
+import { clampAdjust, clampSafeMargin, cleanName, sameAdjust, cloneFrame, safeMargin, createFrame, createProject, DEFAULT_ADJUST, DEFAULT_NAME, MAX_NAME_LENGTH, DEFAULT_TRANSFORM, MAX_HEIGHT, MAX_WIDTH, SCHEMA_VERSION, type Frame } from "@/core/model";
 
 describe("createProject", () => {
   it("uses the defaults", () => {
@@ -104,5 +104,18 @@ describe("safe zone", () => {
     expect(clampSafeMargin(-5)).toBe(0);
     expect(clampSafeMargin(500)).toBe(60);
     expect(clampSafeMargin(Number.NaN)).toBe(20);
+  });
+});
+
+describe("clampAdjust and sameAdjust", () => {
+  it("keeps brightness and contrast between 50% and 150%, in whole percents", () => {
+    expect(clampAdjust({ brightness: 3, contrast: 0.1 })).toEqual({ brightness: 1.5, contrast: 0.5 });
+    expect(clampAdjust({ brightness: 1.234, contrast: 0.987 })).toEqual({ brightness: 1.23, contrast: 0.99 });
+    expect(clampAdjust({ brightness: Number.NaN })).toEqual(DEFAULT_ADJUST);
+  });
+
+  it("tells whether two adjustments are the same", () => {
+    expect(sameAdjust(DEFAULT_ADJUST, { brightness: 1, contrast: 1 })).toBe(true);
+    expect(sameAdjust(DEFAULT_ADJUST, { brightness: 1.1, contrast: 1 })).toBe(false);
   });
 });

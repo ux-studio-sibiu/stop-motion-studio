@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { angleTo, boundsOf, boxLines, moveBy, rotateBy, scaleAround, snapBox, type Point, type SnapLines, type Transform } from "@/core/model";
 import { frameCorners } from "@/core/render";
-import { useEditor, useOrderedFrames, editorStore } from "@/store/useEditor";
-import { withTransformPreview } from "@/store/editorStore";
+import { useEditor, useShownFrames, editorStore } from "@/store/useEditor";
 import { bitmaps } from "./media";
 import { shownIndex } from "./StagePicture";
 import { useStagePan } from "./useStagePan";
@@ -26,8 +25,7 @@ type Edit = { kind: "move" | "turn"; pointerId: number; start: Point; base: Reco
 // fit, so a pointer movement is converted with the canvas's on-screen size.
 export function StageEditor({ save }: { save: SaveTransforms }) {
   const targets = useEditTargets();
-  const saved = useOrderedFrames();
-  const preview = useEditor((state) => state.transformPreview);
+  const frames = useShownFrames();
   const selection = useEditor((state) => state.selection);
   const seeThrough = useEditor((state) => state.onionSkin.on);
   const width = useEditor((state) => state.project?.width ?? 1280);
@@ -45,7 +43,6 @@ export function StageEditor({ save }: { save: SaveTransforms }) {
     return { x: ((clientX - box.left) / box.width) * width, y: ((clientY - box.top) / box.height) * height };
   };
 
-  const frames = withTransformPreview(saved, preview);
   const cornersOf = (id: string, transform?: Transform) => {
     const frame = frames.find((candidate) => candidate.id === id);
     return frame ? frameCorners(transform ?? frame.transform, bitmaps.get(frame.imageId), size) : null;

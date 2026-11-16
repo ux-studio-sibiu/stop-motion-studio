@@ -48,7 +48,7 @@
     <li><code>StageEditor.tsx</code>: snapping with guides, and Alt to place freely.</li>
     <li><code>useStagePan.ts</code>, used by the stage editor: Space-drag or the middle button to pan, and Ctrl + wheel to zoom around the pointer.</li>
     <li>Each animation's zoom and pan are remembered (<code>remembered.ts</code>). They're also saved when the page is left, so a quick reload doesn't lose them.</li>
-    <li>3 end-to-end tests: spot the difference in <code>stage.spec.ts</code>; snapping and zoom in <code>transform.spec.ts</code>.</li>
+    <li>3 end-to-end tests: spot the difference in <code>stage.spec.ts</code>; snapping and zoom in <code>picture.spec.ts</code>.</li>
   </ul>
 
   <h2>Decisions</h2>
@@ -87,7 +87,7 @@
   </div>
 
   <h2>Files in this step</h2>
-  <p><code>src/core/model/snap.ts</code>, <code>snap.test.ts</code>, <code>index.ts</code>; <code>src/core/render/renderer.ts</code>, <code>renderer.test.ts</code>, <code>renderer.browser.test.ts</code>, <code>stageView.ts</code>, <code>stageView.test.ts</code>, <code>index.ts</code>; <code>src/store/editorStore.ts</code>, <code>editorStore.test.ts</code>; <code>src/studio/StageView.tsx</code>, <code>StageEditor.tsx</code>, <code>useStagePan.ts</code>, <code>OnionSkin.tsx</code>, <code>SeeThroughMenu.tsx</code> (also: the safe zone slider's spoken value had lost its number), <code>Studio.tsx</code>, <code>remembered.ts</code>, <code>styles/_stage.scss</code>, <code>styles/_playback.scss</code>; <code>src/styles/_controls.scss</code> (<code>.icon-button.is-on</code> is now shared); <code>e2e/stage.spec.ts</code>, <code>transform.spec.ts</code>; <code>public/steps/19-line-up.html</code>, <code>index.html</code>, <code>18-transform.html</code> (next link); <code>ROADMAP.md</code>.</p>
+  <p><code>src/core/model/snap.ts</code>, <code>snap.test.ts</code>, <code>index.ts</code>; <code>src/core/render/renderer.ts</code>, <code>renderer.test.ts</code>, <code>renderer.browser.test.ts</code>, <code>stageView.ts</code>, <code>stageView.test.ts</code>, <code>index.ts</code>; <code>src/store/editorStore.ts</code>, <code>editorStore.test.ts</code>; <code>src/studio/StageView.tsx</code>, <code>StageEditor.tsx</code>, <code>useStagePan.ts</code>, <code>OnionSkin.tsx</code>, <code>SeeThroughMenu.tsx</code> (also: the safe zone slider's spoken value had lost its number), <code>Studio.tsx</code>, <code>remembered.ts</code>, <code>styles/_stage.scss</code>, <code>styles/_playback.scss</code>; <code>src/styles/_controls.scss</code> (<code>.icon-button.is-on</code> is now shared); <code>e2e/stage.spec.ts</code>, <code>picture.spec.ts</code>; <code>public/steps/19-line-up.html</code>, <code>index.html</code>, <code>18-transform.html</code> (next link); <code>ROADMAP.md</code>.</p>
   <p><strong>Tests added:</strong></p>
   <ul>
     <li>Unit (238 in total):
@@ -102,8 +102,8 @@
     <li>End-to-end, 3:
       <ul>
         <li>in <code>stage.spec.ts</code>, spot the difference: one look at a time, remembered;</li>
-        <li>in <code>transform.spec.ts</code>, snapping with guides, and Alt;</li>
-        <li>in <code>transform.spec.ts</code>, Ctrl + wheel zoom, Space-drag pan, remembered, only in the Picture tab.</li>
+        <li>in <code>picture.spec.ts</code>, snapping with guides, and Alt;</li>
+        <li>in <code>picture.spec.ts</code>, Ctrl + wheel zoom, Space-drag pan, remembered, only in the Picture tab.</li>
       </ul>
     </li>
   </ul>
@@ -120,7 +120,7 @@
 
   <nav class="pager">
     <a href="18-transform.html">Previous: 18 · Move, scale, rotate, flip</a>
-    <span>Next: 20 · Brightness and contrast</span>
+    <a href="20-brightness-contrast.html">Next: 20 · Brightness and contrast</a>
   </nav>
 </main>
 </body>

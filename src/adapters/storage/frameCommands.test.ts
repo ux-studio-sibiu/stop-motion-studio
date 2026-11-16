@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { addFrames, createHistory, deleteFrames, duplicateFrames, reorderFrames, setFps, setHold, setSafeMargin, setTransforms, type History } from "@/core/commands";
+import { addFrames, createHistory, deleteFrames, duplicateFrames, reorderFrames, setAdjusts, setFps, setHold, setSafeMargin, setTransforms, type History } from "@/core/commands";
 import { createFrame, createProject, moveIds, type Project, type ProjectRepository } from "@/core/model";
 import { openStudioDb, type StudioDb } from "@/adapters/storage/db";
 import { createDexieRepository } from "@/adapters/storage/dexieRepository";
@@ -164,6 +164,32 @@ describe("setTransforms", () => {
     const [a] = await takePictures(1);
     await expect(history.run(setTransforms(project.id, [{ id: a, from: still, to: { ...still } }]))).rejects.toThrow();
     expect(history.state().undoLabel).toBe("Take picture");
+  });
+});
+
+describe("setAdjusts", () => {
+  const adjustOf = async (id: string) => (await repository.loadProject(project.id))?.frames.find((frame) => frame.id === id)?.adjust;
+  const normal = { brightness: 1, contrast: 1 };
+  const brighter = { brightness: 1.3, contrast: 0.9 };
+
+  it("changes brightness and contrast of several pictures in one step; undo and redo", async () => {
+    const [a, b] = await takePictures(2);
+    await history.run(setAdjusts(project.id, [{ id: a, from: normal, to: brighter }, { id: b, from: normal, to: brighter }], "Apply to all"));
+    expect(await adjustOf(a)).toEqual(brighter);
+    expect(await adjustOf(b)).toEqual(brighter);
+    expect(history.state().undoLabel).toBe("Apply to all (2 pictures)");
+    await history.undo();
+    expect(await adjustOf(a)).toEqual(normal);
+    await history.redo();
+    expect(await adjustOf(b)).toEqual(brighter);
+  });
+
+  it("keeps values to 50-150%, and isn't recorded when nothing changed", async () => {
+    const [a] = await takePictures(1);
+    await history.run(setAdjusts(project.id, [{ id: a, from: normal, to: { brightness: 9, contrast: 0 } }]));
+    expect(await adjustOf(a)).toEqual({ brightness: 1.5, contrast: 0.5 });
+    await expect(history.run(setAdjusts(project.id, [{ id: a, from: normal, to: { ...normal } }]))).rejects.toThrow();
+    expect(history.state().undoLabel).toBe("Change brightness");
   });
 });
 

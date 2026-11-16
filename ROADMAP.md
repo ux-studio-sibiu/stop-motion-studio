@@ -580,7 +580,7 @@ registry entry.
 - [x] 17 Onion skin ([page](public/steps/17-onion-skin.html))
 - [x] 18 Move, scale, rotate, flip ([page](public/steps/18-transform.html))
 - [x] 19 Line up with other pictures
-- [ ] 20 Brightness and contrast
+- [x] 20 Brightness and contrast
 - [ ] 21 Storage safety
 - [ ] 22 Plugin registry
 - [ ] 23 Speech bubbles on pictures

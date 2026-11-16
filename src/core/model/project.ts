@@ -17,6 +17,10 @@ export const FPS_OPTIONS = [5, 8, 10, 12, 15] as const;   // what the speed cont
 
 export const DEFAULT_TRANSFORM: Readonly<Transform> = Object.freeze({ x: 0, y: 0, scale: 1, rotation: 0, flipX: false, flipY: false });
 export const DEFAULT_ADJUST: Readonly<Adjust> = Object.freeze({ brightness: 1, contrast: 1 });
+// Brightness and contrast (step 20), as factors: 1 is the photo as taken. 50% to 150% is enough to
+// rescue a dark or flat shot without turning it into a white or black page.
+export const MIN_ADJUST = 0.5;
+export const MAX_ADJUST = 1.5;
 
 export const DEFAULT_NAME = "My animation";
 export const MAX_NAME_LENGTH = 60;
@@ -89,4 +93,14 @@ export function clampHold(hold: number): number {
 function evenSize(size: number, max: number): number {
   const whole = Number.isFinite(size) ? Math.min(max, Math.max(2, Math.round(size))) : max;
   return whole - (whole % 2);
+}
+
+// Brightness and contrast kept between 50% and 150%, in steps of 1%; anything unreadable is 100%.
+export function clampAdjust(adjust: Partial<Adjust>): Adjust {
+  const keep = (value: number | undefined) => (Number.isFinite(value) ? Math.round(Math.min(MAX_ADJUST, Math.max(MIN_ADJUST, value!)) * 100) / 100 : 1);
+  return { brightness: keep(adjust.brightness), contrast: keep(adjust.contrast) };
+}
+
+export function sameAdjust(a: Adjust, b: Adjust): boolean {
+  return a.brightness === b.brightness && a.contrast === b.contrast;
 }

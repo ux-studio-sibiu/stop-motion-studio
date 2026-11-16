@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
 import { Camera, ChevronLeft, ChevronRight, CopyPlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { formatSeconds, inOrder, moveIds, neighbourAfterDelete, nudgeGap, pxPerTick, rulerScale, sameOrder, ticksToSeconds, totalTicks } from "@/core/model";
-import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, withHoldPreview } from "@/store/editorStore";
+import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, withPreview } from "@/store/editorStore";
 import { editorStore, useEditor, useOrderedFrames } from "@/store/useEditor";
 import { DragGhost, TimelineFrame, formatHold } from "./TimelineFrame";
 import { useReorder } from "./useReorder";
@@ -31,7 +31,7 @@ type TimelineProps = {
 export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: TimelineProps) {
   const saved = useOrderedFrames();
   const holdPreview = useEditor((state) => state.holdPreview);
-  const frames = useMemo(() => withHoldPreview(saved, holdPreview), [saved, holdPreview]);   // with any resize in progress
+  const frames = useMemo(() => withPreview(saved, "hold", holdPreview), [saved, holdPreview]);   // with any resize in progress
   const selection = useEditor((state) => state.selection);
   const fps = useEditor((state) => state.project?.fps ?? 8);
   const projectId = useEditor((state) => state.project?.id);

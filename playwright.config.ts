@@ -41,6 +41,10 @@ export default defineConfig<StudioOptions>({
           ],
         },
       },
+      // At most four browsers at once. By default Playwright starts one per two CPU cores (ten on a
+      // 20-core machine); with that many, a busy machine runs out of resources: pages fail to load
+      // (net::ERR_INSUFFICIENT_RESOURCES) and the fake camera starts too slowly.
+      workers: 4,
     },
     {
       // WebKit (Safari's engine) has no file-backed fake camera; a script fakes getUserMedia

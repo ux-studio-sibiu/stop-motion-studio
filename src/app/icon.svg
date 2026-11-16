@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- The studio's icon: the pause / stop bars, hollow, in the capture colour (--color-accent). -->
+  <rect x="5.5" y="4.5" width="7.5" height="23" rx="2.5" fill="#ffffff" stroke="#f2544a" stroke-width="3" />
+  <rect x="19" y="4.5" width="7.5" height="23" rx="2.5" fill="#ffffff" stroke="#f2544a" stroke-width="3" />
+</svg>

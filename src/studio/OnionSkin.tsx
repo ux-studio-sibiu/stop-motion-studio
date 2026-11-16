@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { insertIndexAfter } from "@/core/model";
 import { drawOnionSkin } from "@/core/render";
-import { withTransformPreview } from "@/store/editorStore";
-import { useEditor, useOrderedFrames } from "@/store/useEditor";
+import { useEditor, useShownFrames } from "@/store/useEditor";
 import { bitmaps } from "./media";
 import { shownIndex } from "./StagePicture";
 import { useCanvasDraw } from "./useCanvasDraw";
@@ -19,9 +18,7 @@ import { useCanvasDraw } from "./useCanvasDraw";
 // "Spot the difference" (step 19) blends it with what's under it (.is-difference): what lines up
 // goes black.
 export function OnionSkin({ mode }: { mode: "camera" | "frame" }) {
-  const saved = useOrderedFrames();
-  const preview = useEditor((state) => state.transformPreview);
-  const frames = useMemo(() => withTransformPreview(saved, preview), [saved, preview]);
+  const frames = useShownFrames();   // with any change not saved yet
   const selection = useEditor((state) => state.selection);
   const settings = useEditor((state) => state.onionSkin);
   const width = useEditor((state) => state.project?.width ?? 1280);

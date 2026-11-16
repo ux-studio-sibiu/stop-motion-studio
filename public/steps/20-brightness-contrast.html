@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>20 Brightness and contrast · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 20 of 33 · Part 6 Editing</p>
+  <h1>Brightness and contrast</h1>
+  <p class="intro">A cloud passes, a lamp gets moved, and one shot comes out darker than the rest. Now a child can fix it. The Picture tab has two sliders, <strong>Brightness</strong> and <strong>Contrast</strong> (50% to 150%), and <strong>Reset</strong> to go back to the photo as it was taken. With several pictures selected, they change them all, in one undo step. The photo itself is never changed; the values are applied when drawing. The stage and the timeline thumbnails show them.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>clampAdjust</code> (50-150%, whole percents) and <code>sameAdjust</code> in <code>core/model/project.ts</code>. 2 tests.</li>
+    <li><code>setAdjusts(projectId, changes, label)</code> in <code>core/commands</code>: one command for a slider drag or a Reset, however many pictures it changes. 2 tests against storage.</li>
+    <li><code>src/core/render/adjust.ts</code>, the fallback for browsers without <code>ctx.filter</code>:
+      <ul>
+        <li><code>adjustPixels</code> and <code>adjustTable</code>, the pixel loop. 4 tests.</li>
+        <li><code>canvasFilterWorks</code>.</li>
+        <li><code>adjustedCopy</code>: an adjusted copy of a picture, kept until the values change.</li>
+      </ul>
+    </li>
+    <li><code>drawFrame</code> uses the canvas filter where there is one, and the adjusted copy where there isn't. 2 pixel tests: the two ways match within 2 levels, and the values come out exactly.</li>
+    <li>An adjust preview in the store (<code>adjustPreview</code>, <code>previewAdjusts</code>, <code>clearAdjustPreview</code>, <code>withAdjustPreview</code>), like the move preview. 1 test.</li>
+    <li><code>useShownFrames()</code> in <code>store/useEditor.ts</code>: the frames with every unsaved change (moves and adjustments). The stage picture, see-through and the stage editor now all use it.</li>
+    <li><code>src/studio/AdjustControls.tsx</code>: the sliders and Reset. Wired through <code>useStudioCommands</code> (<code>adjustPictures</code>).</li>
+    <li>Timeline thumbnails get the same values as a CSS <code>filter</code> (<code>TimelineFrame.tsx</code>).</li>
+    <li>2 end-to-end tests in <code>e2e/picture.spec.ts</code>.</li>
+  </ul>
+
+  <div class="note"><strong>Changed after review:</strong> a "Use for all pictures" button was dropped; selecting several pictures does the same. "Normal" is now called "Reset", like the position's reset.</div>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>Non-destructive.</strong> The frame stores two numbers; the renderer applies them, so export (steps 25-27) will show what the stage shows.</li>
+    <li><strong>Like moving a picture.</strong> While a slider moves, the stage shows a preview and nothing is saved. Letting go saves one step. A run of arrow presses is saved once it stops (the same 600 ms as nudges), so it's one undo. With several pictures selected, the slider changes them all.</li>
+    <li><strong>The fallback follows CSS.</strong> It applies <code>brightness()</code> then <code>contrast()</code>, each kept between black and white, so the pictures look the same in every browser. The pixel test checks it against the real canvas filter.</li>
+    <li><strong>The fallback isn't skipped during drags.</strong> The roadmap warned it could be slow at 1080p. Pictures here are at the project's size (1280 × 720), and each adjusted copy is computed once per picture and value, so one slider step costs one pass over the picture. If it shows up as slow on an older iPad, the step to take is to skip it while the slider moves.</li>
+    <li><strong>Range 50-150%.</strong> That's enough to rescue a dark or flat shot without making a white or black page.</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><code>canvasFilterWorks</code> checks the context's prototype, not the context: setting an unknown property on the context would just store it, and it would read back fine. The Node test's fake context was given a prototype with <code>filter</code> to match.</li>
+    <li>In the fallback, the extra style (see-through's outline look) is left out. Only browsers without <code>ctx.filter</code> see that.</li>
+    <li>Not checked here: a real Safari without <code>ctx.filter</code>. WebKit's camera tests don't run on Windows, and this machine's WebKit has the filter. The pixel test runs the fallback in Chromium instead.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li>Make a picture brighter, undo, redo. Reload: it's still brighter, on the stage and in its thumbnail.</li>
+    <li>Select several pictures, move a slider, then one undo: they all go back.</li>
+  </ul>
+  <div class="note">Checked while building:
+    <ul>
+      <li>247 unit tests and 13 pixel tests pass.</li>
+      <li><code>picture.spec.ts</code>: 11 passed.</li>
+      <li>One full Chromium run: 75 passed and 4 failed. That run was slow (1.1 minutes instead of about 40 s), and the 3 files with failures then passed on their own (27 passed).</li>
+      <li>A screenshot of a picture at 130% brightness and 120% contrast.</li>
+    </ul>
+  </div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/model/project.ts</code>, <code>project.test.ts</code>; <code>src/core/commands/frameCommands.ts</code>; <code>src/adapters/storage/frameCommands.test.ts</code>; <code>src/core/render/adjust.ts</code>, <code>adjust.test.ts</code>, <code>renderer.ts</code>, <code>renderer.test.ts</code>, <code>renderer.browser.test.ts</code>, <code>index.ts</code>; <code>src/store/editorStore.ts</code>, <code>editorStore.test.ts</code>, <code>useEditor.ts</code>; <code>src/studio/AdjustControls.tsx</code>, <code>useStudioCommands.ts</code>, <code>Studio.tsx</code>, <code>StagePicture.tsx</code>, <code>OnionSkin.tsx</code>, <code>StageEditor.tsx</code>, <code>TimelineFrame.tsx</code>, <code>styles/_side-panel.scss</code>; <code>e2e/picture.spec.ts</code>; <code>public/steps/20-brightness-contrast.html</code>, <code>index.html</code>, <code>19-line-up.html</code> (next link); <code>ROADMAP.md</code>.</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit (247 in total):
+      <ul>
+        <li>2 for the limits;</li>
+        <li>2 for <code>setAdjusts</code>;</li>
+        <li>4 for the pixel loop;</li>
+        <li>1 for the preview.</li>
+      </ul>
+    </li>
+    <li>Pixel: 2 (the fallback matches the filter; exact values).</li>
+    <li>End-to-end, 2 in <code>picture.spec.ts</code>:
+      <ul>
+        <li>stage, thumbnail, one undo, saved;</li>
+        <li>several selected as one undo, and Reset.</li>
+      </ul>
+    </li>
+  </ul>
+  <p><strong>Tests changed:</strong> the fake context in the outline-look test (<code>renderer.test.ts</code>) now has <code>filter</code> on its prototype, as a real context does. What it checks is unchanged.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>the photo is never changed; only two numbers are saved</li>
+    <li>a slider drag, or a run of arrow presses, is one undo</li>
+    <li>several selected pictures change as one undo</li>
+    <li>the fallback and the canvas filter look the same</li>
+    <li><code>npm test</code>, <code>npm run test:browser</code>, <code>npm run test:e2e</code>, <code>npm run lint</code>, <code>npm run typecheck</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="19-line-up.html">Previous: 19 · Line up with other pictures</a>
+    <span>Next: 21 · Storage safety</span>
+  </nav>
+</main>
+</body>
+</html>

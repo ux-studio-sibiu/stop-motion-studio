@@ -16,14 +16,21 @@ fast, logic is never "trust the edit".
 - **Drawing code (`src/core/render/`) also runs `npm run test:browser`** (about 2 s): its pixel tests
   in `*.browser.test.ts` draw on a real canvas in Chromium. Anything else stays in Node tests.
 - **From step 08 on, a change to a user-facing flow** (capture, timeline editing, playback, export,
-  projects) updates or adds its Playwright spec in `e2e/`. How much to run depends on the size:
-  - a small change inside one flow: only the specs for that flow, in Chromium
-    (`npm run test:e2e -- e2e/timeline.spec.ts`, about 15 s);
-  - a change that touches several flows, shared code (`Studio.tsx`, `useProject`, `e2e/fixtures.ts`)
-    or storage, and the end of a roadmap step: all specs in Chromium (`npm run test:e2e`, about 25 s);
-  - WebKit (`npm run test:e2e:all`, both browsers) only when asked, or for a change aimed at Safari:
-    on Windows its camera tests all skip, so it adds time and little coverage.
-  Say in the summary which of these ran.
+  projects) updates or adds its Playwright spec in `e2e/`. **Run only the specs relevant to the
+  change, never everything**: the specs for the flows the change touches, in one command, in
+  Chromium against the dev server, which skips the production build
+  (`npm run test:e2e:dev -- e2e/picture.spec.ts e2e/stage.spec.ts`, about 8-12 s for one spec; it reuses
+  the `next dev` on port 3000, or starts one). Which spec covers what:
+  - `camera.spec`: the camera, capture; `stage.spec`: the stage, see-through, safe zone, side panel tabs;
+  - `picture.spec`: moving, snapping, zoom, brightness and contrast (the Picture tab);
+  - `timeline.spec`, `frames.spec`, `resize.spec`, `reorder.spec`: the timeline, delete and duplicate,
+    lengths, reordering;
+  - `history.spec`: undo and redo; `playback.spec`: playing; `persistence.spec`: reloads and the
+    load gate; `projects.spec`: the projects page.
+  Shared code (`Studio.tsx`, `useProject`, `e2e/fixtures.ts`, storage) means the specs of the flows
+  it really changes, not all of them. **The full suite** (`npm run test:e2e`, production build, about
+  40 s) and **WebKit** (`npm run test:e2e:all`) run only when the user asks. Say in the summary which
+  specs ran, and which were left out.
   - **Seed pictures, don't photograph them**, unless the test is about taking pictures:
     `studio.seedPictures(n)` writes them straight into storage, much faster and steadier than
     `cameraOn()` + `takePictures(n)`. And **don't start the camera** unless the test is about it:

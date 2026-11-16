@@ -2,6 +2,7 @@
 
 import type { MouseEvent, PointerEvent, ReactNode } from "react";
 import { ticksToSeconds, type Frame } from "@/core/model";
+import { adjustFilter } from "@/core/render";
 import { thumbs } from "./media";
 import type { Drag } from "./useReorder";
 import { optionId } from "./useTimelineSelection";
@@ -31,7 +32,7 @@ export function TimelineFrame({ frame, number, width, selected, insertAfter, dra
   return (
     <li id={optionId(frame.id)} role="option" aria-selected={selected} aria-label={`Picture ${number}`} className={className} style={{ width }} onClick={(event) => onPick(frame.id, event)} onPointerDown={(event) => onPress(frame.id, event)}>
       <span className="picture">
-        <span className="thumb" style={{ backgroundImage: url ? `url("${url}")` : undefined }} />
+        <span className="thumb" style={{ backgroundImage: url ? `url("${url}")` : undefined, filter: adjustFilter(frame.adjust) === "none" ? undefined : adjustFilter(frame.adjust) }} />
         {width >= LABEL_MIN_WIDTH && <span className="frame-number">{number}</span>}
       </span>
       {children}

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createFrame, createProject, type Frame, type Project } from "@/core/model";
-import { createEditorStore, MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, orderedFrames, withHoldPreview, withTransformPreview, type EditorStore } from "@/store/editorStore";
+import { createEditorStore, MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, orderedFrames, withPreview, type EditorStore } from "@/store/editorStore";
 
 let store: EditorStore;
 let project: Project;
@@ -178,6 +178,24 @@ describe("stage view", () => {
   });
 });
 
+describe("brightness and contrast preview", () => {
+  beforeEach(() => store.getState().loadProject({ ...project, frameIds: [a.id, b.id] }, [a, b]));
+
+  it("shows new values without saving them, kept to 50-150%; dropped once saved, or on clear", () => {
+    store.getState().previewAdjusts({ [a.id]: { brightness: 3, contrast: 1.2 }, unknown: { brightness: 1.2, contrast: 1 } });
+    expect(store.getState().adjustPreview).toEqual({ [a.id]: { brightness: 1.5, contrast: 1.2 } });
+    const shown = withPreview(orderedFrames(store.getState()), "adjust", store.getState().adjustPreview);
+    expect(shown[0].adjust).toEqual({ brightness: 1.5, contrast: 1.2 });
+    expect(shown[1]).toBe(b);
+
+    store.getState().syncProject({ ...project, frameIds: [a.id, b.id] }, [{ ...a, adjust: { brightness: 1.5, contrast: 1.2 } }, b]);
+    expect(store.getState().adjustPreview).toEqual({});
+    store.getState().previewAdjusts({ [b.id]: { brightness: 0.8, contrast: 1 } });
+    store.getState().clearAdjustPreview([b.id]);
+    expect(store.getState().adjustPreview).toEqual({});
+  });
+});
+
 describe("transform preview", () => {
   const moved = { x: 0.2, y: 0, scale: 2, rotation: 10, flipX: false, flipY: false };
   beforeEach(() => store.getState().loadProject({ ...project, frameIds: [a.id, b.id] }, [a, b]));
@@ -186,7 +204,7 @@ describe("transform preview", () => {
     store.getState().previewTransforms({ [a.id]: moved, nope: moved });
     expect(Object.keys(store.getState().transformPreview)).toEqual([a.id]);
     expect(store.getState().frames[a.id].transform).toEqual(a.transform);
-    const shown = withTransformPreview(orderedFrames(store.getState()), store.getState().transformPreview);
+    const shown = withPreview(orderedFrames(store.getState()), "transform", store.getState().transformPreview);
     expect(shown[0].transform).toEqual(moved);
     expect(shown[1]).toBe(b);   // untouched frames stay the same objects
   });
@@ -207,7 +225,7 @@ describe("hold preview", () => {
     store.getState().previewHolds({ [a.id]: 4, nope: 2, [b.id]: 0 });
     expect(store.getState().holdPreview).toEqual({ [a.id]: 4, [b.id]: 1 });   // at least 1 tick
     expect(store.getState().frames[a.id].hold).toBe(1);
-    const shown = withHoldPreview(orderedFrames(store.getState()), store.getState().holdPreview);
+    const shown = withPreview(orderedFrames(store.getState()), "hold", store.getState().holdPreview);
     expect(shown.map((frame) => frame.hold)).toEqual([4, 1]);
   });
 
@@ -235,7 +253,7 @@ describe("hold preview", () => {
 
   it("leaves frames without a preview as the very same objects", () => {
     const frames = orderedFrames(store.getState());
-    expect(withHoldPreview(frames, {})[0]).toBe(frames[0]);
+    expect(withPreview(frames, "hold", {})[0]).toBe(frames[0]);
   });
 });
 

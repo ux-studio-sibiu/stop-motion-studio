@@ -1,7 +1,8 @@
 "use client";
 
-import { deleteFrames, duplicateFrames, reorderFrames, setFps, setHold, setSafeMargin, setTransforms, type Command } from "@/core/commands";
+import { deleteFrames, duplicateFrames, reorderFrames, setAdjusts, setFps, setHold, setSafeMargin, setTransforms, type Command } from "@/core/commands";
 import { editorStore } from "@/store/useEditor";
+import type { AdjustChange } from "./AdjustControls";
 import type { TransformChange } from "./transformEditing";
 import type { HoldChange } from "./useResize";
 
@@ -22,6 +23,7 @@ export function useStudioCommands(projectId: string | null, run: (command: Comma
     resizePictures: (changes: HoldChange[]) => on((id) => setHold(id, changes)),
     reorderPictures: (before: string[], after: string[], moved: string[]) => on((id) => reorderFrames(id, before, after, moved)),
     transformPictures: (changes: TransformChange[], label: string) => on((id) => setTransforms(id, changes, label)),
+    adjustPictures: (changes: AdjustChange[], label: string) => on((id) => setAdjusts(id, changes, label)),
     setSpeed: (from: number, to: number) => (from === to ? Promise.resolve(false) : on((id) => setFps(id, from, to))),
     setSafeMargin: (from: number, to: number) => on((id) => setSafeMargin(id, from, to)),
   };

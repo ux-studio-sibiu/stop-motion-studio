@@ -103,11 +103,13 @@ describe("drawOnionSkin", () => {
 
   it("draws the outline look as blurred, black-and-white, high-contrast shapes", () => {
     const filters: string[] = [];
-    const ctx = {
-      globalAlpha: 1, filter: "none",
+    // Like a real context, it has `filter` on its prototype (that is how the renderer tells
+    // whether the browser supports canvas filters).
+    const ctx: { filter: string } = Object.assign(Object.create({ filter: "none" }), {
+      globalAlpha: 1,
       save() {}, restore() {}, setTransform() {}, clearRect() {},
       drawImage() { filters.push(ctx.filter); },
-    };
+    });
     drawOnionSkin(ctx as unknown as CanvasRenderingContext2D, scene, images, 3, { outline: true });
     expect(filters).toEqual(["blur(1px) grayscale(1) contrast(8)"]);   // a 160 px canvas: the 1 px minimum
     expect(outlineFilter(1280)).toBe("blur(4px) grayscale(1) contrast(8)");

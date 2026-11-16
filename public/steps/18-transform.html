@@ -28,6 +28,7 @@
       <li><strong>No jump on reload.</strong> The studio stays hidden until it looks as it was left: the animation is loaded with its remembered settings, and the camera is running or known to stay off. Then it fades in. If the camera is slow to start, it shows after 2 s at most (<code>useReady</code> in <code>Studio.tsx</code>, <code>settled</code> from <code>useCamera</code>).</li>
       <li><strong>The safe zone</strong> is set per animation, 0-60 px, with a slider in the see-through options. It's undoable and saved with the animation (<code>safeMargin</code>).</li>
       <li><strong>One outline width</strong>, <code>--line-width</code> (2px), for buttons, fields, the stage, panels, tabs and dropdowns. The stage's inside is exactly 16:9 in whole pixels, so no dark sliver shows at its edge.</li>
+      <li><strong>Tests renamed:</strong> <code>e2e/transform.spec.ts</code> is now <code>e2e/picture.spec.ts</code>. It also holds the picture tests from steps 19 and 20.</li>
       <li><strong>Code moves:</strong>
         <ul>
           <li><code>useStudioCommands</code> holds every undoable change the studio makes, in one object;</li>

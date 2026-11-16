@@ -1,4 +1,4 @@
-import { clampHold, cloneFrame, sameOrder, sameTransform, type Frame, type Transform, type FrameInsert, type ProjectRepository, type RemovedFrame } from "../model";
+import { clampAdjust, clampHold, cloneFrame, sameAdjust, sameOrder, sameTransform, type Adjust, type Frame, type Transform, type FrameInsert, type ProjectRepository, type RemovedFrame } from "../model";
 import type { Command } from "./command";
 
 // Takes pictures out of the animation. Undo puts them back exactly where they were (and
@@ -91,6 +91,17 @@ export function setTransforms(projectId: string, changes: readonly { id: string;
     if (changes.length === 0 || changes.every(({ from, to }) => sameTransform(from, to))) throw new Error("Nothing moved.");
     await repository.updateFrames(projectId, changes.map((change) => ({ id: change.id, transform: { ...change[pick] } })));
     return { select: ids };
+  };
+  return { label: changes.length > 1 ? `${label} (${changes.length} pictures)` : label, do: write("to"), undo: write("from") };
+}
+
+// Brightness and contrast (step 20): one command for a slider drag, or for "apply to all", however
+// many pictures it changed. Undo puts every picture's back. The photo itself never changes.
+export function setAdjusts(projectId: string, changes: readonly { id: string; from: Adjust; to: Adjust }[], label = "Change brightness"): Command {
+  const write = (pick: "from" | "to") => async (repository: ProjectRepository) => {
+    if (changes.length === 0 || changes.every(({ from, to }) => sameAdjust(clampAdjust(from), clampAdjust(to)))) throw new Error("Nothing changed.");
+    await repository.updateFrames(projectId, changes.map((change) => ({ id: change.id, adjust: clampAdjust(change[pick]) })));
+    return {};
   };
   return { label: changes.length > 1 ? `${label} (${changes.length} pictures)` : label, do: write("to"), undo: write("from") };
 }

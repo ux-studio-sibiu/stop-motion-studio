@@ -1,4 +1,5 @@
 import { frameIndexAt, frameStarts, type Adjust, type Frame, type Transform } from "../model";
+import { adjustedCopy, canvasFilterWorks } from "./adjust";
 import { containSize } from "./fit";
 
 // The one renderer (PLAN.md §1): the stage, playback, onion skin and export all draw through
@@ -38,15 +39,19 @@ export function renderAt(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderin
 // One frame's picture with its position and look. Exposed for onion skin (step 17), which
 // draws neighbouring frames faintly on top of each other.
 // `style` is an extra canvas filter applied after the picture's own adjustments (the onion
-// skin's outline look).
-export function drawFrame(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, scene: Pick<Scene, "width" | "height">, frame: Pick<Frame, "transform" | "adjust">, image: DrawableImage, style = "none"): void {
+// skin's outline look). Brightness and contrast (step 20) use the canvas filter; where the browser
+// has none (older Safari), an adjusted copy of the picture is drawn instead (adjust.ts), and the
+// extra style is left out. `canvasFilter` is for tests, to draw both ways.
+export function drawFrame(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, scene: Pick<Scene, "width" | "height">, frame: Pick<Frame, "transform" | "adjust">, image: DrawableImage, style = "none", { canvasFilter = canvasFilterWorks(ctx) } = {}): void {
   const size = containSize(image.width, image.height, scene.width, scene.height);
   if (size.width === 0) return;
+  const adjust = adjustFilter(frame.adjust);
+  const source = adjust !== "none" && !canvasFilter ? adjustedCopy(image, frame.adjust) : image;
   ctx.save();
   ctx.setTransform(...frameMatrix(frame.transform, size, scene));
-  const filter = [adjustFilter(frame.adjust), style].filter((part) => part !== "none").join(" ") || "none";
-  if (filter !== "none" && "filter" in ctx) ctx.filter = filter;
-  ctx.drawImage(image, 0, 0, size.width, size.height);
+  const filter = canvasFilter ? [adjust, style].filter((part) => part !== "none").join(" ") || "none" : "none";
+  if (filter !== "none") ctx.filter = filter;
+  ctx.drawImage(source, 0, 0, size.width, size.height);
   ctx.restore();
 }
 
