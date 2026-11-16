@@ -55,25 +55,37 @@ export function drawFrame(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderi
 // is drawn at `opacity`, older ones fainter (× 0.5 each). Returns the pictures that weren't
 // decoded yet (and so were left out), so the caller can decode them and draw again.
 // `outline` turns the ghosts into broad black-and-white shapes (outlineFilter).
-export function drawOnionSkin(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, scene: Pick<Scene, "width" | "height" | "frames">, images: ImageSource, index: number, { count = 1, opacity = 0.4, outline = false } = {}): string[] {
-  const style = outline ? outlineFilter(scene.width) : "none";
+// `difference` ("spot the difference", step 19) draws only the nearest picture, at full strength:
+// the canvas is shown with CSS `mix-blend-mode: difference` over the camera or the picture, so
+// what lines up goes black and what doesn't glows. Only a looking aid: export never draws it.
+export function drawOnionSkin(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, scene: Pick<Scene, "width" | "height" | "frames">, images: ImageSource, index: number, { count = 1, opacity = 0.4, outline = false, difference = false } = {}): string[] {
+  // Spot the difference: only the nearest picture, at full strength, as a photo.
+  const shown = difference ? { count: 1, opacity: 1, style: "none" } : { count, opacity, style: outline ? outlineFilter(scene.width) : "none" };
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, scene.width, scene.height);
   ctx.restore();
   const missing: string[] = [];
   // Oldest first, so the nearest ghost ends up on top.
-  for (let back = Math.min(count, index); back >= 1; back--) {
+  for (let back = Math.min(shown.count, index); back >= 1; back--) {
     const frame = scene.frames[index - back];
     const image = frame && images(frame.imageId);
     if (!frame) continue;
     if (!image) { missing.push(frame.imageId); continue; }
     ctx.save();
-    ctx.globalAlpha = onionOpacity(opacity, back);
-    drawFrame(ctx, scene, frame, image, style);
+    ctx.globalAlpha = onionOpacity(shown.opacity, back);
+    drawFrame(ctx, scene, frame, image, shown.style);
     ctx.restore();
   }
   return missing;
+}
+
+// A picture's four corners on the canvas (top-left, top-right, bottom-right, bottom-left), for its
+// outline on the stage and for snapping. `image` is the picture's size (the canvas's if unknown).
+export function frameCorners(transform: Transform, image: { width: number; height: number } | undefined, scene: { width: number; height: number }): { x: number; y: number }[] {
+  const fit = containSize(image?.width ?? scene.width, image?.height ?? scene.height, scene.width, scene.height);
+  const m = frameMatrix(transform, fit, scene);
+  return [applyMatrix(m, 0, 0), applyMatrix(m, fit.width, 0), applyMatrix(m, fit.width, fit.height), applyMatrix(m, 0, fit.height)];
 }
 
 // The onion skin's outline look: blur away the details, drop the colour, then push the contrast

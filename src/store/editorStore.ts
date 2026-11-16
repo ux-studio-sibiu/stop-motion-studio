@@ -1,5 +1,6 @@
 import { createStore } from "zustand/vanilla";
 import { clampHold, clampSafeMargin, safeMargin, sameTransform, type Frame, type Project, type Transform } from "@/core/model";
+import { clampView, FIT_VIEW, type StageView } from "@/core/render";
 
 // Live editor state (PLAN.md §1): what the studio is showing and doing right now.
 // Metadata only: never Blobs, MediaStreams or DOM nodes. Photos live in the image cache
@@ -59,19 +60,25 @@ export type UiSlice = {
   // tools (moving a picture for "picture") only work while it's open. null: the first tab.
   panelTab: string | null;
   setPanelTab: (id: string | null) => void;
+  // How closely the stage is looked at (step 19): only the view, never the picture. Back to fit
+  // when another animation opens (remembered.ts restores each animation's own).
+  stageView: StageView;
+  setStageView: (view: Partial<StageView>) => void;
 };
 
 // outline: the ghost as broad black-and-white shapes instead of a faint photo.
-export type OnionSkin = { on: boolean; opacity: number; count: number; outline: boolean };
+// difference (step 19): "spot the difference": what lines up goes black, what doesn't glows.
+// One look at a time: outline and difference are never both on.
+export type OnionSkin = { on: boolean; opacity: number; count: number; outline: boolean; difference: boolean };
 
 export type EditorState = ProjectSlice & SelectionSlice & PlaybackSlice & UiSlice;
 
 export const MIN_TIMELINE_ZOOM = 40;
 export const MAX_TIMELINE_ZOOM = 640;
 export const DEFAULT_TIMELINE_ZOOM = 160;   // a tick at the default 8 fps is 20 px wide
-export const DEFAULT_ONION_SKIN: OnionSkin = { on: true, opacity: 0.4, count: 1, outline: false };
+export const DEFAULT_ONION_SKIN: OnionSkin = { on: true, opacity: 0.4, count: 1, outline: false, difference: false };
 
-const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0, holdPreview: {}, transformPreview: {} } as const;
+const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0, holdPreview: {}, transformPreview: {}, stageView: FIT_VIEW } as const;
 
 // A factory, so every test (and, if ever needed, a second studio) gets its own store.
 export function createEditorStore() {
@@ -115,10 +122,13 @@ export function createEditorStore() {
     // Strength 10-90% (never invisible, never hiding the camera), 1 to 3 pictures back.
     setOnionSkin: (changes) => {
       const next = { ...get().onionSkin, ...changes };
-      set({ onionSkin: { on: Boolean(next.on), outline: Boolean(next.outline), opacity: clamp(next.opacity, 0.1, 0.9, 0.4), count: Math.round(clamp(next.count, 1, 3, 1)) } });
+      const difference = Boolean(next.difference) && !changes.outline;   // turning one look on turns the other off
+      set({ onionSkin: { on: Boolean(next.on), outline: Boolean(next.outline) && !difference, difference, opacity: clamp(next.opacity, 0.1, 0.9, 0.4), count: Math.round(clamp(next.count, 1, 3, 1)) } });
     },
 
     setPanelTab: (id) => set({ panelTab: id || null }),
+
+    setStageView: (view) => set({ stageView: clampView({ ...get().stageView, ...view }) }),
 
     previewSafeMargin: (margin) => set({ safeMarginPreview: margin === null ? null : clampSafeMargin(margin) }),
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createFrame, DEFAULT_TRANSFORM, type Transform } from "@/core/model";
-import { adjustFilter, applyMatrix, containSize, drawOnionSkin, frameMatrix, onionOpacity, outlineFilter, renderAt, startTick, type DrawableImage } from "@/core/render";
+import { adjustFilter, applyMatrix, containSize, drawOnionSkin, frameCorners, frameMatrix, onionOpacity, outlineFilter, renderAt, startTick, type DrawableImage } from "@/core/render";
 
 // The renderer's maths, in Node. What it really looks like on a canvas is checked pixel by
 // pixel in renderer.browser.test.ts.
@@ -150,5 +150,13 @@ describe("renderAt", () => {
   it("finds where a frame starts, to show a selected one", () => {
     expect(startTick(scene.frames, 0)).toBe(0);
     expect(startTick(scene.frames, 1)).toBe(2);
+  });
+});
+
+describe("frameCorners", () => {
+  it("are the picture's corners on the canvas, clockwise from the top left", () => {
+    const round = (points: { x: number; y: number }[]) => points.map(({ x, y }) => ({ x: Math.round(x), y: Math.round(y) }));
+    expect(round(frameCorners(transform({ scale: 0.5 }), full, canvas))).toEqual([{ x: 40, y: 23 }, { x: 120, y: 23 }, { x: 120, y: 68 }, { x: 40, y: 68 }]);
+    expect(round(frameCorners(transform(), { width: 90, height: 90 }, canvas))).toEqual([{ x: 35, y: 0 }, { x: 125, y: 0 }, { x: 125, y: 90 }, { x: 35, y: 90 }]);   // a square picture, letterboxed
   });
 });

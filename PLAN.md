@@ -4,7 +4,7 @@ A web stop-motion studio for kids: take photos with the webcam, see them on a ti
 nudge frames into place and export a GIF or video. It runs entirely in the browser: no accounts, and no
 photos leave the device.
 
-Built one small, reviewable step at a time (see [ROADMAP.md](ROADMAP.md)), like `data-viz`,
+Built one small, reviewable step at a time (see [ROADMAP.md](ROADMAP.md)), like `carbon-divide`,
 `how-we-die` and `web-components-pwa`.
 
 Starting point: a ChatGPT planning conversation (Next.js + Zustand + Dexie + dnd-kit + gifenc). This
@@ -26,7 +26,7 @@ plan keeps its shape and changes what is listed under "What changed from the ori
 | Timeline | **Time-scaled**: each picture's width is its duration. Drag its right edge to make it longer or shorter (snaps to whole ticks), drag the body to reorder. A faint seconds ruler sits above the strip | Duration is something kids can see and grab, instead of a number in a panel |
 | Time unit | **Ticks** (`1/fps`) for everything on the timeline: picture `hold`, overlay `start` / `length` | One unit keeps the two layers lined up when the speed changes; the ruler converts ticks to seconds for display |
 | Things on top of pictures | **Elements** (speech bubbles, text, shapes, stickers): one shape of data, two homes. On a frame they belong to that picture and move with it; on the overlay layer they live in time, spanning any number of pictures | The same drawing, editing and registry code serves both |
-| Moving pictures | **Fast by hand, precise by keyboard**: drag, wheel/pinch and a rotate handle on the stage; arrow nudges of 1 project px (Shift: 10) and number fields. A ghost of the neighbouring picture, a difference view and snap guides for lining up | Bumped cameras and sets are the normal case in stop-motion; realigning has to be quick |
+| Moving pictures | **Fast by hand, precise by keyboard**: drag, wheel/pinch and a rotate handle on the stage; arrow nudges of 1 project px (Shift: 10) and number fields. For lining up: see-through (the picture before) with a "spot the difference" look, snap guides while dragging, and a view zoom (Ctrl + wheel or pinch, Space-drag to pan) | Bumped cameras and sets are the normal case in stop-motion; realigning has to be quick |
 | Two zooms | **View zoom** (look closer, UI state, not saved) is separate from **picture scale** (part of the frame, exported) | Zooming in to check alignment must never change the animation |
 | Duplicates | **A duplicate is visually identical to its source**: same image, copies of `hold`, `transform`, `adjust` and `elements`; only ids are new. One `cloneFrame()` in `core/` does it, with a test that fails when a new `Frame` field isn't copied | Duplicating is how kids make pauses and variations; a copy that jumps or loses its bubble breaks trust |
 | Undo/redo | **Command pattern from day one**: every change to a project is a command with `do()` / `undo()` | Retrofitting undo is painful. Commands are also the one safe way plugins change a project |

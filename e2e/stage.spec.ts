@@ -103,6 +103,32 @@ test("with the camera off, see-through shows the picture before the one on the s
   await expect(ghost).toHaveCount(0);         // hidden while it plays
 });
 
+test("spot the difference is a see-through look, instead of outline only; it's remembered", async ({ studio, page }) => {
+  await studio.withoutCamera();
+  await studio.open();
+  await studio.seedPictures(2);
+  const ghost = page.locator(".onion-skin");
+  await page.getByRole("button", { name: "See-through options" }).click();
+  const difference = page.getByRole("checkbox", { name: "Spot the difference" });
+  const outline = page.getByRole("checkbox", { name: "Outline only" });
+
+  await difference.check();
+  await expect(ghost).toHaveClass(/is-difference/);
+  expect(await ghost.evaluate((element) => getComputedStyle(element).mixBlendMode)).toBe("difference");
+  await expect(page.getByRole("slider", { name: "How strong" })).toBeDisabled();   // always full strength
+
+  await outline.check();   // one look at a time
+  await expect(difference).not.toBeChecked();
+  await expect(ghost).not.toHaveClass(/is-difference/);
+  await difference.check();
+  await expect(outline).not.toBeChecked();
+
+  await page.reload();
+  await page.getByRole("button", { name: "See-through options" }).click();
+  await expect(page.getByRole("checkbox", { name: "Spot the difference" })).toBeChecked();
+  await expect(ghost).toHaveClass(/is-difference/);
+});
+
 test("the side panel's tabs switch between camera and picture, and the arrow keys move between them", async ({ studio, page }) => {
   await studio.open();
   const cameraTab = page.getByRole("tab", { name: "Camera" });

@@ -16,6 +16,8 @@ import { useCanvasDraw } from "./useCanvasDraw";
 //           or fix how it matches them
 // A transparent canvas at the project's size sits exactly over the <video> or the picture: they
 // all fill the stage the same way (cover, as capture crops it, step 05), so everything lines up.
+// "Spot the difference" (step 19) blends it with what's under it (.is-difference): what lines up
+// goes black.
 export function OnionSkin({ mode }: { mode: "camera" | "frame" }) {
   const saved = useOrderedFrames();
   const preview = useEditor((state) => state.transformPreview);
@@ -35,5 +37,5 @@ export function OnionSkin({ mode }: { mode: "camera" | "frame" }) {
   useCanvasDraw(canvas, draw);
 
   if (!settings.on || index === 0) return null;
-  return <canvas ref={canvas} className="onion-skin" width={width} height={height} aria-hidden="true" />;
+  return <canvas ref={canvas} className={`onion-skin${settings.difference ? " is-difference" : ""}`} width={width} height={height} aria-hidden="true" />;
 }

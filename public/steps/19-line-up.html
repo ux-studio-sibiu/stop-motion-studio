@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>19 Line up · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 19 of 33 · Part 6 Editing</p>
+  <h1>Line up with other pictures</h1>
+  <p class="intro">Step 18 made a picture movable. This step makes it easy to put it exactly where it belongs:</p>
+  <ul>
+    <li><strong>Spot the difference</strong>, a see-through look beside "Outline only": the picture before is laid over the current one so that everything that lines up goes black, and what doesn't glows. It works over the live camera too.</li>
+    <li>With the camera off and the Picture tab open, a drag <strong>snaps</strong> the picture's edges and centre to the stage's and to the see-through picture's, with a guide line.</li>
+    <li><strong>Ctrl + wheel</strong> (or a trackpad pinch) zooms the stage to look closer, and Space-drag looks around.</li>
+  </ul>
+
+  <div class="note"><strong>Simplified in the same step.</strong> The first version had its own "Line up with" section in the Picture tab, with:
+    <ul>
+      <li>a ghost of the picture before or after;</li>
+      <li>a zoom slider with Fit and 100%;</li>
+      <li>"copy position" buttons.</li>
+    </ul>
+    The see-through dropdown already shows the picture before, so that section went. "Spot the difference" became a see-through option, and zoom stayed on the stage itself.</div>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>src/core/model/snap.ts</code>: <code>snapBox</code>, <code>boxLines</code>, <code>boundsOf</code>. 5 tests.</li>
+    <li>In the renderer:
+      <ul>
+        <li><code>drawOnionSkin</code> takes <code>difference</code>: only the nearest picture, at full strength, never in the outline look. 1 pixel test.</li>
+        <li><code>frameCorners</code>: a picture's corners on the canvas, for the outline and for snapping. 1 test.</li>
+      </ul>
+    </li>
+    <li><code>src/core/render/stageView.ts</code>: the view zoom and pan (<code>clampView</code>, <code>zoomView</code>, <code>panView</code>). 4 tests.</li>
+    <li>In the store:
+      <ul>
+        <li><code>onionSkin.difference</code>, with one look at a time (outline or difference);</li>
+        <li><code>stageView</code>, which goes back to fit when another animation opens.</li>
+      </ul>
+      Tests changed for both.
+    </li>
+    <li><code>OnionSkin.tsx</code> marks the canvas <code>.is-difference</code>. CSS blends it with what's under it (<code>mix-blend-mode: difference</code>), whether that's the camera or a picture.</li>
+    <li>In the see-through dropdown, the "Spot the difference" checkbox. While it's on, "How strong" and "Pictures shown" are greyed out.</li>
+    <li><code>StageView.tsx</code>: the stage's layers, zoomed and panned as one by a CSS transform.</li>
+    <li><code>StageEditor.tsx</code>: snapping with guides, and Alt to place freely.</li>
+    <li><code>useStagePan.ts</code>, used by the stage editor: Space-drag or the middle button to pan, and Ctrl + wheel to zoom around the pointer.</li>
+    <li>Each animation's zoom and pan are remembered (<code>remembered.ts</code>). They're also saved when the page is left, so a quick reload doesn't lose them.</li>
+    <li>3 end-to-end tests: spot the difference in <code>stage.spec.ts</code>; snapping and zoom in <code>transform.spec.ts</code>.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>One see-through, several looks.</strong> Photo, outline only, or spot the difference: one ghost, one place to set it. The difference is a CSS blend, so it works over the live <code>&lt;video&gt;</code> as well as over a picture. It's only a looking aid: export never draws it.</li>
+    <li><strong>Only drags snap.</strong> Arrow keys and typed numbers move exactly what they say. The snap distance is 8 screen pixels at any zoom, and Alt turns snapping off.</li>
+    <li><strong>Two zooms never mix</strong> (PLAN.md §1). The view zoom is a CSS transform on the stage's layers, only while the Picture tab is open on a picture; the picture's size is part of its transform. The pointer maths measures the layer on screen, so a nudge is still one project pixel at any zoom.</li>
+  </ul>
+
+  <h2>Not in this step</h2>
+  <ul>
+    <li>Lining up with the picture after, or with any chosen picture: see-through shows the ones before.</li>
+    <li>Copying a position to other pictures. It was built, then taken out to keep the Picture tab simple. The command (<code>setTransforms</code>) is there if it's wanted back.</li>
+    <li>On-screen zoom buttons, and two-finger pan and pinch on touch screens. A trackpad pinch works, because it arrives as Ctrl + wheel.</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li>The see-through picture is drawn with its own transform, never the shown picture's (pixel test).</li>
+    <li>Snap guides only show during a drag, and the snap follows the first picture's box, so several selected pictures move together.</li>
+    <li>Saves that wait a moment ("debounced") can be lost on reload. The stage view's save is flushed on <code>pagehide</code>; the end-to-end test that pans and reloads straight away found this.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li>Shift a picture by hand, tick "Spot the difference", nudge until the background goes black.</li>
+    <li>Zoom in with Ctrl + wheel and nudge: the picture moves one video pixel. Reload: the zoom is still there.</li>
+  </ul>
+  <div class="note">Checked while building:
+    <ul>
+      <li>238 unit tests and 11 pixel tests pass.</li>
+      <li>The 3 new end-to-end tests passed.</li>
+      <li>One full Chromium run: 75 passed, plus 2 slow camera starts that passed when rerun on their own.</li>
+      <li>A screenshot of spot the difference on a shifted picture.</li>
+    </ul>
+  </div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/model/snap.ts</code>, <code>snap.test.ts</code>, <code>index.ts</code>; <code>src/core/render/renderer.ts</code>, <code>renderer.test.ts</code>, <code>renderer.browser.test.ts</code>, <code>stageView.ts</code>, <code>stageView.test.ts</code>, <code>index.ts</code>; <code>src/store/editorStore.ts</code>, <code>editorStore.test.ts</code>; <code>src/studio/StageView.tsx</code>, <code>StageEditor.tsx</code>, <code>useStagePan.ts</code>, <code>OnionSkin.tsx</code>, <code>SeeThroughMenu.tsx</code> (also: the safe zone slider's spoken value had lost its number), <code>Studio.tsx</code>, <code>remembered.ts</code>, <code>styles/_stage.scss</code>, <code>styles/_playback.scss</code>; <code>src/styles/_controls.scss</code> (<code>.icon-button.is-on</code> is now shared); <code>e2e/stage.spec.ts</code>, <code>transform.spec.ts</code>; <code>public/steps/19-line-up.html</code>, <code>index.html</code>, <code>18-transform.html</code> (next link); <code>ROADMAP.md</code>.</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit (238 in total):
+      <ul>
+        <li>5 for snapping;</li>
+        <li>1 for <code>frameCorners</code>;</li>
+        <li>4 for the stage view maths;</li>
+        <li>1 for the stage view in the store.</li>
+      </ul>
+    </li>
+    <li>Pixel: 1 for spot the difference (only the nearest picture, opaque, in its own place).</li>
+    <li>End-to-end, 3:
+      <ul>
+        <li>in <code>stage.spec.ts</code>, spot the difference: one look at a time, remembered;</li>
+        <li>in <code>transform.spec.ts</code>, snapping with guides, and Alt;</li>
+        <li>in <code>transform.spec.ts</code>, Ctrl + wheel zoom, Space-drag pan, remembered, only in the Picture tab.</li>
+      </ul>
+    </li>
+  </ul>
+  <p><strong>Tests changed:</strong> the store's see-through test now covers <code>difference</code>, which is exclusive with <code>outline</code>.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>the see-through picture is drawn with its own transform</li>
+    <li>only drags snap; nudges move exactly one pixel</li>
+    <li>spot the difference is never exported</li>
+    <li>zoom changes the view, never the picture</li>
+    <li><code>npm test</code>, <code>npm run test:browser</code>, <code>npm run test:e2e</code>, <code>npm run lint</code>, <code>npm run typecheck</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="18-transform.html">Previous: 18 · Move, scale, rotate, flip</a>
+    <span>Next: 20 · Brightness and contrast</span>
+  </nav>
+</main>
+</body>
+</html>

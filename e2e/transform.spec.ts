@@ -1,7 +1,7 @@
 import { expect, test } from "./fixtures";
 
-// Moving, sizing, turning and flipping a picture (step 18), on the stage with the camera off and
-// in the Picture tab. The Picture tab's fields show where the picture is, in project pixels.
+// Moving, sizing, turning and flipping a picture (step 18), and lining it up (step 19: snapping,
+// zooming the stage), on the stage with the camera off and in the Picture tab. The Picture tab's fields show where the picture is, in project pixels.
 
 test.beforeEach(async ({ studio, page }) => {
   await studio.withoutCamera();   // editing is on the picture, not the live camera
@@ -107,4 +107,61 @@ test("the stage's editing tools are there only while the Picture tab is open", a
   await expect(page.locator(".stage-picture")).toBeVisible();   // the picture is still shown
   await page.getByRole("tab", { name: "Picture" }).click();
   await expect(editor).toBeVisible();
+});
+
+// Lining up (step 19): snapping while dragging, and zooming the stage to look closer.
+
+test("a drag snaps to the stage's centre, with a guide; with Alt it doesn't", async ({ page }) => {
+  const editor = page.getByRole("application", { name: /^Move the picture/ });
+  const box = (await editor.boundingBox())!;
+  const middle = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+
+  await page.mouse.move(middle.x, middle.y);
+  await page.mouse.down();
+  await page.mouse.move(middle.x + 4, middle.y + 3, { steps: 4 });
+  await expect(page.locator(".guide")).toHaveCount(2);   // centred on both axes
+  await page.mouse.up();
+  await expect(page.locator(".guide")).toHaveCount(0);
+  await expect(field(page, "Left / right")).toHaveValue("0");
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();   // nothing moved, nothing saved
+
+  await page.keyboard.down("Alt");
+  await page.mouse.move(middle.x, middle.y);
+  await page.mouse.down();
+  await page.mouse.move(middle.x + 4, middle.y, { steps: 4 });
+  await page.mouse.up();
+  await page.keyboard.up("Alt");
+  await expect(field(page, "Left / right")).not.toHaveValue("0");
+});
+
+test("Ctrl + wheel zooms the stage without changing the picture; Space-drag looks around; it's remembered", async ({ studio, page }) => {
+  const view = page.locator(".stage-view");
+  const box = (await page.locator(".stage-frame").boundingBox())!;
+  const middle = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await expect(view).not.toHaveClass(/is-zoomed/);
+
+  await page.mouse.move(middle.x, middle.y);
+  await page.keyboard.down("Control");
+  await page.mouse.wheel(0, -100);
+  await page.keyboard.up("Control");
+  await expect(view).toHaveClass(/is-zoomed/);
+  await expect(field(page, "Size")).toHaveValue("100");   // the view, not the picture
+  const before = await view.getAttribute("style");
+
+  await page.getByRole("application", { name: /^Move the picture/ }).focus();
+  await page.keyboard.down(" ");
+  await page.mouse.down();
+  await page.mouse.move(middle.x + 60, middle.y + 30, { steps: 5 });
+  await page.mouse.up();
+  await page.keyboard.up(" ");
+  await expect(view).not.toHaveAttribute("style", before!);   // panned
+  await expect(field(page, "Left / right")).toHaveValue("0");    // the picture didn't move
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+
+  await page.reload();
+  await studio.picture(1).click();
+  await expect(view).toHaveClass(/is-zoomed/);
+
+  await page.getByRole("tab", { name: "Camera" }).click();   // only while the Picture tab is open
+  await expect(view).not.toHaveClass(/is-zoomed/);
 });

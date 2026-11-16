@@ -145,7 +145,7 @@ describe("panel tab", () => {
 
 describe("onion skin", () => {
   it("is on at 40%, one picture back, by default", () => {
-    expect(store.getState().onionSkin).toEqual({ on: true, opacity: 0.4, count: 1, outline: false });
+    expect(store.getState().onionSkin).toEqual({ on: true, opacity: 0.4, count: 1, outline: false, difference: false });
   });
 
   it("changes, kept to sensible limits", () => {
@@ -157,8 +157,24 @@ describe("onion skin", () => {
     expect(store.getState().onionSkin).toMatchObject({ opacity: 0.1, count: 1 });
     store.getState().setOnionSkin({ outline: true });
     expect(store.getState().onionSkin.outline).toBe(true);
+    store.getState().setOnionSkin({ difference: true });   // one look at a time
+    expect(store.getState().onionSkin).toMatchObject({ outline: false, difference: true });
+    store.getState().setOnionSkin({ outline: true });
+    expect(store.getState().onionSkin).toMatchObject({ outline: true, difference: false });
+    store.getState().setOnionSkin({ outline: true, difference: true });   // a stored mix: outline wins
+    expect(store.getState().onionSkin).toMatchObject({ outline: true, difference: false });
     store.getState().setOnionSkin({ opacity: Number.NaN });
     expect(store.getState().onionSkin.opacity).toBe(0.4);
+  });
+});
+
+describe("stage view", () => {
+  it("starts fitted, stays in range, and goes back to fit when another animation opens", () => {
+    expect(store.getState().stageView).toEqual({ zoom: 1, x: 0, y: 0 });
+    store.getState().setStageView({ zoom: 2, x: 0.9 });
+    expect(store.getState().stageView).toEqual({ zoom: 2, x: 0.5, y: 0 });
+    store.getState().loadProject(createProject(), []);
+    expect(store.getState().stageView).toEqual({ zoom: 1, x: 0, y: 0 });
   });
 });
 

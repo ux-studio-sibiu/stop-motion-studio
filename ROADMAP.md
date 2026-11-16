@@ -348,20 +348,23 @@ neighbours. Step 18 is moving; step 19 is lining up.
   10 px in the exported file; zoom the view to 400% and nudge, the picture moves 1 px, not 4.
 
 ### 19 · Line up with other pictures
-- **Builds:** while a picture is selected, a **ghost** of the previous (or next, or a chosen) picture over
-  it, at adjustable opacity, plus a **difference view** that turns everything that lines up black and
-  makes misalignment glow; a view zoom slider with "fit" and "100%" and panning (space-drag or two
-  fingers); snap guides to the centre and edges, and to the ghost's position; "copy position from
-  previous" and "apply this position to the next N pictures" buttons.
-- **Decisions:** the ghost and difference view reuse the onion-skin rendering from step 17 (the same
-  `renderAt`, with `globalAlpha` or `globalCompositeOperation = "difference"`), so what lines up on screen
-  lines up in export. Snapping is on by default with a small threshold and off while Alt is held.
-  "Apply to next N" is one command.
+- **Builds:** "Spot the difference", a see-through look beside "Outline only": the picture before is
+  blended over the current one so that everything that lines up turns black and misalignment glows,
+  over the live camera too. Snap guides while dragging, to the stage's centre and edges and to the
+  see-through picture. A view zoom on the stage (Ctrl + wheel or a trackpad pinch, around the
+  pointer) with panning (Space-drag or the middle button), remembered per animation.
+- **Decisions:** see-through is the one ghost, with three looks (photo, outline only, spot the
+  difference), drawn by the onion-skin renderer from step 17 with each picture's own transform; the
+  difference is a CSS blend (`mix-blend-mode: difference`), so it works over the `<video>` as well
+  as a picture. Snapping is on by default with a small threshold and off while Alt is held.
+  *Simplified in this step:* a separate line-up section in the Picture tab (the picture after or a
+  chosen one, a zoom slider with Fit and 100%, "copy position" buttons) was built, then removed as
+  duplicating see-through. See `public/steps/19-line-up.html`.
 - **Watch out:** the ghost must be drawn with *its own* transform, not the selected picture's. Snap
   guides must not fight arrow-key nudges (snap only during drags). The difference view is a looking
   aid; never export it.
-- **Check:** shift a picture by hand, turn on the difference view, nudge until the background goes
-  black; copy that position to the next 5 pictures with one click and undo it with one undo.
+- **Check:** shift a picture by hand, tick "Spot the difference", nudge until the background goes
+  black; zoom in and nudge, the picture moves one video pixel.
 
 ### 20 · Brightness and contrast
 - **Builds:** two sliders in the panel, `AdjustFrames` command, "apply to all" button. The renderer
@@ -576,7 +579,7 @@ registry entry.
 - [x] 16 Playback ([page](public/steps/16-playback.html))
 - [x] 17 Onion skin ([page](public/steps/17-onion-skin.html))
 - [x] 18 Move, scale, rotate, flip ([page](public/steps/18-transform.html))
-- [ ] 19 Line up with other pictures
+- [x] 19 Line up with other pictures
 - [ ] 20 Brightness and contrast
 - [ ] 21 Storage safety
 - [ ] 22 Plugin registry

@@ -140,3 +140,15 @@ describe("renderer, on a real canvas", () => {
     expectColour(ctx, 80, 45, BLACK);
   });
 });
+
+describe("spot the difference (step 19)", () => {
+  it("draws only the nearest picture before, at full strength, with its own position", () => {
+    const ctx = target();
+    const frames = [createFrame("p", "a"), { ...createFrame("p", "b"), transform: { ...DEFAULT_TRANSFORM, scale: 0.5 } }, createFrame("p", "c")];
+    drawOnionSkin(ctx, { width: W, height: H, frames }, () => solid(RED), 2, { count: 3, opacity: 0.4, outline: true, difference: true });
+    const alpha = (x: number, y: number) => ctx.getImageData(x, y, 1, 1).data[3];
+    expect(alpha(5, 5)).toBe(0);           // only the half-size picture just before; the older one is left out
+    expectColour(ctx, 80, 45, RED);        // opaque, and not the outline look
+    expect(alpha(80, 45)).toBe(255);
+  });
+});

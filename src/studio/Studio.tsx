@@ -16,6 +16,7 @@ import { SafeZone } from "./SafeZone";
 import { StageEditor } from "./StageEditor";
 import { PanelTab, SidePanel } from "./SidePanel";
 import { StagePicture } from "./StagePicture";
+import { StageView } from "./StageView";
 import { Timeline } from "./Timeline";
 import { useCamera } from "./useCamera";
 import { useCapture } from "./useCapture";
@@ -49,6 +50,7 @@ export function Studio() {
   //   frame    the camera is off: the selected (or last) picture
   //   empty    the camera is off and there are no pictures: the camera message
   const stageMode = isPlaying ? "playing" : camera.stream ? "camera" : hasPictures ? "frame" : "empty";
+  const editing = stageMode === "frame" && stageTool === "picture";   // the Picture tab's tools on the stage
   const commands = useStudioCommands(projectId, history.run);   // every undoable change, one object
   const ready = useReady(status !== "loading" && camera.settled);
 
@@ -93,11 +95,13 @@ export function Studio() {
             </>
           ) : stageMode !== "empty" ? (
             <>
-              <StagePicture />
-              {stageMode === "frame" && <OnionSkin mode="frame" />}
-              <SafeZone />
-              {/* Each tab's tools on the stage, only while that tab is open. */}
-              {stageMode === "frame" && stageTool === "picture" && <StageEditor save={commands.transformPictures} />}
+              <StageView zoomable={editing}>
+                <StagePicture />
+                {stageMode === "frame" && <OnionSkin mode="frame" />}
+                <SafeZone />
+                {/* Each tab's tools on the stage, only while that tab is open. */}
+                {editing && <StageEditor save={commands.transformPictures} />}
+              </StageView>
               <div className="stage-note"><CameraMessage camera={camera} more /></div>
             </>
           ) : <CameraMessage camera={camera} />}

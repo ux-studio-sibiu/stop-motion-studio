@@ -30,6 +30,16 @@
     text-align: center;
   }
 
+  // The picture's layers, as one: zoomed in and panned as a whole while lining up (step 19).
+  // The stage frame clips what's outside the view.
+  .stage-view {
+    position: absolute;
+    inset: 0;
+    transform-origin: 0 0;
+
+    &.is-zoomed canvas { image-rendering: pixelated; }   // look closer: see the real pixels
+  }
+
   // Cover-fit, like the capture in step 05: a 4:3 webcam is cropped to the 16:9 frame,
   // so the preview shows exactly what a picture will contain.
   .camera-video {
@@ -94,6 +104,15 @@
       vector-effect: non-scaling-stroke;
     }
 
+    &.is-panning { cursor: grab; }
+
+    // A snap guide: the line the picture's edge or centre snapped to while dragging.
+    .guide {
+      stroke: var(--color-accent);
+      stroke-width: 1.5;
+      vector-effect: non-scaling-stroke;
+    }
+
     .turn-handle {
       cursor: grab;
 
@@ -110,6 +129,9 @@
     height: 100%;
     object-fit: cover;
     pointer-events: none;
+
+    // Spot the difference (step 19): what lines up with the picture under it goes black.
+    &.is-difference { mix-blend-mode: difference; }
   }
 
   // Over a picture, the camera message is a small bar along the bottom. Phones only: elsewhere

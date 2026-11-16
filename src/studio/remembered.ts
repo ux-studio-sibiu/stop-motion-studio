@@ -2,6 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { asBoolean, asNumber, asObject, asString, asStringList, asTimelineView, definePreference, definePreferenceFamily, type Preference } from "@/adapters/preferences/preferences";
+import type { StageView } from "@/core/render";
 import type { EditorState, OnionSkin } from "@/store/editorStore";
 import { editorStore } from "@/store/useEditor";
 
@@ -20,6 +21,7 @@ export const remembered = {
   timelineZoom: definePreference("timeline-zoom", asNumber),            // the zoom a new animation starts at
   timelineView: definePreferenceFamily("view", asTimelineView),         // each animation's zoom and scroll
   selection: definePreferenceFamily("selection", asStringList),         // each animation's selected pictures
+  stageView: definePreferenceFamily("stage-view", asObject),            // each animation's stage zoom and pan (the store checks)
 };
 
 // Remembered values as an external store for React (useSyncExternalStore): read once per key and
@@ -79,10 +81,40 @@ export function useRememberedSelection() {
   }, []);
 }
 
-// The studio's remembered store fields, set up once by the studio: see-through, loop, the open\n// side-panel tab, and each animation's selection.
+// The studio's remembered store fields, set up once by the studio: see-through, loop, the open
+// side-panel tab, and each animation's selection and stage view.
 export function useRememberedStudio() {
   useRememberedStore(remembered.onionSkin, (state) => state.onionSkin, (value) => editorStore.getState().setOnionSkin(value as Partial<OnionSkin>));
   useRememberedStore(remembered.loop, (state) => state.loop, (value) => editorStore.getState().setLoop(value));
   useRememberedStore(remembered.panelTab, (state) => state.panelTab ?? "", (value) => editorStore.getState().setPanelTab(value));
   useRememberedSelection();
+  useRememberedStageView();
+}
+
+// Each animation's stage zoom and pan: restored when it opens, saved (a moment after it stops
+// changing) whenever it changes, and straight away if the page is left before that.
+export function useRememberedStageView() {
+  useEffect(() => {
+    let restoredFor: string | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let pending: (() => void) | undefined;
+    const flush = () => { clearTimeout(timer); pending?.(); pending = undefined; };
+    const stop = editorStore.subscribe((state, previous) => {
+      const id = state.project?.id;
+      if (!id) return;
+      if (restoredFor !== id) {
+        restoredFor = id;
+        const saved = remembered.stageView(id).read();
+        if (saved) state.setStageView(saved as Partial<StageView>);
+        return;
+      }
+      if (state.stageView === previous.stageView) return;
+      clearTimeout(timer);
+      const { zoom, x, y } = state.stageView;
+      pending = () => remembered.stageView(id).save(zoom === 1 ? null : { zoom, x, y });
+      timer = setTimeout(flush, 250);
+    });
+    window.addEventListener("pagehide", flush);
+    return () => { flush(); stop(); window.removeEventListener("pagehide", flush); };
+  }, []);
 }

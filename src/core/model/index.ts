@@ -7,3 +7,4 @@ export * from "./timing";
 export * from "./selection";
 
 export * from "./transform";
+export * from "./snap";
