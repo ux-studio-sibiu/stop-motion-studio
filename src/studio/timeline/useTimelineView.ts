@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
-import { remembered } from "./remembered";
+import { remembered } from "../remembered";
 import { editorStore, useEditor } from "@/store/useEditor";
 
 const SAVE_DELAY = 250;   // ms after scrolling stops

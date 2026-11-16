@@ -1,25 +1,14 @@
 "use client";
 
 import { ChevronDown, Layers } from "lucide-react";
-import { MAX_SAFE_MARGIN, SAFE_MARGIN, safeMargin } from "@/core/model";
 import { editorStore, useEditor } from "@/store/useEditor";
-import { useDropdown } from "./useDropdown";
+import { useDropdown } from "@/studio/useDropdown";
 
 // See-through: the button turns it on and off; the arrow beside it opens its options (how
-// strong, how many pictures back, outline only or spot the difference, the safe zone). Escape or a
-// click outside closes them.
-export function SeeThroughMenu({ onSafeMargin }: { onSafeMargin: (from: number, to: number) => Promise<boolean> }) {
+// strong, how many pictures back, outline only or spot the difference). Escape or a click outside
+// closes them.
+export function SeeThroughMenu() {
   const onion = useEditor((state) => state.onionSkin);
-  const saved = useEditor((state) => (state.project ? safeMargin(state.project) : SAFE_MARGIN));
-  const dragged = useEditor((state) => state.safeMarginPreview);
-  const margin = dragged ?? saved;
-  // While dragging, only the stage changes; letting go (or a key press) saves one undoable step.
-  const commit = () => {
-    const to = editorStore.getState().safeMarginPreview;
-    if (to === null) return;
-    if (to === saved) { editorStore.getState().previewSafeMargin(null); return; }
-    void onSafeMargin(saved, to).then((ok) => { if (!ok) editorStore.getState().previewSafeMargin(null); });
-  };
   const { open, toggle, ref } = useDropdown();
   const set = editorStore.getState().setOnionSkin;
 
@@ -43,10 +32,6 @@ export function SeeThroughMenu({ onSafeMargin }: { onSafeMargin: (from: number, 
           <label className="option is-check" title="What lines up goes black; what doesn't, glows">
             <input type="checkbox" checked={onion.difference} onChange={(event) => set({ difference: event.target.checked, on: true })} />
             <span>Spot the difference</span>
-          </label>
-          <label className="option">
-            <span>Safe zone: {margin} px</span>
-            <input type="range" min={0} max={MAX_SAFE_MARGIN} step={5} value={margin} aria-label="Safe zone" aria-valuetext={`${margin} pixels`} onChange={(event) => editorStore.getState().previewSafeMargin(Number(event.target.value))} onPointerUp={commit} onKeyUp={commit} onBlur={commit} />
           </label>
           <div className="option">
             <span>Pictures shown</span>

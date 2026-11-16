@@ -1,16 +1,19 @@
 "use client";
 
 import { deleteFrames, duplicateFrames, reorderFrames, setAdjusts, setFps, setHold, setSafeMargin, setTransforms, type Command } from "@/core/commands";
+import type { Adjust, Transform } from "@/core/model";
 import { editorStore } from "@/store/useEditor";
-import type { AdjustChange } from "./AdjustControls";
-import type { TransformChange } from "./transformEditing";
-import type { HoldChange } from "./useResize";
+import type { HoldChange } from "./timeline/useResize";
 
 // Every change the studio's parts can make to the open animation, as one object. Each runs one
 // command through the undo history (useHistory), so it can be undone, and resolves to whether it
 // was saved. Without an open project they do nothing (and resolve false).
 //
 // A new kind of edit is one more line here; the parts that offer it get it as a prop.
+export type TransformChange = { id: string; from: Transform; to: Transform };
+export type AdjustChange = { id: string; from: Adjust; to: Adjust };
+export type StudioCommands = ReturnType<typeof useStudioCommands>;
+
 export function useStudioCommands(projectId: string | null, run: (command: Command) => Promise<boolean>) {
   const on = (make: (id: string) => Command): Promise<boolean> => (projectId ? run(make(projectId)) : Promise.resolve(false));
 

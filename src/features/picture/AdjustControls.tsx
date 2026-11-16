@@ -4,10 +4,10 @@ import { RotateCcw } from "lucide-react";
 import { DEFAULT_ADJUST, MAX_ADJUST, MIN_ADJUST, sameAdjust, type Adjust } from "@/core/model";
 import type { EditorState } from "@/store/editorStore";
 import { editorStore, useEditor } from "@/store/useEditor";
-import { saveSoon, settleSoon } from "./saveSoon";
+import { saveSoon, settleSoon } from "@/studio/saveSoon";
+import type { AdjustChange } from "@/studio/useStudioCommands";
 import { useEditTargets } from "./transformEditing";
 
-export type AdjustChange = { id: string; from: Adjust; to: Adjust };
 export type SaveAdjusts = (changes: AdjustChange[], label: string) => Promise<boolean>;
 
 // Brightness and contrast (step 20), in the Picture tab under the position. Non-destructive: the

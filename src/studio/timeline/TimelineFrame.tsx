@@ -3,7 +3,7 @@
 import type { MouseEvent, PointerEvent, ReactNode } from "react";
 import { ticksToSeconds, type Frame } from "@/core/model";
 import { adjustFilter } from "@/core/render";
-import { thumbs } from "./media";
+import { thumbs } from "../media";
 import type { Drag } from "./useReorder";
 import { optionId } from "./useTimelineSelection";
 

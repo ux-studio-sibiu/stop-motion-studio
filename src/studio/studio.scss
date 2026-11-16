@@ -2,8 +2,8 @@
 @use "./styles/side-panel";
 @use "./styles/stage";
 @use "./styles/playback";
-@use "./styles/timeline";
-@use "./styles/frame";
+@use "./timeline/timeline";
+@use "./timeline/frame";
 
 // Studio grid. Desktop / tablet landscape: the stage, with the side panel to its right.
 // Tablet portrait: the panel under the stage.

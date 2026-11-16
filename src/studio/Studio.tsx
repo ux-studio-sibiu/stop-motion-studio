@@ -4,22 +4,23 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Camera, ChevronLeft, Download, Image as ImageIcon, Redo2, Undo2 } from "lucide-react";
+import { CameraPanel } from "@/features/camera/CameraPanel";
+import { OnionSkin } from "@/features/onion-skin/OnionSkin";
+import { SeeThroughMenu } from "@/features/onion-skin/SeeThroughMenu";
+import { AdjustControls } from "@/features/picture/AdjustControls";
+import { PictureControls } from "@/features/picture/PictureControls";
+import { StageEditor } from "@/features/picture/StageEditor";
 import { editorStore, useEditor } from "@/store/useEditor";
-import { AdjustControls } from "./AdjustControls";
 import { CameraMessage } from "./CameraMessage";
-import { CameraPanel } from "./CameraPanel";
 import { CameraView } from "./CameraView";
-import { OnionSkin } from "./OnionSkin";
-import { PictureControls } from "./PictureControls";
 import { PlaybackBar } from "./PlaybackBar";
 import { useRememberedStudio } from "./remembered";
 import { SafeZone } from "./SafeZone";
-import { StageEditor } from "./StageEditor";
 import { PanelTab, SidePanel } from "./SidePanel";
 import { StagePicture } from "./StagePicture";
 import { StageView } from "./StageView";
 import { StorageNotice } from "./StorageNotice";
-import { Timeline } from "./Timeline";
+import { Timeline } from "./timeline/Timeline";
 import { useCamera } from "./useCamera";
 import { useCapture } from "./useCapture";
 import { useHistory } from "./useHistory";
@@ -126,7 +127,9 @@ export function Studio() {
 
       <Timeline onDelete={commands.deletePictures} onDuplicate={commands.duplicatePictures} onResize={commands.resizePictures} onReorder={commands.reorderPictures} />
 
-      <PlaybackBar onSpeed={commands.setSpeed} onSafeMargin={commands.setSafeMargin} />
+      <PlaybackBar onSpeed={commands.setSpeed} onSafeMargin={commands.setSafeMargin}>
+        <SeeThroughMenu />
+      </PlaybackBar>
     </div>
   );
 }

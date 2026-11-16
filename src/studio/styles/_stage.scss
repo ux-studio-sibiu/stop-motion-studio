@@ -79,61 +79,6 @@
     }
   }
 
-  // Editing a picture on the stage: a layer over it (same box as the canvas) with the picture's
-  // outline and the round turn handle, drawn in project pixels (the SVG's viewBox).
-  .stage-editor {
-    position: absolute;
-    inset: 0;
-    cursor: move;
-    touch-action: none;   // a finger drag moves the picture instead of scrolling
-    outline: none;
-
-    &:focus-visible { box-shadow: inset 0 0 0 3px var(--color-focus); }
-
-    svg {
-      width: 100%;
-      height: 100%;
-      overflow: visible;
-    }
-
-    .outline {
-      fill: none;
-      stroke: var(--color-focus);
-      stroke-width: 2;
-      stroke-dasharray: 6 4;
-      vector-effect: non-scaling-stroke;
-    }
-
-    &.is-panning { cursor: grab; }
-
-    // A snap guide: the line the picture's edge or centre snapped to while dragging.
-    .guide {
-      stroke: var(--color-accent);
-      stroke-width: 1.5;
-      vector-effect: non-scaling-stroke;
-    }
-
-    .turn-handle {
-      cursor: grab;
-
-      line { stroke: var(--color-focus); stroke-width: 2; vector-effect: non-scaling-stroke; }
-      circle { fill: var(--color-surface); stroke: var(--color-focus); stroke-width: 3; vector-effect: non-scaling-stroke; }
-    }
-  }
-
-  // The see-through ghost over the live camera: same size and fit as the video, so they line up.
-  .onion-skin {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    pointer-events: none;
-
-    // Spot the difference (step 19): what lines up with the picture under it goes black.
-    &.is-difference { mix-blend-mode: difference; }
-  }
-
   // Over a picture, the camera message is a small bar along the bottom. Phones only: elsewhere
   // the camera box beside the stage has the on/off button and says what's wrong.
   .stage-note {

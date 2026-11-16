@@ -316,7 +316,7 @@ dragging. Step 24 adds a second layer under the pictures for text and shapes.
 - **Builds:** in camera mode, the previous 1-3 frames drawn over the live video at adjustable opacity
   (default 40%), with a toggle. Stage modes become explicit: `camera`, `frame`, `playing`.
 - **Decisions:** the overlay is a canvas above the `<video>`, drawn with the same renderer. Implemented
-  directly here; it becomes a plugin in step 22.
+  directly here; it moves to its own feature folder in step 22.
 - **Watch out:** the overlay must use the same cover-crop as the live `<video>` (step 03), or the ghost
   and the camera picture won't line up.
 - **Check:** move a toy and line it up with its ghost.
@@ -388,18 +388,19 @@ neighbours. Step 18 is moving; step 19 is lining up.
 
 ## Part 7 - Extension points
 
-### 22 · Plugin registry *(core)*
-- **Builds:** `core/plugins/registry` with typed `registerExporter`, `registerStageTool`,
-  `registerPanel`, `registerFrameSource`, `registerElementKind`. `features/index.ts` imports the
-  built-ins. The toolbar, stage tool bar and side panels render from the registry. Onion skin,
-  properties and adjustments move into `features/`.
-- **Decisions:** static registration only (imports at build time), no loading of remote code: this is
-  a kids' app. Plugins change projects only via commands and read only via the repository/store.
-  `ElementKind` is defined here but has no users until step 23.
-- **Watch out:** this step is a refactor; the app must look and behave the same. Keep the diff to
-  moving code plus the registry, nothing else.
-- **Check:** everything works as before; deleting one import in `features/index.ts` removes that
-  feature cleanly.
+### 22 · Plugin registry *(core)* → feature folders
+- **Built:** each feature's code in its own folder in `src/features/` (`camera/`, `picture/`,
+  `onion-skin/`), imported and placed directly in `Studio.tsx`. The safe zone slider moved to the Play
+  options.
+- **Changed in this step:** a plugin registry (panels, stage tools and layers, controls, exporters,
+  frame sources, element kinds registering themselves) was built, then removed. It decided the layout
+  for the features, so moving a piece of UI for a UX experiment needed a new slot or a special case;
+  direct composition makes it a cut and paste. Lists stay only where there are many items of one kind
+  shown alike: element kinds (step 23), exporters (step 25). See `public/steps/22-plugin-registry.html`.
+- **Decisions:** nothing is ever loaded from outside (a kids' app). Features change projects only via
+  the commands the studio passes them, and read only via the store.
+- **Check:** everything works as before; removing a feature is deleting its import and its lines in
+  `Studio.tsx`.
 
 ---
 
@@ -408,7 +409,7 @@ neighbours. Step 18 is moving; step 19 is lining up.
 ### 23 · Speech bubbles on pictures
 - **Builds:** the `Element` type and `Frame.elements` *(core)*; an element editing layer on the stage
   (select, move, resize with corner handles, rotate, delete, type text in place); the
-  `speech-bubble` kind as the first `ElementKind` plugin (rounded bubble, draggable tail point, a
+  `speech-bubble` kind as the first entry in a plain list of element kinds (rounded bubble, draggable tail point, a
   "thought" variant). `AddElement`, `UpdateElement`, `RemoveElement` commands. The renderer draws a
   frame's elements on top of the picture. A small badge on timeline thumbnails that have elements.
 - **Decisions:** elements belong to their picture: reordering or duplicating a picture carries its
@@ -556,7 +557,7 @@ pixel test that the exported frame's corners come from 20 px in.
 More picture layers, more overlay tracks, overlays that stick to a picture, sound, free drawing,
 animating elements between keyframes, backgrounds/chroma key, cloud backup and sync (e.g. Supabase
 behind `ProjectRepository`), classroom sharing. Each would start with a `schemaVersion` bump and a
-registry entry.
+feature folder of its own.
 
 ## Progress
 
@@ -582,7 +583,7 @@ registry entry.
 - [x] 19 Line up with other pictures
 - [x] 20 Brightness and contrast
 - [x] 21 Storage safety
-- [ ] 22 Plugin registry
+- [x] 22 Plugin registry (became feature folders)
 - [ ] 23 Speech bubbles on pictures
 - [ ] 24 Overlay layer: text and shapes in time
 - [ ] 25 GIF export

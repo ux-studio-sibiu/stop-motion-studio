@@ -1,6 +1,7 @@
 import { Camera, Power } from "lucide-react";
 import { useEditor } from "@/store/useEditor";
-import type { Camera as CameraState } from "./useCamera";
+import type { Camera as CameraState } from "@/studio/useCamera";
+import "./_camera.scss";
 
 // When the camera can't start: a short line under the on/off button. (The stage says it at
 // length while there are no pictures yet.)

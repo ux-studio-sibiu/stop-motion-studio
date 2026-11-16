@@ -4,8 +4,8 @@ import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } fr
 import { angleTo, boundsOf, boxLines, moveBy, rotateBy, scaleAround, snapBox, type Point, type SnapLines, type Transform } from "@/core/model";
 import { frameCorners } from "@/core/render";
 import { useEditor, useShownFrames, editorStore } from "@/store/useEditor";
-import { bitmaps } from "./media";
-import { shownIndex } from "./StagePicture";
+import { bitmaps } from "@/studio/media";
+import { shownIndex } from "@/studio/StagePicture";
 import { useStagePan } from "./useStagePan";
 import { cancelPreview, commitPreview, commitSoon, previewEach, shownTransform, useEditTargets, type SaveTransforms } from "./transformEditing";
 

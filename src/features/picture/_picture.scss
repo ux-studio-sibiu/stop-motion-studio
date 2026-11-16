@@ -1,0 +1,82 @@
+// The Picture tab (steps 18-20) and moving the picture on the stage.
+.nsc-studio {
+  // The Picture tab: four number fields in a grid, then flip and reset.
+  .picture-controls {
+    display: grid;
+    gap: var(--space-3);
+    .fields { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-3); }
+    .buttons { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+    .number-field {
+      display: grid;
+      gap: var(--space-1);
+      font-size: 0.8125rem;
+      font-weight: 700;
+
+      .input { display: flex; align-items: center; gap: var(--space-1); }
+      input { width: 100%; min-width: 0; padding: 0.375rem 0.5rem; border: var(--line-width) solid var(--color-line); border-radius: var(--radius-small); background: var(--color-surface); color: var(--color-ink); font: inherit; font-weight: 600; }
+      .unit { color: var(--color-muted); }
+    }
+  }
+
+  // Brightness and contrast (step 20), under the Picture tab's position.
+  .adjust-controls {
+    display: grid;
+    gap: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-line);
+
+    .slider {
+      display: grid;
+      gap: var(--space-1);
+      font-size: 0.8125rem;
+      font-weight: 700;
+
+      input { width: 100%; margin: 0; accent-color: var(--color-focus); }
+    }
+
+    .buttons { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  }
+
+  // Editing a picture on the stage: a layer over it (same box as the canvas) with the picture's
+  // outline and the round turn handle, drawn in project pixels (the SVG's viewBox).
+  .stage-editor {
+    position: absolute;
+    inset: 0;
+    cursor: move;
+    touch-action: none;   // a finger drag moves the picture instead of scrolling
+    outline: none;
+
+    &:focus-visible { box-shadow: inset 0 0 0 3px var(--color-focus); }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .outline {
+      fill: none;
+      stroke: var(--color-focus);
+      stroke-width: 2;
+      stroke-dasharray: 6 4;
+      vector-effect: non-scaling-stroke;
+    }
+
+    &.is-panning { cursor: grab; }
+
+    // A snap guide: the line the picture's edge or centre snapped to while dragging.
+    .guide {
+      stroke: var(--color-accent);
+      stroke-width: 1.5;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .turn-handle {
+      cursor: grab;
+
+      line { stroke: var(--color-focus); stroke-width: 2; vector-effect: non-scaling-stroke; }
+      circle { fill: var(--color-surface); stroke: var(--color-focus); stroke-width: 3; vector-effect: non-scaling-stroke; }
+    }
+  }
+}

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>22 Feature folders · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 22 of 33 · Part 7 Extension points</p>
+  <h1>Feature folders (instead of a plugin registry)</h1>
+  <p class="intro">The roadmap planned a plugin registry here: features registering themselves, and the studio drawing whatever is registered. It was built, then taken out again. What stays is simpler:</p>
+  <ul>
+    <li>each feature's code lives together in its own folder, <code>src/features/</code>;</li>
+    <li>the studio imports those components and places them directly in its JSX.</li>
+  </ul>
+  <p>The studio looks and works as before, except for one move: the <strong>safe zone</strong> slider is now in the Play options, with Speed and Loop, instead of in see-through's options.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>src/features/</code>, one folder per feature, with the components moved from <code>src/studio/</code> unchanged:
+      <ul>
+        <li><code>camera/</code>: <code>CameraPanel</code>.</li>
+        <li><code>picture/</code>: <code>PictureControls</code>, <code>AdjustControls</code>, <code>StageEditor</code>, <code>transformEditing</code>, <code>useStagePan</code>.</li>
+        <li><code>onion-skin/</code>: <code>OnionSkin</code>, <code>SeeThroughMenu</code>.</li>
+      </ul>
+    </li>
+    <li><code>Studio.tsx</code> imports them from <code>@/features/…</code> and places them as before: the two tabs, see-through on the stage, the Picture tab's stage tool.</li>
+    <li><code>PlaybackBar</code> takes what goes beside Play as <code>children</code> (the see-through button), so the studio decides what's in the bar.</li>
+    <li>The safe zone slider moved into the Play options (<code>SafeZoneOption</code> in <code>PlaybackBar.tsx</code>).</li>
+    <li><code>TransformChange</code> and <code>AdjustChange</code> moved into <code>useStudioCommands</code>: the studio owns the shape of its changes, and features use it, not the other way round.</li>
+    <li><code>src/features/README.md</code> says how features are organised.</li>
+  </ul>
+
+  <div class="note"><strong>Built, then taken out: the plugin registry.</strong>
+    <p>The first version had:</p>
+    <ul>
+      <li><code>core/plugins/registry.ts</code>, with seven kinds: panels, stage tools, stage layers, controls, exporters, frame sources, element kinds;</li>
+      <li>each feature registering itself from an <code>index.tsx</code>;</li>
+      <li>the studio drawing whatever was registered.</li>
+    </ul>
+    <p>It worked: taking an import out removed that feature cleanly. It was removed because a registry decides the layout for the features. Tabs go in the side panel, controls go after Play. Moving a piece of UI for a UX experiment then needs a new slot or a special case, where direct composition makes it a cut and paste.</p>
+    <p>It also brought a global object filled by imports, and a hot-reload quirk: a removed feature stayed registered on the dev server until it restarted. It even forced a design change, because the safe zone slider had to leave see-through's dropdown so see-through could be removed alone.</p>
+  </div>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>Direct composition</strong> (<code>COMPONENT_PATTERNS.md</code>: composition over configuration, no abstraction layers). The whole layout is in <code>Studio.tsx</code>, readable and rearrangeable in one place.</li>
+    <li><strong>Lists only where they fit:</strong> many items of one kind, shown alike. Element kinds (step 23: the renderer draws each by its kind, and an "Add" menu lists them) and exporters (step 25: rows in one "Save as" menu) will be plain arrays, not a registry.</li>
+    <li><strong>Features change the animation only through the commands the studio passes them</strong>, so everything they do can be undone.</li>
+    <li><strong>The safe zone stays in the Play options</strong>, with the other settings for how the video comes out (your choice).</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li>Everything works as before, and the safe zone is in the Play options.</li>
+    <li>Removing a feature is deleting its imports and its lines in <code>Studio.tsx</code>; TypeScript points at anything left behind.</li>
+  </ul>
+  <div class="note">Checked while building:
+    <ul>
+      <li>261 unit tests pass. The registry's 6 went with it.</li>
+      <li>End-to-end, against the dev server: the stage, picture, camera and playback specs.</li>
+      <li>The other specs and the full suite weren't run.</li>
+    </ul>
+  </div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/features/README.md</code>, <code>camera/CameraPanel.tsx</code>, <code>picture/PictureControls.tsx</code>, <code>picture/AdjustControls.tsx</code>, <code>picture/StageEditor.tsx</code>, <code>picture/transformEditing.ts</code>, <code>picture/useStagePan.ts</code>, <code>onion-skin/OnionSkin.tsx</code>, <code>onion-skin/SeeThroughMenu.tsx</code> (moved from <code>src/studio/</code>); <code>src/studio/Studio.tsx</code>, <code>PlaybackBar.tsx</code>, <code>useStudioCommands.ts</code>; <code>e2e/stage.spec.ts</code>; <code>PLAN.md</code> (the "Extension" decision and §4); <code>ROADMAP.md</code>; <code>public/steps/22-plugin-registry.html</code>, <code>index.html</code>, <code>21-storage-safety.html</code> (next link).</p>
+  <p><strong>Tests:</strong> none added; this is a move. The 6 registry tests were removed with the registry.</p>
+  <p><strong>Tests changed:</strong> the safe zone test in <code>stage.spec.ts</code> opens the Play options instead of see-through's, because the slider moved on purpose. What it checks is unchanged.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>the studio looks and works the same, apart from the safe zone's new place</li>
+    <li>every feature is placed directly in <code>Studio.tsx</code>; no registry, no self-registration</li>
+    <li>features change the animation only through the commands the studio passes them</li>
+    <li><code>npm test</code>, <code>npm run lint</code>, <code>npm run typecheck</code> and the relevant specs pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="21-storage-safety.html">Previous: 21 · Storage safety</a>
+    <span>Next: 23 · Speech bubbles on pictures</span>
+  </nav>
+</main>
+</body>
+</html>

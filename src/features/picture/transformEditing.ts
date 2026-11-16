@@ -1,7 +1,8 @@
 import { inOrder, sameTransform, type Transform } from "@/core/model";
 import { editorStore, useEditor } from "@/store/useEditor";
-import { saveSoon, settleSoon } from "./saveSoon";
-import { shownIndex } from "./StagePicture";
+import { saveSoon, settleSoon } from "@/studio/saveSoon";
+import { shownIndex } from "@/studio/StagePicture";
+import type { TransformChange } from "@/studio/useStudioCommands";
 
 // Moving, sizing and turning pictures (step 18), shared by the stage and the Picture tab.
 //
@@ -10,7 +11,6 @@ import { shownIndex } from "./StagePicture";
 // pointer lets go; a burst of arrow presses, wheel turns or typed numbers saves once, a moment
 // after it stops (saveSoon), so it's one undo step, not sixty.
 
-export type TransformChange = { id: string; from: Transform; to: Transform };
 export type SaveTransforms = (changes: TransformChange[], label: string) => Promise<boolean>;
 
 // Where a picture is shown now: being moved (preview), or as saved.

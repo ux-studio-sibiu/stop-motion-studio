@@ -157,7 +157,7 @@ test("the safe zone can be set from 0 to 60 px; it's saved with the animation an
   const edge = page.locator(".safe-zone .edge");
   await expect(edge).toHaveAttribute("x", "20");   // the default
 
-  await page.getByRole("button", { name: "See-through options" }).click();
+  await page.getByRole("button", { name: "Playback options" }).click();   // with speed and loop (moved from see-through in step 22)
   const slider = page.getByRole("slider", { name: "Safe zone" });
   await slider.fill("45");
   await expect(edge).toHaveAttribute("x", "45");   // the stage follows while dragging
@@ -167,7 +167,7 @@ test("the safe zone can be set from 0 to 60 px; it's saved with the animation an
 
   await page.reload();   // saved with the animation
   await expect(page.locator(".safe-zone .edge")).toHaveAttribute("x", "50");
-  await page.getByRole("button", { name: "See-through options" }).click();
+  await page.getByRole("button", { name: "Playback options" }).click();
   await page.getByRole("slider", { name: "Safe zone" }).fill("0");
   await page.getByRole("slider", { name: "Safe zone" }).press("Tab");   // leaving the slider saves too
   await expect(page.locator(".safe-zone")).toHaveCount(0);              // 0: the whole picture is filmed

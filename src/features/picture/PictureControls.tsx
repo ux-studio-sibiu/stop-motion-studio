@@ -5,6 +5,7 @@ import { FlipHorizontal2, FlipVertical2, RotateCcw } from "lucide-react";
 import { flip, normaliseAngle, resetTransform, type Transform } from "@/core/model";
 import { useEditor } from "@/store/useEditor";
 import { commitPreview, commitSoon, previewEach, useEditTargets, type SaveTransforms } from "./transformEditing";
+import "./_picture.scss";
 
 // The Picture tab: exact numbers for where the picture is, how big and how turned, plus flip and
 // reset. Positions are project pixels from the centre (0, 0 is centred). With several pictures

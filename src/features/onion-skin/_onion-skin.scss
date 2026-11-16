@@ -1,0 +1,18 @@
+// See-through (step 17): the ghost on the stage, and its options under the stage.
+.nsc-studio {
+  // The see-through ghost over the live camera: same size and fit as the video, so they line up.
+  .onion-skin {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+
+    // Spot the difference (step 19): what lines up with the picture under it goes black.
+    &.is-difference { mix-blend-mode: difference; }
+  }
+
+  // How many pictures back: 1, 2 or 3 buttons in a row.
+  .nsc-see-through .counts { display: flex; gap: var(--space-2); }
+}

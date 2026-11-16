@@ -1,16 +1,17 @@
 "use client";
 
 import { ChevronDown, Pause, Play } from "lucide-react";
-import { FPS_OPTIONS } from "@/core/model";
+import type { ReactNode } from "react";
+import { FPS_OPTIONS, MAX_SAFE_MARGIN, SAFE_MARGIN, safeMargin } from "@/core/model";
 import { editorStore, useEditor } from "@/store/useEditor";
-import { SeeThroughMenu } from "./SeeThroughMenu";
 import { useDropdown } from "./useDropdown";
 import { togglePlay } from "./usePlayback";
 
-// The big Play / Pause button, with its options (how fast, loop) in a dropdown beside it, and
-// the see-through button. The speed is saved with the animation (an undoable change, onSpeed);
-// the loop is how you watch it, so it isn't.
-export function PlaybackBar({ onSpeed, onSafeMargin }: { onSpeed: (from: number, to: number) => void; onSafeMargin: (from: number, to: number) => Promise<boolean> }) {
+// The big Play / Pause button, with its options in a dropdown beside it: how fast, loop, and the
+// safe zone (how the video comes out). Then whatever the studio puts beside it (`children`: the
+// see-through button). The speed and the safe zone are saved with the animation (undoable
+// changes); the loop is how you watch it, so it isn't.
+export function PlaybackBar({ onSpeed, onSafeMargin, children }: { onSpeed: (from: number, to: number) => void; onSafeMargin: (from: number, to: number) => Promise<boolean>; children?: ReactNode }) {
   const isPlaying = useEditor((state) => state.isPlaying);
   const loop = useEditor((state) => state.loop);
   const fps = useEditor((state) => state.project?.fps ?? 8);
@@ -45,10 +46,11 @@ export function PlaybackBar({ onSpeed, onSafeMargin }: { onSpeed: (from: number,
               <input type="checkbox" checked={loop} onChange={(event) => editorStore.getState().setLoop(event.target.checked)} />
               <span>Loop</span>
             </label>
+            <SafeZoneOption onSafeMargin={onSafeMargin} />
           </div>
         )}
       </div>
-      <SeeThroughMenu onSafeMargin={onSafeMargin} />
+      {children}
     </footer>
   );
 }
@@ -58,4 +60,24 @@ function nearestOption(fps: number): number {
   let best = 0;
   FPS_OPTIONS.forEach((option, i) => { if (Math.abs(option - fps) < Math.abs(FPS_OPTIONS[best] - fps)) best = i; });
   return best;
+}
+
+// The safe zone (the edge band the video leaves out): while dragging only the stage changes;
+// letting go, or a key press, saves one undoable step. Moved here from see-through in step 22.
+function SafeZoneOption({ onSafeMargin }: { onSafeMargin: (from: number, to: number) => Promise<boolean> }) {
+  const saved = useEditor((state) => (state.project ? safeMargin(state.project) : SAFE_MARGIN));
+  const dragged = useEditor((state) => state.safeMarginPreview);
+  const margin = dragged ?? saved;
+  const commit = () => {
+    const to = editorStore.getState().safeMarginPreview;
+    if (to === null) return;
+    if (to === saved) { editorStore.getState().previewSafeMargin(null); return; }
+    void onSafeMargin(saved, to).then((ok) => { if (!ok) editorStore.getState().previewSafeMargin(null); });
+  };
+  return (
+    <label className="option">
+      <span>Safe zone: {margin} px</span>
+      <input type="range" min={0} max={MAX_SAFE_MARGIN} step={5} value={margin} aria-label="Safe zone" aria-valuetext={`${margin} pixels`} onChange={(event) => editorStore.getState().previewSafeMargin(Number(event.target.value))} onPointerUp={commit} onKeyUp={commit} onBlur={commit} />
+    </label>
+  );
 }
