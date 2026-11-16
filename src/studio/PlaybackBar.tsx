@@ -10,7 +10,7 @@ import { togglePlay } from "./usePlayback";
 // The big Play / Pause button, with its options (how fast, loop) in a dropdown beside it, and
 // the see-through button. The speed is saved with the animation (an undoable change, onSpeed);
 // the loop is how you watch it, so it isn't.
-export function PlaybackBar({ onSpeed }: { onSpeed: (from: number, to: number) => void }) {
+export function PlaybackBar({ onSpeed, onSafeMargin }: { onSpeed: (from: number, to: number) => void; onSafeMargin: (from: number, to: number) => Promise<boolean> }) {
   const isPlaying = useEditor((state) => state.isPlaying);
   const loop = useEditor((state) => state.loop);
   const fps = useEditor((state) => state.project?.fps ?? 8);
@@ -48,7 +48,7 @@ export function PlaybackBar({ onSpeed }: { onSpeed: (from: number, to: number) =
           </div>
         )}
       </div>
-      <SeeThroughMenu />
+      <SeeThroughMenu onSafeMargin={onSafeMargin} />
     </footer>
   );
 }

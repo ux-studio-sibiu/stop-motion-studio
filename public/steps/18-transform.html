@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>18 Move a picture · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 18 of 33 · Part 6 Editing</p>
+  <h1>Move, scale, rotate, flip</h1>
+  <p class="intro">When the table or the camera gets bumped between shots, a picture no longer lines up with the ones before it. Now a child can put it back. With the camera off and a picture on the stage:</p>
+  <ul>
+    <li><strong>drag</strong> it to move it;</li>
+    <li>grab the <strong>round handle</strong> to turn it;</li>
+    <li>use the <strong>wheel</strong> to make it bigger or smaller, around the pointer.</li>
+  </ul>
+  <p>The arrow keys nudge it one pixel at a time. The Picture tab shows the exact numbers, and has flip and reset buttons. Each gesture is one undo step.</p>
+
+  <div class="note"><strong>Added after this step: the safe zone.</strong> The stage shows a 20 px band along every edge, veiled, with a dotted line (<code>SafeZone.tsx</code>), in every mode: live camera, picture and playing. That band is what the video leaves out. Export (steps 25-27) will crop to <code>exportRect()</code> in <code>core/render/safeZone.ts</code>, which keeps the width and height even (3 unit tests), so what's inside the line is what the file contains. Everything else keeps the whole picture: capture, the renderer, moving pictures. So nudging a picture can still bring its edge into the frame.</div>
+
+  <div class="note"><strong>Changed later (after step 18):</strong>
+    <ul>
+      <li><strong>Stage tools per tab.</strong> The outline, turn handle, dragging, wheel and arrow keys on the stage only work while the Picture tab is open. The open tab now lives in the editor store (<code>panelTab</code>), so each tab can bring its own tools to the stage.</li>
+      <li><strong>The Picture tab</strong> is headed "Adjust your picture". Its hint text is gone. Size steps by 1% and Turn by 0.5°.</li>
+      <li><strong>Remembered settings, in one place.</strong> <code>src/studio/remembered.ts</code> lists every remembered setting as a typed preference: camera, camera off, open tab, loop, see-through, zoom, and per animation its view and selection. The rule in the repo's <code>CLAUDE.md</code> is to remember UI state by default.</li>
+      <li><strong>No jump on reload.</strong> The studio stays hidden until it looks as it was left: the animation is loaded with its remembered settings, and the camera is running or known to stay off. Then it fades in. If the camera is slow to start, it shows after 2 s at most (<code>useReady</code> in <code>Studio.tsx</code>, <code>settled</code> from <code>useCamera</code>).</li>
+      <li><strong>The safe zone</strong> is set per animation, 0-60 px, with a slider in the see-through options. It's undoable and saved with the animation (<code>safeMargin</code>).</li>
+      <li><strong>One outline width</strong>, <code>--line-width</code> (2px), for buttons, fields, the stage, panels, tabs and dropdowns. The stage's inside is exactly 16:9 in whole pixels, so no dark sliver shows at its edge.</li>
+      <li><strong>Code moves:</strong>
+        <ul>
+          <li><code>useStudioCommands</code> holds every undoable change the studio makes, in one object;</li>
+          <li>project-wide commands (<code>setFps</code>, <code>setSafeMargin</code>) are in <code>core/commands/projectCommands.ts</code>;</li>
+          <li><code>useEditTargets</code> moved to <code>transformEditing.ts</code>.</li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>src/core/model/transform.ts</code>, 10 tests:
+      <ul>
+        <li><code>moveBy</code>, <code>scaleAround</code>, <code>rotateBy</code>, <code>normaliseAngle</code>, <code>flip</code>, <code>resetTransform</code>;</li>
+        <li><code>pictureCentre</code>, <code>angleTo</code>, <code>sameTransform</code>.</li>
+      </ul>
+    </li>
+    <li><code>setTransforms(projectId, changes, label)</code> in <code>core/commands</code>. 2 tests against storage.</li>
+    <li>A transform preview in the store (<code>transformPreview</code>, <code>previewTransforms</code>, <code>clearTransformPreview</code>, <code>withTransformPreview</code>), like the length preview from step 13. 2 tests.</li>
+    <li><code>src/studio/transformEditing.ts</code>, shared by the stage and the Picture tab:
+      <ul>
+        <li>preview a change;</li>
+        <li>save it as one command;</li>
+        <li>save a burst once it stops;</li>
+        <li>cancel.</li>
+      </ul>
+    </li>
+    <li><code>src/studio/StageEditor.tsx</code>: the layer over the stage picture, with the outline, the turn handle, and drag, wheel and keys.</li>
+    <li><code>src/studio/PictureControls.tsx</code>: the Picture tab's fields (left / right, up / down, size, turn), flip and reset.</li>
+    <li>The stage picture and see-through draw the preview, so the picture follows the pointer.</li>
+    <li><code>e2e/transform.spec.ts</code> (6 tests).</li>
+  </ul>
+
+  <h2>Decisions</h2>
+
+  <h3>Project pixels, not screen pixels</h3>
+  <p>A transform stores <code>x</code> and <code>y</code> as fractions of the picture (step 02), so it survives a change of resolution. Every edit works in <em>project</em> pixels instead:</p>
+  <ul>
+    <li>one arrow press moves the picture one pixel <em>of the video</em>, however big the stage is on screen;</li>
+    <li>ten presses are exactly ten pixels, which a test checks;</li>
+    <li>a drag is converted with the stage canvas's size on screen, so dragging 100 screen pixels across a small stage moves the picture more than 100 project pixels.</li>
+  </ul>
+
+  <h3>Sizing keeps the pointer's spot still</h3>
+  <p>Making the picture bigger around its centre, while the pointer is over a toy's head, would slide the head away from the pointer. <code>scaleAround</code> moves the centre too, so whatever is under the pointer stays under it. Keyboard <kbd>+</kbd> / <kbd>-</kbd> size around the picture's centre. The size stays between 10% and 10×. At a limit, the centre only moves as much as the picture really grew, which a test checks.</p>
+
+  <h3>Turning around the picture's own centre</h3>
+  <p>The renderer turns a picture around its centre (step 15). The handle measures the angle from that centre to the pointer, and turns by how much that angle changed. The angle is kept between −180° and 180°.</p>
+  <p>The handle sits just <em>inside</em> the top edge. The first version put it above the picture, which is outside the stage frame whenever the picture fills it. The frame clips, so the handle couldn't be seen or grabbed there; the Playwright test caught it.</p>
+
+  <h3>Preview first, one command at the end</h3>
+  <p>Dragging writes to the store's preview only, and the stage redraws from it on the next animation frame, not on every pointer event. Letting go saves one <code>setTransforms</code> command. Arrow presses, wheel turns and typed numbers come in bursts, so they save once, 600 ms after the last one. Pressing an arrow key ten times is one undo step, and a test checks that. Escape forgets what isn't saved.</p>
+
+  <h3>What gets edited</h3>
+  <p>The selected pictures, or, if none is selected, the one on the stage (the last). Several selected pictures move, turn and size together, each by the same amount. A typed number in the Picture tab goes to all of them.</p>
+
+  <h3>Only with the camera off</h3>
+  <p>Editing happens on the stage's picture, which shows when the camera is off (step 15). With the camera on, the stage is live; the Picture tab's numbers still work there.</p>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Thumbnails don't show the transform.</strong> They're the photo as taken, so a moved or turned picture looks unmoved on the timeline. Rendering them through the renderer is a later improvement.</li>
+    <li><strong>Number fields are controlled.</strong> Typing a lone "-" before a number is ignored until there's a number. The steppers and arrow keys work.</li>
+    <li><strong>View zoom</strong> (looking closer at the stage) is step 19. Until then the stage is always fitted, which keeps the pixel maths simple.</li>
+    <li><strong>The camera start in end-to-end tests</strong> is flaky under load. This step's full run had 3 setup failures, which passed on rerun (see the note below).</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm test
+npm run test:e2e -- e2e/transform.spec.ts
+npm run dev</code></pre>
+  <ul>
+    <li>Take a picture, turn the camera off, drag the picture: it follows the pointer; one Ctrl+Z puts it back.</li>
+    <li>Click the stage and press → ten times: the Picture tab says 10 px; one undo puts it back.</li>
+    <li>Wheel over a toy: it grows around the pointer.</li>
+    <li>Drag the round handle: it turns. Try Flip and Reset in the Picture tab.</li>
+  </ul>
+  <div class="note">Checked while building: 220 unit tests pass; <code>transform.spec.ts</code> 6 passed. One full Chromium run of 69 had 66 passed and 3 failures, all a slow camera start in a test's setup; those three files then passed on their own (14 passed). Screenshot taken of a picture at 70%, turned 12° and moved 150 px. That review swapped the two flip icons, which were the wrong way round.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/model/transform.ts</code>, <code>transform.test.ts</code>, <code>index.ts</code>; <code>src/core/commands/frameCommands.ts</code>; <code>src/adapters/storage/frameCommands.test.ts</code>; <code>src/store/editorStore.ts</code>, <code>editorStore.test.ts</code>; <code>src/studio/transformEditing.ts</code>, <code>StageEditor.tsx</code>, <code>PictureControls.tsx</code>, <code>StagePicture.tsx</code>, <code>OnionSkin.tsx</code>, <code>Studio.tsx</code>, <code>styles/_stage.scss</code>, <code>styles/_side-panel.scss</code>; <code>e2e/transform.spec.ts</code>; <code>public/steps/18-transform.html</code>, <code>index.html</code>, <code>17-onion-skin.html</code> (next link); <code>ROADMAP.md</code>.</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit (220 in total): 10 for the transform maths, 2 for <code>setTransforms</code>, 2 for the preview.</li>
+    <li>End-to-end, 6 in <code>transform.spec.ts</code>:
+      <ul>
+        <li>drag, undo, redo, saved;</li>
+        <li>exact nudges as one undo step;</li>
+        <li>wheel and + / −;</li>
+        <li>the turn handle;</li>
+        <li>fields, flip and reset;</li>
+        <li>two pictures together.</li>
+      </ul>
+    </li>
+  </ul>
+  <p>No existing test changed.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>edits are in project pixels; ten nudges are ten pixels</li>
+    <li>sizing keeps the pointer's spot still</li>
+    <li>a drag or a burst of keys is one undo step</li>
+    <li>the stage redraws from the preview; nothing is saved until the gesture ends</li>
+    <li><code>npm test</code>, <code>npm run test:e2e</code>, <code>npm run lint</code>, <code>npm run typecheck</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="17-onion-skin.html">Previous: 17 · Onion skin</a>
+    <span>Next: 19 · Line up with other pictures</span>
+  </nav>
+</main>
+</body>
+</html>

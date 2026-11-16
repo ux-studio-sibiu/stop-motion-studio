@@ -26,7 +26,9 @@ fast, logic is never "trust the edit".
   Say in the summary which of these ran.
   - **Seed pictures, don't photograph them**, unless the test is about taking pictures:
     `studio.seedPictures(n)` writes them straight into storage, much faster and steadier than
-    `cameraOn()` + `takePictures(n)`.
+    `cameraOn()` + `takePictures(n)`. And **don't start the camera** unless the test is about it:
+    `studio.withoutCamera()` before `open()` keeps it off (starting the fake camera is what made
+    tests flaky when many browsers run at once).
   - **Run it once.** Repeat runs (`--repeat-each`, or the suite several times) only while chasing
     a test that fails now and then, and then only that test, not the whole suite.
 - **Never weaken a test to make it pass.** If a test fails, either the code is wrong or the behaviour
@@ -38,6 +40,15 @@ fast, logic is never "trust the edit".
   asks.
 
 Each step page lists its tests under "Files in this step" and checks them in the review checklist.
+
+## Remembered UI state
+
+UI state a child would expect to find as they left it after a reload (an open tab, a setting, a
+zoom, the selection) is remembered **by default**: add it to the registry in
+`src/studio/remembered.ts` (one line, a typed `definePreference` with a parser) and use
+`useRememberedState` or `useRememberedStore`. Moment-to-moment state (an open dropdown, the
+playhead, a drag) isn't. Per-animation state uses a preference family, and deleting an animation
+forgets it (`ProjectsPage`). Add an end-to-end check that it survives a reload.
 
 ## Layers
 

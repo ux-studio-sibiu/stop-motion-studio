@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { createFrame, createProject, type Frame, type Project } from "@/core/model";
-import { createEditorStore, MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, orderedFrames, withHoldPreview, type EditorStore } from "@/store/editorStore";
+import { createEditorStore, MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, orderedFrames, withHoldPreview, withTransformPreview, type EditorStore } from "@/store/editorStore";
 
 let store: EditorStore;
 let project: Project;
@@ -120,6 +120,29 @@ describe("ui slice", () => {
   });
 });
 
+describe("safe zone preview", () => {
+  it("shows the dragged margin (kept to 0-60) until the saved project has it", () => {
+    store.getState().loadProject(project, []);
+    store.getState().previewSafeMargin(90);
+    expect(store.getState().safeMarginPreview).toBe(60);
+    store.getState().syncProject({ ...project, safeMargin: 30 }, []);   // not saved yet: still shown
+    expect(store.getState().safeMarginPreview).toBe(60);
+    store.getState().syncProject({ ...project, safeMargin: 60 }, []);
+    expect(store.getState().safeMarginPreview).toBeNull();
+  });
+});
+
+describe("panel tab", () => {
+  it("starts on the first tab, changes, and stays when another project opens", () => {
+    expect(store.getState().panelTab).toBeNull();
+    store.getState().setPanelTab("picture");
+    store.getState().loadProject(createProject(), []);
+    expect(store.getState().panelTab).toBe("picture");
+    store.getState().setPanelTab("");
+    expect(store.getState().panelTab).toBeNull();
+  });
+});
+
 describe("onion skin", () => {
   it("is on at 40%, one picture back, by default", () => {
     expect(store.getState().onionSkin).toEqual({ on: true, opacity: 0.4, count: 1, outline: false });
@@ -136,6 +159,28 @@ describe("onion skin", () => {
     expect(store.getState().onionSkin.outline).toBe(true);
     store.getState().setOnionSkin({ opacity: Number.NaN });
     expect(store.getState().onionSkin.opacity).toBe(0.4);
+  });
+});
+
+describe("transform preview", () => {
+  const moved = { x: 0.2, y: 0, scale: 2, rotation: 10, flipX: false, flipY: false };
+  beforeEach(() => store.getState().loadProject({ ...project, frameIds: [a.id, b.id] }, [a, b]));
+
+  it("shows pictures where they're being moved to, without touching the frames", () => {
+    store.getState().previewTransforms({ [a.id]: moved, nope: moved });
+    expect(Object.keys(store.getState().transformPreview)).toEqual([a.id]);
+    expect(store.getState().frames[a.id].transform).toEqual(a.transform);
+    const shown = withTransformPreview(orderedFrames(store.getState()), store.getState().transformPreview);
+    expect(shown[0].transform).toEqual(moved);
+    expect(shown[1]).toBe(b);   // untouched frames stay the same objects
+  });
+
+  it("drops an entry once the saved frame is there, and on clear", () => {
+    store.getState().previewTransforms({ [a.id]: moved, [b.id]: moved });
+    store.getState().syncProject({ ...project, frameIds: [a.id, b.id] }, [{ ...a, transform: { ...moved } }, b]);
+    expect(Object.keys(store.getState().transformPreview)).toEqual([b.id]);
+    store.getState().clearTransformPreview();
+    expect(store.getState().transformPreview).toEqual({});
   });
 });
 

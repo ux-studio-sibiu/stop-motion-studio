@@ -11,16 +11,20 @@
     container-type: size;
   }
 
+  // The 16:9 is the inside (content-box, no padding), in whole pixels, so the camera and pictures
+  // (inset 0) fill it exactly: with the border inside the 16:9 or a fractional size, a picture
+  // fitted without stretching leaves a 1-2 px sliver where the dark background shows.
   .stage-frame {
     position: relative;
     display: grid;
     place-items: center;
-    width: min(100cqw, 100cqh * 16 / 9);
+    box-sizing: content-box;
+    width: round(down, min(100cqw, 100cqh * 16 / 9) - 2 * var(--line-width), 16px);   // ×16, so the height (×9/16) is whole too
     aspect-ratio: 16 / 9;
-    padding: var(--space-3);
+    padding: 0;
     overflow: hidden;
     background: var(--color-stage);
-    border: 1px solid var(--color-line);
+    border: var(--line-width) solid var(--color-line);
     border-radius: var(--radius);
     color: var(--color-stage-ink);
     text-align: center;
@@ -43,6 +47,59 @@
     width: 100%;
     height: 100%;
     object-fit: contain;
+  }
+
+  // The safe zone: the band the video leaves out, veiled, and a dotted line at the video's edge.
+  .safe-zone {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+
+    .veil { fill: rgb(0 0 0 / 0.45); }
+
+    .edge {
+      fill: none;
+      stroke: rgb(255 255 255 / 0.85);
+      stroke-width: 1.5;
+      stroke-dasharray: 2 4;
+      stroke-linecap: round;
+      vector-effect: non-scaling-stroke;
+    }
+  }
+
+  // Editing a picture on the stage: a layer over it (same box as the canvas) with the picture's
+  // outline and the round turn handle, drawn in project pixels (the SVG's viewBox).
+  .stage-editor {
+    position: absolute;
+    inset: 0;
+    cursor: move;
+    touch-action: none;   // a finger drag moves the picture instead of scrolling
+    outline: none;
+
+    &:focus-visible { box-shadow: inset 0 0 0 3px var(--color-focus); }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .outline {
+      fill: none;
+      stroke: var(--color-focus);
+      stroke-width: 2;
+      stroke-dasharray: 6 4;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .turn-handle {
+      cursor: grab;
+
+      line { stroke: var(--color-focus); stroke-width: 2; vector-effect: non-scaling-stroke; }
+      circle { fill: var(--color-surface); stroke: var(--color-focus); stroke-width: 3; vector-effect: non-scaling-stroke; }
+    }
   }
 
   // The see-through ghost over the live camera: same size and fit as the video, so they line up.
@@ -89,6 +146,7 @@
     justify-items: center;
     gap: var(--space-3);
     max-width: 28rem;
+    padding: var(--space-3);   // the stage frame has none (see .stage-frame)
 
     p { margin: 0; font-size: 1.125rem; }
   }

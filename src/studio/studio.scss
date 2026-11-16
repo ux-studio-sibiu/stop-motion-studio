@@ -30,6 +30,16 @@
     grid-template-areas: "toolbar toolbar" "stage panel" "playback playback" "timeline timeline";
   }
 
+  // Hidden until it looks as it was left (useReady in Studio.tsx), then faded in.
+  opacity: 0;
+
+  &.is-ready {
+    opacity: 1;
+    transition: opacity 0.25s ease-out;
+
+    @media (prefers-reduced-motion: reduce) { transition: none; }
+  }
+
   &.is-missing {
     display: grid;
     place-items: center;

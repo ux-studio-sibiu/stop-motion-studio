@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { addFrames, createHistory, deleteFrames, duplicateFrames, reorderFrames, setFps, setHold, type History } from "@/core/commands";
+import { addFrames, createHistory, deleteFrames, duplicateFrames, reorderFrames, setFps, setHold, setSafeMargin, setTransforms, type History } from "@/core/commands";
 import { createFrame, createProject, moveIds, type Project, type ProjectRepository } from "@/core/model";
 import { openStudioDb, type StudioDb } from "@/adapters/storage/db";
 import { createDexieRepository } from "@/adapters/storage/dexieRepository";
@@ -140,6 +140,47 @@ describe("reorderFrames", () => {
     const ids = await takePictures(2);
     await expect(history.run(reorderFrames(project.id, ids, [...ids], [ids[0]]))).rejects.toThrow();
     expect(history.state().undoLabel).toBe("Take picture");
+  });
+});
+
+describe("setTransforms", () => {
+  const transformOf = async (id: string) => (await repository.loadProject(project.id))?.frames.find((frame) => frame.id === id)?.transform;
+  const moved = { x: 0.1, y: -0.05, scale: 1.5, rotation: 20, flipX: true, flipY: false };
+  const still = { x: 0, y: 0, scale: 1, rotation: 0, flipX: false, flipY: false };
+
+  it("moves pictures in one step; undo puts them all back; redo again", async () => {
+    const [a, b] = await takePictures(2);
+    expect(await history.run(setTransforms(project.id, [{ id: a, from: still, to: moved }, { id: b, from: still, to: moved }]))).toEqual({ select: [a, b] });
+    expect(await transformOf(a)).toEqual(moved);
+    expect(await transformOf(b)).toEqual(moved);
+    expect(history.state().undoLabel).toBe("Move picture (2 pictures)");
+    await history.undo();
+    expect(await transformOf(a)).toEqual(still);
+    await history.redo();
+    expect(await transformOf(b)).toEqual(moved);
+  });
+
+  it("isn't recorded when nothing moved", async () => {
+    const [a] = await takePictures(1);
+    await expect(history.run(setTransforms(project.id, [{ id: a, from: still, to: { ...still } }]))).rejects.toThrow();
+    expect(history.state().undoLabel).toBe("Take picture");
+  });
+});
+
+describe("setSafeMargin", () => {
+  it("changes the safe zone, kept to 0-60 px; undo puts it back", async () => {
+    await history.run(setSafeMargin(project.id, 20, 45));
+    expect((await repository.getProject(project.id))?.safeMargin).toBe(45);
+    await history.run(setSafeMargin(project.id, 45, 200));
+    expect((await repository.getProject(project.id))?.safeMargin).toBe(60);
+    await history.undo();
+    await history.undo();
+    expect((await repository.getProject(project.id))?.safeMargin).toBe(20);
+  });
+
+  it("isn't recorded when it stays the same", async () => {
+    await expect(history.run(setSafeMargin(project.id, 20, 20.2))).rejects.toThrow();
+    expect(history.state().canUndo).toBe(false);
   });
 });
 

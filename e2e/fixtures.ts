@@ -53,6 +53,14 @@ export class Studio {
     }
   }
 
+  // For tests that don't need the camera: marks it as turned off (the remembered setting) before
+  // the page loads, so the studio never starts it. Starting the fake camera is the slow, flaky
+  // part of a test when many browsers run at once; tests about pictures, not the camera, skip it.
+  // Call before open().
+  async withoutCamera(): Promise<void> {
+    await this.page.addInitScript(() => { try { localStorage.setItem("stop-motion-studio:camera-off", "1"); } catch { /* no storage */ } });
+  }
+
   // Puts `count` pictures into the open project without the camera: much faster than taking them,
   // for tests about what happens to pictures, not how they're taken. Each is a small generated
   // JPEG (a different colour each, with a white square), saved straight into the app's IndexedDB

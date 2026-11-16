@@ -1,13 +1,24 @@
 "use client";
 
 import { ChevronDown, Layers } from "lucide-react";
+import { MAX_SAFE_MARGIN, SAFE_MARGIN, safeMargin } from "@/core/model";
 import { editorStore, useEditor } from "@/store/useEditor";
 import { useDropdown } from "./useDropdown";
 
 // See-through: the button turns it on and off; the arrow beside it opens its options (how
 // strong, how many pictures back). Escape or a click outside closes them.
-export function SeeThroughMenu() {
+export function SeeThroughMenu({ onSafeMargin }: { onSafeMargin: (from: number, to: number) => Promise<boolean> }) {
   const onion = useEditor((state) => state.onionSkin);
+  const saved = useEditor((state) => (state.project ? safeMargin(state.project) : SAFE_MARGIN));
+  const dragged = useEditor((state) => state.safeMarginPreview);
+  const margin = dragged ?? saved;
+  // While dragging, only the stage changes; letting go (or a key press) saves one undoable step.
+  const commit = () => {
+    const to = editorStore.getState().safeMarginPreview;
+    if (to === null) return;
+    if (to === saved) { editorStore.getState().previewSafeMargin(null); return; }
+    void onSafeMargin(saved, to).then((ok) => { if (!ok) editorStore.getState().previewSafeMargin(null); });
+  };
   const { open, toggle, ref } = useDropdown();
   const set = editorStore.getState().setOnionSkin;
 
@@ -27,6 +38,10 @@ export function SeeThroughMenu() {
           <label className="option is-check">
             <input type="checkbox" checked={onion.outline} onChange={(event) => set({ outline: event.target.checked, on: true })} />
             <span>Outline only</span>
+          </label>
+          <label className="option">
+            <span>Safe zone: {margin} px</span>
+            <input type="range" min={0} max={MAX_SAFE_MARGIN} step={5} value={margin} aria-label="Safe zone" aria-valuetext={` pixels`} onChange={(event) => editorStore.getState().previewSafeMargin(Number(event.target.value))} onPointerUp={commit} onKeyUp={commit} onBlur={commit} />
           </label>
           <div className="option">
             <span>Pictures shown</span>

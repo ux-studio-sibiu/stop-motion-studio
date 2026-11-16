@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cameraPermissionGranted, cameraStatusFromError, cameraSupported, isMissingDevice, listCameras, openCamera, stopStream, unavailableStatus, type CameraStatus } from "@/adapters/camera/camera";
-import { PREFERENCES, readText, savePreference } from "@/adapters/preferences/preferences";
+import { remembered } from "./remembered";
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from "@/core/model";
 
 export type Camera = {
   status: CameraStatus;
+  settled: boolean;   // the first start is decided: running, failed, or waiting for the button
   stream: MediaStream | null;
   devices: MediaDeviceInfo[];
   deviceId: string | null;
@@ -18,11 +19,11 @@ export type Camera = {
 const SIZE = { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };   // the project's size once projects load (step 07)
 
 function readDevice(): string | null {
-  return readText(PREFERENCES.cameraDevice) ?? null;
+  return remembered.cameraDevice.read() ?? null;
 }
 
 function saveDevice(deviceId: string | null): void {
-  savePreference(PREFERENCES.cameraDevice, deviceId || null);
+  remembered.cameraDevice.save(deviceId || null);
 }
 
 // Owns the webcam for the studio. Every open gets a request number; when a newer request,
@@ -31,6 +32,7 @@ function saveDevice(deviceId: string | null): void {
 // second stream running with the camera light on.
 export function useCamera(): Camera {
   const [status, setStatus] = useState<CameraStatus>("idle");
+  const [checked, setChecked] = useState(false);   // knows whether to start by itself
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [deviceId, setDeviceId] = useState<string | null>(null);
@@ -83,9 +85,9 @@ export function useCamera(): Camera {
   }, [release]);
 
   // Turning the camera on or off is remembered on this device, so a reload keeps it that way.
-  const start = useCallback(() => { wanted.current = true; savePreference(PREFERENCES.cameraOff, null); void open(chosen.current); }, [open]);
+  const start = useCallback(() => { wanted.current = true; remembered.cameraOff.save(null); void open(chosen.current); }, [open]);
 
-  const stop = useCallback(() => { wanted.current = false; savePreference(PREFERENCES.cameraOff, "1"); release(); setStatus("idle"); }, [release]);
+  const stop = useCallback(() => { wanted.current = false; remembered.cameraOff.save(true); release(); setStatus("idle"); }, [release]);
 
   const selectDevice = useCallback((id: string) => { wanted.current = true; void open(id); }, [open]);
 
@@ -98,8 +100,12 @@ export function useCamera(): Camera {
 
     // Start straight away only when the browser already allowed the camera and the child didn't
     // turn it off last time; otherwise wait for the button, so a permission prompt follows a tap.
-    const turnedOff = readText(PREFERENCES.cameraOff) === "1";
-    void cameraPermissionGranted().then((granted) => { if (active && granted && !turnedOff) start(); });
+    const turnedOff = remembered.cameraOff.read() === true;
+    void cameraPermissionGranted().then((granted) => {
+      if (!active) return;
+      setChecked(true);
+      if (granted && !turnedOff) start();   // "asking" in the same render, so not settled yet
+    });
 
     // Turn the camera (and its light) off while the tab is hidden, back on when it returns.
     const onVisibility = () => {
@@ -117,5 +123,5 @@ export function useCamera(): Camera {
     };
   }, [open, release, start]);
 
-  return { status, stream, devices, deviceId, start, stop, selectDevice };
+  return { status, settled: checked && status !== "asking", stream, devices, deviceId, start, stop, selectDevice };
 }

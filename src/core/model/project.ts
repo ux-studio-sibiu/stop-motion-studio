@@ -64,6 +64,19 @@ export function cloneFrame(frame: Frame): Frame {
   return { ...frame, id: newId(), transform: { ...frame.transform }, adjust: { ...frame.adjust } };
 }
 
+// The safe zone's width: 0 (the whole picture is filmed) to 60 project px, whole pixels.
+export const SAFE_MARGIN = 20;
+export const MAX_SAFE_MARGIN = 60;
+
+export function clampSafeMargin(margin: number): number {
+  return Number.isFinite(margin) ? Math.min(MAX_SAFE_MARGIN, Math.max(0, Math.round(margin))) : SAFE_MARGIN;
+}
+
+// A project's safe zone, with the default for projects made before it could be set.
+export function safeMargin(project: Pick<Project, "safeMargin">): number {
+  return project.safeMargin === undefined ? SAFE_MARGIN : clampSafeMargin(project.safeMargin);
+}
+
 export function clampFps(fps: number): number {
   return Number.isFinite(fps) ? Math.min(MAX_FPS, Math.max(MIN_FPS, Math.round(fps))) : DEFAULT_FPS;
 }

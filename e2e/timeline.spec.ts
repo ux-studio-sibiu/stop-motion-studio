@@ -137,3 +137,11 @@ test("the thumbnails show the pictures that were taken", async ({ studio }) => {
     await expect.poll(() => studio.thumbnailOf(number)).toMatchObject({ type: "image/jpeg" });
   }
 });
+
+test("each animation remembers which pictures were selected", async ({ studio, page }) => {
+  await studio.picture(2).click();
+  await studio.picture(3).click({ modifiers: ["Shift"] });
+  await page.reload();
+  await expect(studio.pictures()).toHaveCount(3);
+  expect(await studio.selectedOrder()).toEqual((await studio.order()).slice(1, 3));
+});

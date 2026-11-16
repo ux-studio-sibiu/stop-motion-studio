@@ -3,9 +3,9 @@ import { expect, test } from "./fixtures";
 // Playback (step 16). Three one-tick pictures at 8 per second last 0.375 s.
 
 test.beforeEach(async ({ studio }) => {
+  await studio.withoutCamera();   // playing over the live camera is checked in stage.spec.ts
   await studio.open();
   await studio.seedPictures(3);
-  await studio.cameraOn();   // playback is checked over the live camera
 });
 
 test("Play shows the animation on the stage and stops at the end when not looping", async ({ studio, page }) => {
@@ -19,10 +19,11 @@ test("Play shows the animation on the stage and stops at the end when not loopin
   await page.keyboard.press("Escape");   // close the options
   await page.getByRole("button", { name: "Play", exact: true }).click();
   await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
-  await expect(page.locator(".stage-picture")).toBeVisible();      // over the live camera while playing
+  await expect(page.locator(".stage-picture")).toBeVisible();
   await expect(page.locator(".playhead.is-playing")).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Play", exact: true })).toBeVisible({ timeout: 3000 });   // it ended by itself
-  await expect(page.locator(".stage-picture")).toHaveCount(0);   // the live camera again
+  await expect(page.locator(".playhead.is-playing")).toHaveCount(0);
+  await expect(studio.selected()).toHaveCount(0);   // back to the start for the next Play
 });
 
 test("Enter plays and pauses; pausing selects the picture it stopped on", async ({ studio, page }) => {
@@ -58,4 +59,12 @@ test("dragging along the ruler scrubs: the picture under the pointer is selected
   await page.mouse.up();
   await expect(studio.picture(2)).toHaveAttribute("aria-selected", "true");
   await expect(page.locator(".playhead")).toHaveCount(1);
+});
+
+test("the loop setting is remembered after a reload", async ({ page }) => {
+  await page.getByRole("button", { name: "Playback options" }).click();
+  await page.getByRole("checkbox", { name: /^Loop/ }).uncheck();
+  await page.reload();
+  await page.getByRole("button", { name: "Playback options" }).click();
+  await expect(page.getByRole("checkbox", { name: /^Loop/ })).not.toBeChecked();
 });

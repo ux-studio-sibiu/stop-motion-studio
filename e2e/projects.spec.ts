@@ -20,9 +20,9 @@ test("New animation opens the studio, and the animation is listed afterwards", a
 });
 
 test("a card shows its first picture and how many there are", async ({ projects, studio, page }) => {
+  await studio.withoutCamera();
   await studio.open();
-  await studio.cameraOn();
-  await studio.takePictures(2);
+  await studio.seedPictures(2);
 
   await page.getByRole("link", { name: "All projects" }).click();
   const card = projects.card("My animation");

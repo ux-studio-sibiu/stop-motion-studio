@@ -1,4 +1,4 @@
-import { clampHold, cloneFrame, sameOrder, type Frame, type FrameInsert, type ProjectRepository, type RemovedFrame } from "../model";
+import { clampHold, cloneFrame, sameOrder, sameTransform, type Frame, type Transform, type FrameInsert, type ProjectRepository, type RemovedFrame } from "../model";
 import type { Command } from "./command";
 
 // Takes pictures out of the animation. Undo puts them back exactly where they were (and
@@ -83,14 +83,16 @@ export function reorderFrames(projectId: string, before: readonly string[], afte
   return { label: moved.length === 1 ? "Move picture" : `Move ${moved.length} pictures`, do: write(after), undo: write(before) };
 }
 
-// Changes the speed (pictures per second). Every length is in ticks, so the whole animation,
-// ruler and all, scales evenly.
-export function setFps(projectId: string, from: number, to: number): Command {
-  const write = (fps: number) => async (repository: ProjectRepository) => {
-    if (from === to) throw new Error("The speed didn't change.");
-    await repository.updateProject(projectId, { fps });
+// Moves, sizes, turns or flips pictures: one command for a whole drag, wheel gesture or burst of
+// arrow presses, however many pictures it changed. Undo puts every one back. They stay selected.
+export function setTransforms(projectId: string, changes: readonly { id: string; from: Transform; to: Transform }[], label = "Move picture"): Command {
+  const ids = changes.map((change) => change.id);
+  const write = (pick: "from" | "to") => async (repository: ProjectRepository) => {
+    if (changes.length === 0 || changes.every(({ from, to }) => sameTransform(from, to))) throw new Error("Nothing moved.");
+    await repository.updateFrames(projectId, changes.map((change) => ({ id: change.id, transform: { ...change[pick] } })));
+    return { select: ids };
   };
-  return { label: "Change speed", do: write(to), undo: write(from) };
+  return { label: changes.length > 1 ? `${label} (${changes.length} pictures)` : label, do: write("to"), undo: write("from") };
 }
 
 // Changes how long pictures last: one command for a whole drag or key press, however many

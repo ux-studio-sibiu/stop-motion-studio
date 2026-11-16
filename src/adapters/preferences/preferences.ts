@@ -1,83 +1,69 @@
-// Small per-device settings: how this child likes the studio set up on this computer (which
-// camera, how far the timeline is zoomed). They're not part of any animation, so they live in
-// localStorage, not in the projects database, and are never exported or backed up.
+// Remembered UI state: how this child left the studio on this computer (which camera, the zoom,
+// the open tab...). Not part of any animation, so it lives in localStorage, not in the projects
+// database, and is never exported or backed up. Every setting is a typed Preference, declared in
+// one registry (src/studio/remembered.ts).
 //
-// localStorage can be missing (server rendering) or throw (blocked storage, private modes),
-// so every read falls back to "not set" and every save is best effort.
-
-export const PREFERENCES = {
-  cameraDevice: "stop-motion-studio:camera",
-  cameraOff: "stop-motion-studio:camera-off",   // "1" once the child turned the camera off
-  timelineZoom: "stop-motion-studio:timeline-zoom",
-  onionSkin: "stop-motion-studio:onion-skin",   // JSON: { on, opacity, count }
-} as const;
-
-export type PreferenceKey = (typeof PREFERENCES)[keyof typeof PREFERENCES] | `stop-motion-studio:view:${string}`;
-
-// How one animation's timeline was last looked at: its zoom (px per second) and the time at the
-// left edge of the view, in seconds (not pixels, so it lands on the same moment at any zoom).
-export type TimelineView = { zoom: number; scrollSeconds: number };
-
-export function timelineViewKey(projectId: string): PreferenceKey {
-  return `stop-motion-studio:view:${projectId}`;
-}
-
-export function readTimelineView(projectId: string, storage = browserStorage()): TimelineView | undefined {
-  const text = readText(timelineViewKey(projectId), storage);
-  if (!text) return undefined;
-  try {
-    const { zoom, scrollSeconds } = JSON.parse(text) as Partial<TimelineView>;
-    if (typeof zoom !== "number" || !Number.isFinite(zoom) || zoom <= 0) return undefined;
-    return { zoom, scrollSeconds: typeof scrollSeconds === "number" && Number.isFinite(scrollSeconds) ? Math.max(0, scrollSeconds) : 0 };
-  } catch {
-    return undefined;   // not JSON: as if never saved
-  }
-}
-
-// null forgets it (a deleted animation).
-export function saveTimelineView(projectId: string, view: TimelineView | null, storage = browserStorage()): void {
-  savePreference(timelineViewKey(projectId), view && JSON.stringify(view), storage);
-}
+// localStorage can be missing (server rendering) or throw (blocked storage, private modes), and
+// anything can be in it, so every read is checked by the preference's own parser and falls back
+// to "not set", and every save is best effort.
 
 export type PreferenceStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+export type Preference<T> = {
+  key: string;
+  read: (storage?: PreferenceStorage | null) => T | undefined;
+  // null forgets it.
+  save: (value: T | null, storage?: PreferenceStorage | null) => void;
+};
+
+export const PREFIX = "stop-motion-studio:";
 
 function browserStorage(): PreferenceStorage | null {
   try { return typeof localStorage === "undefined" ? null : localStorage; } catch { return null; }
 }
 
-export function readText(key: PreferenceKey, storage = browserStorage()): string | undefined {
-  try { return storage?.getItem(key) ?? undefined; } catch { return undefined; }
+// One remembered setting. Saved as JSON; read back through `parse`, which says what's valid. Text
+// that isn't JSON (settings saved before step 18) is handed to `parse` as a plain string.
+export function definePreference<T>(name: string, parse: (raw: unknown) => T | undefined): Preference<T> {
+  const key = PREFIX + name;
+  return {
+    key,
+    read: (storage = browserStorage()) => {
+      let text: string | null | undefined;
+      try { text = storage?.getItem(key); } catch { return undefined; }
+      if (text === null || text === undefined || text === "") return undefined;
+      let raw: unknown;
+      try { raw = JSON.parse(text); } catch { raw = text; }
+      return parse(raw);
+    },
+    save: (value, storage = browserStorage()) => {
+      try {
+        if (value === null || value === undefined) storage?.removeItem(key);
+        else storage?.setItem(key, JSON.stringify(value));
+      } catch { /* storage blocked or full: just don't remember */ }
+    },
+  };
 }
 
-// A finite number, or undefined for anything else (missing, empty, "abc", "Infinity").
-export function readNumber(key: PreferenceKey, storage = browserStorage()): number | undefined {
-  const text = readText(key, storage);
-  if (text === undefined || text.trim() === "") return undefined;
-  const value = Number(text);
-  return Number.isFinite(value) ? value : undefined;
+// The same setting for each animation, one entry per animation id ("view:<id>").
+export function definePreferenceFamily<T>(name: string, parse: (raw: unknown) => T | undefined): (id: string) => Preference<T> {
+  return (id) => definePreference(`${name}:${id}`, parse);
 }
 
-// A saved object (settings with several values), or undefined if it's missing, not JSON, or not
-// an object. The caller still checks the values: storage is the user's, anything can be in it.
-export function readJson(key: PreferenceKey, storage = browserStorage()): Record<string, unknown> | undefined {
-  const text = readText(key, storage);
-  if (!text) return undefined;
-  try {
-    const value: unknown = JSON.parse(text);
-    return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
-  } catch {
-    return undefined;
-  }
-}
+// Parsers for definePreference: the value if it's the right kind, otherwise undefined.
+export const asString = (raw: unknown): string | undefined => (typeof raw === "string" && raw !== "" ? raw : typeof raw === "number" ? String(raw) : undefined);
+export const asBoolean = (raw: unknown): boolean | undefined => (raw === true || raw === 1 || raw === "1" ? true : raw === false || raw === 0 || raw === "0" ? false : undefined);
+export const asNumber = (raw: unknown): number | undefined => (typeof raw === "number" && Number.isFinite(raw) ? raw : undefined);
+export const asStringList = (raw: unknown): string[] | undefined => (Array.isArray(raw) && raw.every((item) => typeof item === "string") ? raw : undefined);
+export const asObject = (raw: unknown): Record<string, unknown> | undefined => (raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : undefined);
 
-export function saveJson(key: PreferenceKey, value: object | null, storage = browserStorage()): void {
-  savePreference(key, value && JSON.stringify(value), storage);
-}
+// How one animation's timeline was last looked at: its zoom (px per second) and the time at the
+// left edge of the view, in seconds (not pixels, so it lands on the same moment at any zoom).
+export type TimelineView = { zoom: number; scrollSeconds: number };
 
-// null or undefined forgets the setting.
-export function savePreference(key: PreferenceKey, value: string | number | null | undefined, storage = browserStorage()): void {
-  try {
-    if (value === null || value === undefined) storage?.removeItem(key);
-    else storage?.setItem(key, String(value));
-  } catch { /* storage blocked or full: just don't remember */ }
+export function asTimelineView(raw: unknown): TimelineView | undefined {
+  const value = asObject(raw);
+  const zoom = asNumber(value?.zoom);
+  if (zoom === undefined || zoom <= 0) return undefined;
+  return { zoom, scrollSeconds: Math.max(0, asNumber(value?.scrollSeconds) ?? 0) };
 }

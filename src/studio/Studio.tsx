@@ -8,8 +8,12 @@ import { editorStore, useEditor } from "@/store/useEditor";
 import { CameraMessage } from "./CameraMessage";
 import { CameraPanel } from "./CameraPanel";
 import { CameraView } from "./CameraView";
-import { OnionSkin, useOnionSkinPreference } from "./OnionSkin";
+import { OnionSkin } from "./OnionSkin";
+import { PictureControls } from "./PictureControls";
 import { PlaybackBar } from "./PlaybackBar";
+import { useRememberedStudio } from "./remembered";
+import { SafeZone } from "./SafeZone";
+import { StageEditor } from "./StageEditor";
 import { PanelTab, SidePanel } from "./SidePanel";
 import { StagePicture } from "./StagePicture";
 import { Timeline } from "./Timeline";
@@ -18,16 +22,18 @@ import { useCapture } from "./useCapture";
 import { useHistory } from "./useHistory";
 import { usePlayback } from "./usePlayback";
 import { useProject } from "./useProject";
-import { deleteFrames, duplicateFrames, reorderFrames, setFps, setHold } from "@/core/commands";
+import { useStudioCommands } from "./useStudioCommands";
 import "./studio.scss";
 
-// The studio screen. The properties panel is still a placeholder (steps 18-20).
+// The studio screen.
 export function Studio() {
   const projectId = useSearchParams().get("project");
   const status = useProject(projectId);
   const projectName = useEditor((state) => state.project?.name);
   const hasPictures = useEditor((state) => (state.project?.frameIds.length ?? 0) > 0);
   const isPlaying = useEditor((state) => state.isPlaying);
+  const panelTab = useEditor((state) => state.panelTab);
+  const stageTool = panelTab ?? "camera";   // the open tab (the first, Camera, when none was chosen)
   const camera = useCamera();
   const video = useRef<HTMLVideoElement | null>(null);
   const [videoReady, setVideoReady] = useState(false);
@@ -36,18 +42,15 @@ export function Studio() {
   const history = useHistory(projectId);
   const { capture, capturing } = useCapture(video, canCapture, history.run);
   usePlayback();
-  useOnionSkinPreference();
+  useRememberedStudio();   // see-through, loop and selection, as they were left (remembered.ts)
   // What the stage shows:
   //   playing  the animation at the playhead (over the camera, if it's on)
   //   camera   the live camera, with the see-through ghost over it
   //   frame    the camera is off: the selected (or last) picture
   //   empty    the camera is off and there are no pictures: the camera message
   const stageMode = isPlaying ? "playing" : camera.stream ? "camera" : hasPictures ? "frame" : "empty";
-  const duplicate = (ids: readonly string[]) => {
-    const { project, frames } = editorStore.getState();
-    if (!project) return;
-    void history.run(duplicateFrames(project.id, ids.flatMap((id) => frames[id] ?? []), project.frameIds));
-  };
+  const commands = useStudioCommands(projectId, history.run);   // every undoable change, one object
+  const ready = useReady(status !== "loading" && camera.settled);
 
   // Development only: poke at the store from the browser console (window.editorStore.getState()).
   useEffect(() => {
@@ -57,7 +60,7 @@ export function Studio() {
 
   if (status === "missing") {
     return (
-      <div className="nsc-studio is-missing">
+      <div className="nsc-studio is-missing is-ready">
         <div className="missing-message">
           <h1>This animation isn&apos;t here</h1>
           <p>It may have been deleted, or it was made in another browser or on another computer.</p>
@@ -68,7 +71,7 @@ export function Studio() {
   }
 
   return (
-    <div className="nsc-studio">
+    <div className={`nsc-studio${ready ? " is-ready" : ""}`} aria-busy={!ready}>
       <header className="toolbar">
         <Link className="icon-button" href="/" aria-label="All projects"><ChevronLeft size={24} /></Link>
         <h1 className="project-name">{projectName ?? ""}</h1>
@@ -86,29 +89,48 @@ export function Studio() {
               <CameraView stream={camera.stream} onVideo={onVideo} />
               {stageMode === "camera" && <OnionSkin mode="camera" />}
               {stageMode === "playing" && <StagePicture />}
+              <SafeZone />
             </>
           ) : stageMode !== "empty" ? (
             <>
               <StagePicture />
               {stageMode === "frame" && <OnionSkin mode="frame" />}
+              <SafeZone />
+              {/* Each tab's tools on the stage, only while that tab is open. */}
+              {stageMode === "frame" && stageTool === "picture" && <StageEditor save={commands.transformPictures} />}
               <div className="stage-note"><CameraMessage camera={camera} more /></div>
             </>
           ) : <CameraMessage camera={camera} />}
         </div>
       </main>
 
-      <SidePanel>
+      <SidePanel active={panelTab} onChange={editorStore.getState().setPanelTab}>
         <PanelTab id="camera" label="Camera" icon={<Camera size={31} />}>
           <CameraPanel camera={camera} canCapture={canCapture} onCapture={capture} capturing={capturing} />
         </PanelTab>
-        <PanelTab id="picture" label="Picture" icon={<ImageIcon size={31} />}>
-          <p className="placeholder">Move, size and brightness for the selected picture (steps 18-20).</p>
+        <PanelTab id="picture" label="Picture" title="Adjust your picture" icon={<ImageIcon size={31} />}>
+          <PictureControls save={commands.transformPictures} />
         </PanelTab>
       </SidePanel>
 
-      <Timeline onDelete={(ids) => projectId && history.run(deleteFrames(projectId, ids))} onDuplicate={(ids) => duplicate(ids)} onResize={(changes) => (projectId ? history.run(setHold(projectId, changes)) : Promise.resolve(false))} onReorder={(before, after, moved) => { if (projectId) void history.run(reorderFrames(projectId, before, after, moved)); }} />
+      <Timeline onDelete={commands.deletePictures} onDuplicate={commands.duplicatePictures} onResize={commands.resizePictures} onReorder={commands.reorderPictures} />
 
-      <PlaybackBar onSpeed={(from, to) => { if (projectId && from !== to) void history.run(setFps(projectId, from, to)); }} />
+      <PlaybackBar onSpeed={commands.setSpeed} onSafeMargin={commands.setSafeMargin} />
     </div>
   );
+}
+
+const READY_WAIT = 2000;   // ms: show the studio by then even if the camera is still starting
+
+// The studio fades in once it looks as it was left: the animation loaded with its remembered
+// settings (tab, see-through, selection, timeline zoom and scroll are restored as it arrives),
+// and the camera running or known to stay off. Shown earlier, it would show defaults and then
+// jump. A slow camera doesn't hold it back for long.
+function useReady(settled: boolean): boolean {
+  const [waited, setWaited] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setWaited(true), READY_WAIT);
+    return () => clearTimeout(timer);
+  }, []);
+  return settled || waited;
 }

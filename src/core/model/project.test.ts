@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanName, cloneFrame, createFrame, createProject, DEFAULT_ADJUST, DEFAULT_NAME, MAX_NAME_LENGTH, DEFAULT_TRANSFORM, MAX_HEIGHT, MAX_WIDTH, SCHEMA_VERSION, type Frame } from "@/core/model";
+import { clampSafeMargin, cleanName, cloneFrame, safeMargin, createFrame, createProject, DEFAULT_ADJUST, DEFAULT_NAME, MAX_NAME_LENGTH, DEFAULT_TRANSFORM, MAX_HEIGHT, MAX_WIDTH, SCHEMA_VERSION, type Frame } from "@/core/model";
 
 describe("createProject", () => {
   it("uses the defaults", () => {
@@ -93,5 +93,16 @@ describe("cloneFrame", () => {
     }
     copy.transform.x = 0.9;
     expect(source.transform.x).toBe(0.1);
+  });
+});
+
+describe("safe zone", () => {
+  it("defaults to 20 px for projects that never set it, and stays within 0-60 whole pixels", () => {
+    expect(safeMargin({})).toBe(20);
+    expect(safeMargin({ safeMargin: 0 })).toBe(0);
+    expect(safeMargin({ safeMargin: 33.6 })).toBe(34);
+    expect(clampSafeMargin(-5)).toBe(0);
+    expect(clampSafeMargin(500)).toBe(60);
+    expect(clampSafeMargin(Number.NaN)).toBe(20);
   });
 });

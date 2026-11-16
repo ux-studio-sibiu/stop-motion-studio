@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
-import { PREFERENCES, readNumber, readTimelineView, savePreference, saveTimelineView } from "@/adapters/preferences/preferences";
+import { remembered } from "./remembered";
 import { editorStore, useEditor } from "@/store/useEditor";
 
 const SAVE_DELAY = 250;   // ms after scrolling stops
@@ -22,8 +22,8 @@ export function useTimelineView(scroller: RefObject<HTMLDivElement | null>) {
   useLayoutEffect(() => {
     if (!projectId || restoredFor.current === projectId) return;
     restoredFor.current = projectId;
-    const view = readTimelineView(projectId);
-    const zoom = view?.zoom ?? readNumber(PREFERENCES.timelineZoom);
+    const view = remembered.timelineView(projectId).read();
+    const zoom = view?.zoom ?? remembered.timelineZoom.read();
     if (zoom !== undefined) editorStore.getState().setTimelineZoom(zoom);
     pending.current = { seconds: view?.scrollSeconds ?? 0, zoom: editorStore.getState().timelineZoom };   // the zoom as clamped
   }, [projectId]);
@@ -43,7 +43,7 @@ export function useTimelineView(scroller: RefObject<HTMLDivElement | null>) {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const save = () => {
       const { timelineZoom } = editorStore.getState();
-      saveTimelineView(projectId, { zoom: timelineZoom, scrollSeconds: element.scrollLeft / timelineZoom });
+      remembered.timelineView(projectId).save({ zoom: timelineZoom, scrollSeconds: element.scrollLeft / timelineZoom });
     };
     const onScroll = () => {
       if (pending.current) return;   // that's the restore itself, not the child scrolling
@@ -52,7 +52,7 @@ export function useTimelineView(scroller: RefObject<HTMLDivElement | null>) {
     };
     const stop = editorStore.subscribe((state, previous) => {
       if (state.timelineZoom === previous.timelineZoom || pending.current) return;
-      savePreference(PREFERENCES.timelineZoom, state.timelineZoom);
+      remembered.timelineZoom.save(state.timelineZoom);
       clearTimeout(timer);
       timer = setTimeout(save, SAVE_DELAY);   // after the zoom's own scroll adjustment
     });

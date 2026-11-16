@@ -439,6 +439,12 @@ neighbours. Step 18 is moving; step 19 is lining up.
 
 ## Part 9 - Export and import
 
+**All exports (GIF and video) crop to the safe zone:** `exportRect(project, safeMargin(project))` in
+`core/render/safeZone.ts` (each animation's own margin, 0-60 project px, 20 by default, set from the
+see-through options; even width and height). The stage shows that band veiled with a dotted
+line (added after step 18), so what's inside the line is exactly what the file contains. Test it: a
+pixel test that the exported frame's corners come from 20 px in.
+
 ### 25 · GIF export
 - **Builds:** `features/gif-export`: renders each tick range with the shared `renderAt` onto an
   `OffscreenCanvas` in a Web Worker, encodes with `gifenc`, honours `hold` and overlays, shows progress,
@@ -569,7 +575,7 @@ registry entry.
 - [x] 15 Renderer ([page](public/steps/15-renderer.html))
 - [x] 16 Playback ([page](public/steps/16-playback.html))
 - [x] 17 Onion skin ([page](public/steps/17-onion-skin.html))
-- [ ] 18 Move, scale, rotate, flip
+- [x] 18 Move, scale, rotate, flip ([page](public/steps/18-transform.html))
 - [ ] 19 Line up with other pictures
 - [ ] 20 Brightness and contrast
 - [ ] 21 Storage safety

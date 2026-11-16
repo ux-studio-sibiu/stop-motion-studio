@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { clampHold, type Frame, type Project } from "@/core/model";
+import { clampHold, clampSafeMargin, safeMargin, sameTransform, type Frame, type Project, type Transform } from "@/core/model";
 
 // Live editor state (PLAN.md §1): what the studio is showing and doing right now.
 // Metadata only: never Blobs, MediaStreams or DOM nodes. Photos live in the image cache
@@ -42,11 +42,23 @@ export type UiSlice = {
   // frame id. Only the screen uses them; the saved frames are unchanged until the command
   // runs. An entry goes once the saved frame has that length (syncProject) or is cleared.
   holdPreview: Readonly<Record<string, number>>;
+  previewHolds: (holds: Readonly<Record<string, number>>) => void;
+  clearHoldPreview: (ids?: readonly string[]) => void;
+  // The same for moving, sizing and turning pictures on the stage (step 18).
+  transformPreview: Readonly<Record<string, Transform>>;
+  previewTransforms: (transforms: Readonly<Record<string, Transform>>) => void;
+  clearTransformPreview: (ids?: readonly string[]) => void;
   // See-through: the picture(s) before the next shot drawn faintly over the live camera.
   onionSkin: OnionSkin;
   setOnionSkin: (changes: Partial<OnionSkin>) => void;
-  previewHolds: (holds: Readonly<Record<string, number>>) => void;
-  clearHoldPreview: (ids?: readonly string[]) => void;
+  // The safe zone while its slider is being dragged (the stage shows it); null otherwise. It goes
+  // once the saved project has that margin (syncProject), or is cleared.
+  safeMarginPreview: number | null;
+  previewSafeMargin: (margin: number | null) => void;
+  // The side panel's open tab (its id). It also says which tools the stage shows: a tab's stage
+  // tools (moving a picture for "picture") only work while it's open. null: the first tab.
+  panelTab: string | null;
+  setPanelTab: (id: string | null) => void;
 };
 
 // outline: the ghost as broad black-and-white shapes instead of a faint photo.
@@ -56,10 +68,10 @@ export type EditorState = ProjectSlice & SelectionSlice & PlaybackSlice & UiSlic
 
 export const MIN_TIMELINE_ZOOM = 40;
 export const MAX_TIMELINE_ZOOM = 640;
-export const DEFAULT_TIMELINE_ZOOM = 160;
-export const DEFAULT_ONION_SKIN: OnionSkin = { on: true, opacity: 0.4, count: 1, outline: false };   // a tick at the default 8 fps is 20 px wide
+export const DEFAULT_TIMELINE_ZOOM = 160;   // a tick at the default 8 fps is 20 px wide
+export const DEFAULT_ONION_SKIN: OnionSkin = { on: true, opacity: 0.4, count: 1, outline: false };
 
-const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0, holdPreview: {} } as const;
+const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0, holdPreview: {}, transformPreview: {} } as const;
 
 // A factory, so every test (and, if ever needed, a second studio) gets its own store.
 export function createEditorStore() {
@@ -68,6 +80,8 @@ export function createEditorStore() {
     timelineZoom: DEFAULT_TIMELINE_ZOOM,
     loop: true,
     onionSkin: DEFAULT_ONION_SKIN,
+    panelTab: null,
+    safeMarginPreview: null,
 
     loadProject: (project, frames) => set({ ...EMPTY, project, frames: byId(frames) }),
 
@@ -76,7 +90,9 @@ export function createEditorStore() {
       if (state.project?.id !== project.id) return state.loadProject(project, frames);
       const next = byId(frames);
       const holdPreview = Object.fromEntries(Object.entries(state.holdPreview).filter(([id, hold]) => id in next && next[id].hold !== hold));
-      set({ project, frames: next, selection: state.selection.filter((id) => id in next), holdPreview });
+      const transformPreview = Object.fromEntries(Object.entries(state.transformPreview).filter(([id, transform]) => id in next && !sameTransform(next[id].transform, transform)));
+      const safeMarginPreview = state.safeMarginPreview !== null && safeMargin(project) !== state.safeMarginPreview ? state.safeMarginPreview : null;
+      set({ project, frames: next, selection: state.selection.filter((id) => id in next), holdPreview, transformPreview, safeMarginPreview });
     },
 
     unloadProject: () => set(EMPTY),
@@ -102,6 +118,10 @@ export function createEditorStore() {
       set({ onionSkin: { on: Boolean(next.on), outline: Boolean(next.outline), opacity: clamp(next.opacity, 0.1, 0.9, 0.4), count: Math.round(clamp(next.count, 1, 3, 1)) } });
     },
 
+    setPanelTab: (id) => set({ panelTab: id || null }),
+
+    previewSafeMargin: (margin) => set({ safeMarginPreview: margin === null ? null : clampSafeMargin(margin) }),
+
     setTimelineZoom: (pxPerSecond) => set({ timelineZoom: Math.min(MAX_TIMELINE_ZOOM, Math.max(MIN_TIMELINE_ZOOM, pxPerSecond)) }),
 
     previewHolds: (holds) => {
@@ -114,6 +134,18 @@ export function createEditorStore() {
       if (!ids) return set({ holdPreview: {} });
       const drop = new Set(ids);
       set({ holdPreview: Object.fromEntries(Object.entries(get().holdPreview).filter(([id]) => !drop.has(id))) });
+    },
+
+    previewTransforms: (transforms) => {
+      const { frames, transformPreview } = get();
+      const known = Object.entries(transforms).filter(([id]) => id in frames).map(([id, transform]) => [id, { ...transform }]);
+      set({ transformPreview: { ...transformPreview, ...Object.fromEntries(known) } });
+    },
+
+    clearTransformPreview: (ids) => {
+      if (!ids) return set({ transformPreview: {} });
+      const drop = new Set(ids);
+      set({ transformPreview: Object.fromEntries(Object.entries(get().transformPreview).filter(([id]) => !drop.has(id))) });
     },
   }));
 }
@@ -131,6 +163,11 @@ export function orderedFrames(state: Pick<EditorState, "project" | "frames">): F
 // call would re-render forever). Frames without a preview are returned as they are.
 export function withHoldPreview(frames: readonly Frame[], holdPreview: Readonly<Record<string, number>>): Frame[] {
   return frames.map((frame) => (frame.id in holdPreview ? { ...frame, hold: holdPreview[frame.id] } : frame));
+}
+
+// The same for transforms: pictures being moved shown where they're being moved to.
+export function withTransformPreview(frames: readonly Frame[], transformPreview: Readonly<Record<string, Transform>>): Frame[] {
+  return frames.map((frame) => (frame.id in transformPreview ? { ...frame, transform: transformPreview[frame.id] } : frame));
 }
 
 function byId(frames: Frame[]): Record<string, Frame> {

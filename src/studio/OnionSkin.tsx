@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
-import { PREFERENCES, readJson, saveJson } from "@/adapters/preferences/preferences";
+import { useCallback, useMemo, useRef } from "react";
 import { insertIndexAfter } from "@/core/model";
 import { drawOnionSkin } from "@/core/render";
-import type { OnionSkin as OnionSkinSettings } from "@/store/editorStore";
-import { editorStore, useEditor, useOrderedFrames } from "@/store/useEditor";
+import { withTransformPreview } from "@/store/editorStore";
+import { useEditor, useOrderedFrames } from "@/store/useEditor";
 import { bitmaps } from "./media";
 import { shownIndex } from "./StagePicture";
 import { useCanvasDraw } from "./useCanvasDraw";
@@ -18,7 +17,9 @@ import { useCanvasDraw } from "./useCanvasDraw";
 // A transparent canvas at the project's size sits exactly over the <video> or the picture: they
 // all fill the stage the same way (cover, as capture crops it, step 05), so everything lines up.
 export function OnionSkin({ mode }: { mode: "camera" | "frame" }) {
-  const frames = useOrderedFrames();
+  const saved = useOrderedFrames();
+  const preview = useEditor((state) => state.transformPreview);
+  const frames = useMemo(() => withTransformPreview(saved, preview), [saved, preview]);
   const selection = useEditor((state) => state.selection);
   const settings = useEditor((state) => state.onionSkin);
   const width = useEditor((state) => state.project?.width ?? 1280);
@@ -35,16 +36,4 @@ export function OnionSkin({ mode }: { mode: "camera" | "frame" }) {
 
   if (!settings.on || index === 0) return null;
   return <canvas ref={canvas} className="onion-skin" width={width} height={height} aria-hidden="true" />;
-}
-
-// Remembers the see-through settings on this device (like the zoom and the camera). Whatever was
-// saved goes through setOnionSkin, which keeps every value in range.
-export function useOnionSkinPreference() {
-  useEffect(() => {
-    const saved = readJson(PREFERENCES.onionSkin);
-    if (saved) editorStore.getState().setOnionSkin(saved as Partial<OnionSkinSettings>);
-    return editorStore.subscribe((state, previous) => {
-      if (state.onionSkin !== previous.onionSkin) saveJson(PREFERENCES.onionSkin, state.onionSkin);
-    });
-  }, []);
 }

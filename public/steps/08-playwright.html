@@ -150,7 +150,7 @@ projects: [
     <li><strong>One lint override</strong>: the React hooks rule mistakes Playwright's fixture function <code>use()</code> for React's <code>use()</code> hook, so it's off for <code>e2e/</code>.</li>
   </ul>
 
-    <div class="note"><strong>Added later (after step 17):</strong> most tests no longer take pictures with the fake camera. <code>Studio.seedPictures(n)</code> in <code>e2e/fixtures.ts</code> writes small generated pictures straight into the app's IndexedDB, in the same shape the app saves them, then reloads. Only tests about taking pictures still use <code>cameraOn()</code> and <code>takePictures()</code>: camera, persistence, capture order, undoing a capture. The Chromium suite went from 53 tests in about 35 s to 62 tests in 28 s, with fewer flaky camera starts.</div>
+    <div class="note"><strong>Added later (after step 17):</strong> most tests no longer take pictures with the fake camera. <code>Studio.seedPictures(n)</code> in <code>e2e/fixtures.ts</code> writes small generated pictures straight into the app's IndexedDB, in the same shape the app saves them, then reloads. Only tests about taking pictures still use <code>cameraOn()</code> and <code>takePictures()</code>: camera, persistence, capture order, undoing a capture. The Chromium suite went from 53 tests in about 35 s to 62 tests in 28 s, with fewer flaky camera starts. After step 18, <code>Studio.withoutCamera()</code> also keeps the camera off in tests that aren't about it (it sets the remembered "camera off" setting before the page loads): camera starts per run went from about 26 to 9, and 69 tests passed in 28 s with none of the setup failures.</div>
 
 <h2>Watch out</h2>
   <ul>

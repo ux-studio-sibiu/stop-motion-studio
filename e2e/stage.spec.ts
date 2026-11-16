@@ -4,23 +4,25 @@ import { expect, test } from "./fixtures";
 // last one), drawn by the renderer.
 
 test("with the camera off, the stage shows the selected picture, drawn from the saved photo", async ({ studio, page }) => {
+  await studio.withoutCamera();
   await studio.open();
-  await studio.cameraOn();
-  await studio.takePictures(2);
-  await page.getByRole("button", { name: "Turn camera off" }).click();
+  await studio.seedPictures(2);
 
   const stage = page.getByRole("img", { name: /^Picture \d+$/ });
-  await expect(stage).toHaveAccessibleName("Picture 2");   // the last picture taken is selected
+  await expect(stage).toHaveAccessibleName("Picture 2");   // nothing selected: the last picture
   await studio.picture(1).click();
   await expect(stage).toHaveAccessibleName("Picture 1");
 
-  // The fake camera films a moving white square on green: once decoded, most of the stage is
-  // green, not the black the canvas starts with. (Several points, since the square may cover one.)
+  // The seeded pictures are strongly coloured: once decoded, the stage shows that colour, not the
+  // black the canvas starts with. (Several points, in case one hits the white square.)
   await expect.poll(() => stage.evaluate((canvas: HTMLCanvasElement) => {
     const ctx = canvas.getContext("2d")!;
     const points = [0.1, 0.3, 0.5, 0.7, 0.9].map((x) => ctx.getImageData(Math.round(canvas.width * x), Math.round(canvas.height * 0.8), 1, 1).data);
-    return points.filter(([r, g, b]) => g > 100 && g > r + 40 && g > b + 40).length;
+    return points.filter(([r, g, b]) => Math.max(r, g, b) > 80 && Math.max(r, g, b) - Math.min(r, g, b) > 40).length;
   })).toBeGreaterThanOrEqual(3);
+
+  // The safe zone: the edge band the video leaves out, veiled, with its dotted line.
+  await expect(page.locator(".safe-zone .edge")).toBeVisible();
 
   // Nothing covers the picture: turning the camera back on is in the camera box beside it.
   await expect(page.getByRole("button", { name: "Turn on camera" })).toBeHidden();
@@ -28,10 +30,9 @@ test("with the camera off, the stage shows the selected picture, drawn from the 
 });
 
 test("on a phone, where there's no camera box, the stage keeps a small bar to turn the camera on", async ({ studio, page }) => {
+  await studio.withoutCamera();
   await studio.open();
-  await studio.cameraOn();
-  await studio.takePictures(1);
-  await page.getByRole("button", { name: "Turn camera off" }).click();
+  await studio.seedPictures(1);
   await page.setViewportSize({ width: 390, height: 800 });   // the camera box is hidden on phones (its drawer comes later)
   await expect(page.getByRole("button", { name: "Turn on camera" })).toBeVisible();
 });
@@ -42,6 +43,14 @@ test("with the camera on, the stage stays live even with a picture selected", as
   await studio.takePictures(1);
   await studio.picture(1).click();
   await expect(page.locator("video")).toBeVisible();
+  await expect(page.locator(".stage-picture")).toHaveCount(0);
+  await expect(page.locator(".safe-zone")).toBeVisible();   // over the live camera too, to frame the shot
+
+  // Playing draws the animation over the live camera; pausing shows the camera again.
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  await expect(page.locator(".stage-picture")).toBeVisible();
+  await expect(page.locator("video")).toHaveCount(1);
+  await page.getByRole("button", { name: "Pause" }).click();
   await expect(page.locator(".stage-picture")).toHaveCount(0);
 });
 
@@ -81,10 +90,9 @@ test("see-through shows the last picture faintly over the live camera, and remem
 });
 
 test("with the camera off, see-through shows the picture before the one on the stage", async ({ studio, page }) => {
+  await studio.withoutCamera();
   await studio.open();
-  await studio.cameraOn();
-  await studio.takePictures(2);
-  await page.getByRole("button", { name: "Turn camera off" }).click();
+  await studio.seedPictures(2);
   const ghost = page.locator(".onion-skin");
   await expect(ghost).toBeVisible();          // over picture 2: picture 1, faintly
   await studio.picture(1).click();
@@ -110,4 +118,31 @@ test("the side panel's tabs switch between camera and picture, and the arrow key
   await page.keyboard.press("ArrowUp");
   await expect(cameraTab).toHaveAttribute("aria-selected", "true");
   await expect(cameraTab).toBeFocused();
+
+  await pictureTab.click();
+  await page.reload();   // the open tab is remembered
+  await expect(page.getByRole("tab", { name: "Picture" })).toHaveAttribute("aria-selected", "true");
+});
+
+test("the safe zone can be set from 0 to 60 px; it's saved with the animation and undoable", async ({ studio, page }) => {
+  await studio.withoutCamera();
+  await studio.open();
+  await studio.seedPictures(1);
+  const edge = page.locator(".safe-zone .edge");
+  await expect(edge).toHaveAttribute("x", "20");   // the default
+
+  await page.getByRole("button", { name: "See-through options" }).click();
+  const slider = page.getByRole("slider", { name: "Safe zone" });
+  await slider.fill("45");
+  await expect(edge).toHaveAttribute("x", "45");   // the stage follows while dragging
+  await slider.press("ArrowRight");                // a key press saves, like letting go
+  await expect(edge).toHaveAttribute("x", "50");
+  await expect(page.getByRole("button", { name: "Undo" })).toHaveAttribute("title", "Undo: Change safe zone");
+
+  await page.reload();   // saved with the animation
+  await expect(page.locator(".safe-zone .edge")).toHaveAttribute("x", "50");
+  await page.getByRole("button", { name: "See-through options" }).click();
+  await page.getByRole("slider", { name: "Safe zone" }).fill("0");
+  await page.getByRole("slider", { name: "Safe zone" }).press("Tab");   // leaving the slider saves too
+  await expect(page.locator(".safe-zone")).toHaveCount(0);              // 0: the whole picture is filmed
 });

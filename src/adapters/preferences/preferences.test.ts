@@ -1,14 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { PREFERENCES, readJson, readNumber, readText, saveJson, readTimelineView, savePreference, saveTimelineView, timelineViewKey, type PreferenceStorage } from "@/adapters/preferences/preferences";
+import { asBoolean, asNumber, asObject, asString, asStringList, asTimelineView, definePreference, definePreferenceFamily, PREFIX, type PreferenceStorage } from "@/adapters/preferences/preferences";
 
 function memoryStorage(): PreferenceStorage & { data: Map<string, string> } {
   const data = new Map<string, string>();
-  return {
-    data,
-    getItem: (key) => data.get(key) ?? null,
-    setItem: (key, value) => { data.set(key, value); },
-    removeItem: (key) => { data.delete(key); },
-  };
+  return { data, getItem: (key) => data.get(key) ?? null, setItem: (key, value) => { data.set(key, value); }, removeItem: (key) => { data.delete(key); } };
 }
 
 const broken: PreferenceStorage = {
@@ -17,77 +12,68 @@ const broken: PreferenceStorage = {
   removeItem: () => { throw new Error("blocked"); },
 };
 
-describe("preferences", () => {
-  it("saves and reads text and numbers", () => {
+describe("definePreference", () => {
+  it("saves a value and reads it back, and forgets it on null", () => {
     const storage = memoryStorage();
-    savePreference(PREFERENCES.cameraDevice, "cam-1", storage);
-    savePreference(PREFERENCES.timelineZoom, 240, storage);
-    expect(readText(PREFERENCES.cameraDevice, storage)).toBe("cam-1");
-    expect(readNumber(PREFERENCES.timelineZoom, storage)).toBe(240);
+    const tab = definePreference("panel-tab", asString);
+    expect(tab.key).toBe(`${PREFIX}panel-tab`);
+    tab.save("picture", storage);
+    expect(tab.read(storage)).toBe("picture");
+    tab.save(null, storage);
+    expect(tab.read(storage)).toBeUndefined();
   });
 
-  it("forgets a setting saved as null", () => {
+  it("reads anything its parser doesn't accept as not set", () => {
     const storage = memoryStorage();
-    savePreference(PREFERENCES.cameraDevice, "cam-1", storage);
-    savePreference(PREFERENCES.cameraDevice, null, storage);
-    expect(readText(PREFERENCES.cameraDevice, storage)).toBeUndefined();
-  });
-
-  it("reads anything that isn't a finite number as not set", () => {
-    const storage = memoryStorage();
-    for (const junk of ["", "  ", "abc", "Infinity", "NaN"]) {
-      storage.data.set(PREFERENCES.timelineZoom, junk);
-      expect(readNumber(PREFERENCES.timelineZoom, storage), junk).toBeUndefined();
+    const zoom = definePreference("timeline-zoom", asNumber);
+    for (const junk of ["", "abc", "[1]", '{"a":1}', "NaN"]) {
+      storage.data.set(zoom.key, junk);
+      expect(zoom.read(storage), junk).toBeUndefined();
     }
-    expect(readNumber(PREFERENCES.timelineZoom, storage)).toBeUndefined();
   });
 
-  it("saves and reads settings objects, and forgets them on null", () => {
+  it("still reads settings saved before as plain text", () => {
     const storage = memoryStorage();
-    saveJson(PREFERENCES.onionSkin, { on: false, opacity: 0.6 }, storage);
-    expect(readJson(PREFERENCES.onionSkin, storage)).toEqual({ on: false, opacity: 0.6 });
-    saveJson(PREFERENCES.onionSkin, null, storage);
-    expect(readJson(PREFERENCES.onionSkin, storage)).toBeUndefined();
-  });
-
-  it("reads a broken or odd settings object as not saved", () => {
-    const storage = memoryStorage();
-    for (const junk of ["{", "null", "[1, 2]", "3", '"text"']) {
-      storage.data.set(PREFERENCES.onionSkin, junk);
-      expect(readJson(PREFERENCES.onionSkin, storage), junk).toBeUndefined();
-    }
-    expect(readJson(PREFERENCES.onionSkin, broken)).toBeUndefined();
-  });
-
-  it("keeps each animation's timeline view apart", () => {
-    const storage = memoryStorage();
-    saveTimelineView("p1", { zoom: 360, scrollSeconds: 4.5 }, storage);
-    saveTimelineView("p2", { zoom: 80, scrollSeconds: 0 }, storage);
-    expect(readTimelineView("p1", storage)).toEqual({ zoom: 360, scrollSeconds: 4.5 });
-    expect(readTimelineView("p2", storage)).toEqual({ zoom: 80, scrollSeconds: 0 });
-    expect(readTimelineView("p3", storage)).toBeUndefined();
-    saveTimelineView("p1", null, storage);
-    expect(readTimelineView("p1", storage)).toBeUndefined();
-  });
-
-  it("reads a broken or odd timeline view as not saved, or as the start", () => {
-    const storage = memoryStorage();
-    for (const junk of ["{", "null", "[]", '{"zoom":"big"}', '{"zoom":0}', '{"zoom":-5}']) {
-      storage.data.set(timelineViewKey("p1"), junk);
-      expect(readTimelineView("p1", storage), junk).toBeUndefined();
-    }
-    storage.data.set(timelineViewKey("p1"), '{"zoom":200,"scrollSeconds":-3}');
-    expect(readTimelineView("p1", storage)).toEqual({ zoom: 200, scrollSeconds: 0 });
-    storage.data.set(timelineViewKey("p1"), '{"zoom":200}');
-    expect(readTimelineView("p1", storage)).toEqual({ zoom: 200, scrollSeconds: 0 });
+    storage.data.set(`${PREFIX}camera`, "f3a9c1device");   // a camera id, not JSON
+    storage.data.set(`${PREFIX}camera-off`, "1");
+    storage.data.set(`${PREFIX}timeline-zoom`, "240");
+    expect(definePreference("camera", asString).read(storage)).toBe("f3a9c1device");
+    expect(definePreference("camera-off", asBoolean).read(storage)).toBe(true);
+    expect(definePreference("timeline-zoom", asNumber).read(storage)).toBe(240);
   });
 
   it("never throws when storage is blocked or missing", () => {
-    expect(readTimelineView("p1", broken)).toBeUndefined();
-    expect(() => saveTimelineView("p1", { zoom: 1, scrollSeconds: 0 }, broken)).not.toThrow();
-    expect(readText(PREFERENCES.cameraDevice, broken)).toBeUndefined();
-    expect(() => savePreference(PREFERENCES.timelineZoom, 1, broken)).not.toThrow();
-    expect(readNumber(PREFERENCES.timelineZoom, null)).toBeUndefined();   // no localStorage (server rendering)
-    expect(() => savePreference(PREFERENCES.timelineZoom, 1, null)).not.toThrow();
+    const pref = definePreference("loop", asBoolean);
+    expect(pref.read(broken)).toBeUndefined();
+    expect(() => pref.save(true, broken)).not.toThrow();
+    expect(pref.read(null)).toBeUndefined();
+    expect(() => pref.save(true, null)).not.toThrow();
+  });
+
+  it("keeps one entry per animation in a family", () => {
+    const storage = memoryStorage();
+    const selection = definePreferenceFamily("selection", asStringList);
+    selection("p1").save(["a", "b"], storage);
+    selection("p2").save(["c"], storage);
+    expect(selection("p1").read(storage)).toEqual(["a", "b"]);
+    expect(selection("p2").read(storage)).toEqual(["c"]);
+    expect(selection("p1").key).toBe(`${PREFIX}selection:p1`);
+  });
+});
+
+describe("parsers", () => {
+  it("accept only their kind of value", () => {
+    expect([asString("x"), asString(""), asString(5), asString(true)]).toEqual(["x", undefined, "5", undefined]);
+    expect([asBoolean(true), asBoolean(0), asBoolean("1"), asBoolean("yes")]).toEqual([true, false, true, undefined]);
+    expect([asNumber(2.5), asNumber("2"), asNumber(Number.POSITIVE_INFINITY)]).toEqual([2.5, undefined, undefined]);
+    expect([asStringList(["a"]), asStringList(["a", 1]), asStringList("a")]).toEqual([["a"], undefined, undefined]);
+    expect([asObject({ a: 1 }), asObject([1]), asObject(null)]).toEqual([{ a: 1 }, undefined, undefined]);
+  });
+
+  it("read a timeline view, defaulting the scroll and refusing a bad zoom", () => {
+    expect(asTimelineView({ zoom: 360, scrollSeconds: 4.5 })).toEqual({ zoom: 360, scrollSeconds: 4.5 });
+    expect(asTimelineView({ zoom: 200 })).toEqual({ zoom: 200, scrollSeconds: 0 });
+    expect(asTimelineView({ zoom: 200, scrollSeconds: -3 })).toEqual({ zoom: 200, scrollSeconds: 0 });
+    for (const junk of [null, [], { zoom: "big" }, { zoom: 0 }, { zoom: -5 }]) expect(asTimelineView(junk)).toBeUndefined();
   });
 });

@@ -8,6 +8,9 @@ export type Project = {
   width: number;           // working resolution in px; captures are resized to it
   height: number;
   fps: number;             // ticks per second; a frame lasts `hold` ticks
+  // The band along every edge that the video leaves out, in project px (0-60). Missing in older
+  // projects: SAFE_MARGIN (20) then. See safeMargin() and core/render/safeZone.ts.
+  safeMargin?: number;
   frameIds: string[];      // the order of the animation
   createdAt: number;       // ms since epoch
   updatedAt: number;

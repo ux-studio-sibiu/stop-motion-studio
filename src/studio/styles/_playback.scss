@@ -44,7 +44,7 @@
     display: flex;
 
     .toggle { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-    .more { min-width: 2.5rem; padding-inline: var(--space-1); margin-left: -1px; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+    .more { min-width: 2.5rem; padding-inline: var(--space-1); margin-left: calc(-1 * var(--line-width)); border-top-left-radius: 0; border-bottom-left-radius: 0; }
 
     .options {
       position: absolute;
@@ -54,7 +54,7 @@
       min-width: 17rem;
       padding: var(--space-2) var(--space-4);
       background: var(--color-surface);
-      border: 1px solid var(--color-line);
+      border: var(--line-width) solid var(--color-line);
       border-radius: var(--radius);
       box-shadow: 0 8px 24px rgb(0 0 0 / 0.15);
       z-index: 20;

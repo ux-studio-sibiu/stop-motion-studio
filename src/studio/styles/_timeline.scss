@@ -13,7 +13,7 @@
     margin-bottom: calc(-1 * var(--space-3));
     padding: var(--space-2) var(--space-3) 0;
     background: var(--color-surface);
-    border: 1px solid var(--color-line);
+    border: var(--line-width) solid var(--color-line);
     border-bottom: none;
     border-radius: var(--radius) var(--radius) 0 0;
   }
@@ -31,6 +31,50 @@
       font-size: 0.875rem;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
+    }
+  }
+
+  // From tablet width on, the tools are a tab on the timeline's top-left edge, as wide as its
+  // contents and rounded on its two top corners. It rises into the free space beside the Play
+  // buttons, so the timeline is a tools row shorter and the stage gets that height. (On phones the
+  // Play buttons would collide with it, so it stays a row there.)
+  @include respond-to("tablet") {
+    --timeline-height: 7.75rem;   // the tools row no longer inside it
+
+    .timeline {
+      position: relative;
+      grid-template-rows: minmax(0, 1fr);
+      border-top-left-radius: 0;   // the tab sits on that corner
+    }
+
+    .timeline-tools {
+      position: absolute;
+      bottom: 100%;   // measured from inside the timeline's border, so the tab ends exactly over it: one shape
+      left: calc(-1 * var(--line-width));
+      z-index: 1;
+      padding: var(--space-2) var(--space-3) var(--space-1);
+      background: var(--color-surface);
+      border: var(--line-width) solid var(--color-line);
+      border-bottom: none;
+      border-radius: var(--radius) var(--radius) 0 0;
+
+      .duration { margin-left: var(--space-3); }
+
+      // The inside corner where the tab's right side meets the timeline's top edge: a small
+      // square just outside the tab, filled with the panel colour except for a quarter circle
+      // (centred on its top-right corner), with a 1 px ring in the border colour along the curve.
+      &::after {
+        --r: 12px;
+
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 100%;
+        width: var(--r);
+        height: var(--r);
+        background: radial-gradient(circle at 100% 0, transparent calc(var(--r) - var(--line-width) - 0.5px), var(--color-line) calc(var(--r) - var(--line-width)), var(--color-line) var(--r), var(--color-surface) calc(var(--r) + 0.5px));
+        pointer-events: none;
+      }
     }
   }
 

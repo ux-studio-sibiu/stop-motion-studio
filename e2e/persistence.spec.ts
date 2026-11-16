@@ -20,9 +20,9 @@ test("pictures survive a reload", async ({ studio, page }) => {
 });
 
 test("a new project starts empty and doesn't see another project's pictures", async ({ studio, page }) => {
+  await studio.withoutCamera();
   await studio.open();
-  await studio.cameraOn();
-  await studio.takePictures(2);
+  await studio.seedPictures(2);
   const first = page.url();
 
   await studio.open("/studio");
@@ -47,4 +47,26 @@ test("an unknown project shows a friendly page", async ({ page }) => {
   await page.goto("/studio?project=does-not-exist");
   await expect(page.getByRole("heading", { name: "This animation isn't here" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Start a new animation" })).toBeVisible();
+});
+
+test("after a reload the studio only shows once it's as it was left", async ({ studio, page }) => {
+  await studio.withoutCamera();
+  await studio.open();
+  await studio.seedPictures(2);
+  await page.getByRole("tab", { name: "Picture" }).click();
+  // Notes what's on screen at the moment the studio first becomes visible, before anything paints.
+  await page.addInitScript(() => {
+    new MutationObserver((_, observer) => {
+      const root = document.querySelector(".nsc-studio.is-ready");
+      if (!root) return;
+      observer.disconnect();
+      Object.assign(window, { firstShown: {
+        tab: root.querySelector("[role=tab][aria-selected=true]")?.getAttribute("aria-label"),
+        pictures: root.querySelectorAll("[role=listbox] [role=option]").length,
+      } });
+    }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
+  });
+  await page.reload();
+  await expect(page.locator(".nsc-studio")).toHaveAttribute("aria-busy", "false");
+  expect(await page.evaluate(() => (window as unknown as { firstShown: unknown }).firstShown)).toEqual({ tab: "Picture", pictures: 2 });
 });
