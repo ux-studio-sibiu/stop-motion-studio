@@ -1,5 +1,13 @@
 export type Rect = { x: number; y: number; width: number; height: number };
 
+// The size of a source fitted whole inside a target, like CSS `object-fit: contain`: the
+// picture is never cropped, and bars fill the rest (letterboxing). Used by the renderer.
+export function containSize(sourceWidth: number, sourceHeight: number, targetWidth: number, targetHeight: number): { width: number; height: number } {
+  if (sourceWidth <= 0 || sourceHeight <= 0 || targetWidth <= 0 || targetHeight <= 0) return { width: 0, height: 0 };
+  const scale = Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight);
+  return { width: sourceWidth * scale, height: sourceHeight * scale };
+}
+
 // The centred part of a source that fills a target of another shape without stretching,
 // like CSS `object-fit: cover`. A 4:3 webcam into a 16:9 frame loses a strip at the top and
 // bottom; a portrait phone camera loses the sides. Used by capture (step 05) and the renderer.

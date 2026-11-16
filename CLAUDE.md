@@ -13,6 +13,8 @@ fast, logic is never "trust the edit".
   its test removed. A fix starts with a test that fails without the fix.
 - **Run `npm test` before calling any such change done** (it takes under a second), and say in the
   summary which tests were added or changed. If no test changed, say why.
+- **Drawing code (`src/core/render/`) also runs `npm run test:browser`** (about 2 s): its pixel tests
+  in `*.browser.test.ts` draw on a real canvas in Chromium. Anything else stays in Node tests.
 - **From step 08 on, a change to a user-facing flow** (capture, timeline editing, playback, export,
   projects) updates or adds its Playwright spec in `e2e/`. How much to run depends on the size:
   - a small change inside one flow: only the specs for that flow, in Chromium

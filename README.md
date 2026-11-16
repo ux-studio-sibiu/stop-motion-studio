@@ -40,7 +40,8 @@ npm run dev
 | `npm run dev` | Dev server at http://localhost:3000 |
 | `npm run build` | Static site in `out/` |
 | `npm start` | Serves `out/` locally |
-| `npm test` | Vitest, once (`npm run test:watch` to keep it running) |
+| `npm test` | Vitest in Node, once (`npm run test:watch` to keep it running) |
+| `npm run test:browser` | Vitest browser mode in Chromium: the renderer's pixel tests (`*.browser.test.ts`) |
 | `npm run lint` | ESLint, including the layering rules |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run test:e2e` | Playwright end-to-end tests in Chromium (builds and serves the app on port 3200); add a file to run one spec: `npm run test:e2e -- e2e/timeline.spec.ts` |

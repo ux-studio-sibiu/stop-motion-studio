@@ -8,6 +8,7 @@ import { editorStore, useEditor } from "@/store/useEditor";
 import { CameraMessage } from "./CameraMessage";
 import { CameraPanel } from "./CameraPanel";
 import { CameraView } from "./CameraView";
+import { StagePicture } from "./StagePicture";
 import { Timeline } from "./Timeline";
 import { useCamera } from "./useCamera";
 import { useCapture } from "./useCapture";
@@ -22,6 +23,7 @@ export function Studio() {
   const projectId = useSearchParams().get("project");
   const status = useProject(projectId);
   const projectName = useEditor((state) => state.project?.name);
+  const hasPictures = useEditor((state) => (state.project?.frameIds.length ?? 0) > 0);
   const camera = useCamera();
   const video = useRef<HTMLVideoElement | null>(null);
   const [videoReady, setVideoReady] = useState(false);
@@ -69,7 +71,12 @@ export function Studio() {
 
       <main className="stage" aria-label="Stage">
         <div className={`stage-frame${capturing ? " is-capturing" : ""}`}>
-          {camera.stream ? <CameraView stream={camera.stream} onVideo={onVideo} /> : <CameraMessage camera={camera} />}
+          {camera.stream ? <CameraView stream={camera.stream} onVideo={onVideo} /> : hasPictures ? (
+            <>
+              <StagePicture />
+              <div className="stage-note"><CameraMessage camera={camera} more /></div>
+            </>
+          ) : <CameraMessage camera={camera} />}
         </div>
       </main>
 

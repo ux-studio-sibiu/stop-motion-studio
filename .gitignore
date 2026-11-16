@@ -46,3 +46,5 @@ next-env.d.ts
 /blob-report/
 /playwright/.cache/
 /e2e/.generated/
+# Vitest browser mode: screenshots of failed pixel tests
+/.vitest/

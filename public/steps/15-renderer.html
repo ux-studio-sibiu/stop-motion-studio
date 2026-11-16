@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>15 Renderer · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 15 of 33 · Part 5 Playback</p>
+  <h1>Renderer</h1>
+  <p class="intro">One function now draws the animation at any moment: <code>renderAt(ctx, scene, images, tick)</code>. It finds the picture on screen at that time, fits it into the canvas, and applies its position, turn, size, mirroring and brightness. Playback (16), onion skin (17) and export (25–27) will all draw through it, so what a child sees is what ends up in the video. For now the stage uses it: with the camera off, it shows the selected picture. This step also adds a third kind of test: pixel tests that run in a real browser.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>src/core/render/renderer.ts</code>:
+      <ul>
+        <li><code>renderAt</code>: draws the animation at a tick, and reports whether the picture was ready;</li>
+        <li><code>drawFrame</code>: one picture with its transform and adjustments;</li>
+        <li><code>frameMatrix</code>, <code>applyMatrix</code>: the transform maths;</li>
+        <li><code>adjustFilter</code>: brightness and contrast as a canvas filter;</li>
+        <li><code>startTick</code>: where a frame starts.</li>
+      </ul>
+      Plus <code>containSize</code> in <code>fit.ts</code>. 11 Node tests, in <code>renderer.test.ts</code>.
+    </li>
+    <li><code>src/adapters/render/bitmapCache.ts</code>: decodes stored photos into <code>ImageBitmap</code>s on demand, keeps the 30 most recently used, and <code>close()</code>s every one it lets go. 6 tests.</li>
+    <li><code>src/studio/StagePicture.tsx</code>: the stage's canvas when the camera is off. <code>media.ts</code> gains the shared <code>bitmaps</code> cache, cleared with the thumbnails.</li>
+    <li><strong>Vitest browser mode</strong>: <code>@vitest/browser</code> and <code>@vitest/browser-playwright</code> (5.1.0, matching Vitest), two Vitest projects in <code>vitest.config.mts</code>, the <code>test:browser</code> script, and <code>src/core/render/renderer.browser.test.ts</code> (8 pixel tests).</li>
+    <li><code>e2e/stage.spec.ts</code> (2 tests).</li>
+  </ul>
+
+  <h3>How a picture is placed</h3>
+  <pre><code>size   = containSize(picture, canvas)      fit whole: bars if the shapes differ
+matrix = translate(canvas centre + x·W, y·H)
+       · rotate(rotation, clockwise)
+       · scale(scale × (flipX ? −1 : 1), scale × (flipY ? −1 : 1))
+       · translate(−size.width / 2, −size.height / 2)
+ctx.setTransform(matrix); ctx.filter = "brightness(…) contrast(…)"
+ctx.drawImage(picture, 0, 0, size.width, size.height)</code></pre>
+  <p>Everything happens around the picture's centre. <code>x</code> and <code>y</code> are fractions of the canvas (step 02), so a picture moved a quarter of the way right stays a quarter of the way right at any resolution.</p>
+
+  <h2>Decisions</h2>
+
+  <h3>One renderer, any canvas</h3>
+  <p><code>renderAt</code> takes any 2D context: the stage's canvas, playback's, or an <code>OffscreenCanvas</code> in a worker for export. It is plain TypeScript in <code>core/</code>. It doesn't know where pictures come from: it asks an <code>images(imageId)</code> function and gets a decoded picture or nothing. When the picture isn't decoded yet, it draws the background and returns <code>missing: true</code>, so the caller can decode it and draw again.</p>
+
+  <h3>A time, not a frame number</h3>
+  <p>It draws "the animation at tick 12", not "frame 3". Speech bubbles (step 23) belong to a frame, but text and shapes on the second layer (step 24) live in time and can span several frames. Drawing by time is what lets both appear in the right place.</p>
+
+  <h3>The canvas has the project's size</h3>
+  <p>The stage canvas is 1280 × 720 (the project's resolution), and CSS scales it to fit with <code>object-fit: contain</code>. That's already sharper than the stage on most screens, so it doesn't add extra pixels for high-density screens. Export draws at exactly the project's size, so the stage and the file are drawn the same way.</p>
+
+  <h3>Bitmaps, and closing them</h3>
+  <p>Drawing a JPEG means decoding it first, a few milliseconds each. So each photo is decoded once into an <code>ImageBitmap</code> and reused. A decoded 1280 × 720 photo is about 3.5 MB, held outside the JavaScript heap where the garbage collector doesn't see it. So the cache keeps only the 30 most recently used (about 100 MB at most), and <code>close()</code>s each one it drops, which frees it straight away. Leaving the project clears it, and a decode that finishes after that is closed too.</p>
+
+  <h3>The stage: live while the camera is on</h3>
+  <p>The plan said "the stage shows the selected frame". But since step 12 a new picture selects itself, so that would replace the live camera with a photo after every capture, and a child needs the live view to set up the next pose. So:</p>
+  <ul>
+    <li><strong>Camera on:</strong> the stage is live. Onion skin (17) will lay the previous picture over it.</li>
+    <li><strong>Camera off, with pictures:</strong> the stage shows the selected picture (or the last one), drawn by the renderer. The camera message becomes a small bar along the bottom: "Turn on the camera to take more pictures".</li>
+    <li><strong>No pictures yet:</strong> the big camera message, as before.</li>
+  </ul>
+
+  <h2>Three kinds of tests</h2>
+  <table>
+    <thead><tr><th></th><th>Runs in</th><th>For</th><th>Command</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Vitest</strong></td><td>Node, no browser</td><td>logic: the model, commands, storage (with a fake IndexedDB), the renderer's maths</td><td><code>npm test</code>, under a second</td></tr>
+      <tr><td><strong>Vitest browser mode</strong> (new)</td><td>a real Chromium, driven by Playwright</td><td>code that needs real browser APIs: canvas drawing, pixels</td><td><code>npm run test:browser</code>, about 2 s</td></tr>
+      <tr><td><strong>Playwright end-to-end</strong></td><td>a real Chromium, with the built app</td><td>whole flows as a child does them: take, select, drag, reload</td><td><code>npm run test:e2e</code>, about 30 s</td></tr>
+    </tbody>
+  </table>
+  <p>Browser mode is still Vitest: the same <code>describe</code>, <code>it</code> and <code>expect</code>, and the test imports the renderer directly. The difference is that the test file runs inside a browser page, so <code>document.createElement("canvas")</code> and <code>getImageData</code> are real. There's no app, no server and no clicking, which is what makes it seconds, not half a minute.</p>
+  <p><code>vitest.config.mts</code> defines two <em>projects</em>:</p>
+  <ul>
+    <li><code>unit</code>: Node, every <code>*.test.ts</code> except the browser ones;</li>
+    <li><code>browser</code>: Chromium, only <code>*.browser.test.ts</code>.</li>
+  </ul>
+  <p><code>npm test</code> picks the first (<code>--project unit</code>), so it stays Node-only and fast.</p>
+
+  <h3>Reading pixels</h3>
+  <p>The test source is a synthetic 160 × 90 picture of four solid quadrants: red, green, blue, yellow. A test draws it with a known transform and reads chosen points back with <code>getImageData(x, y, 1, 1)</code>.</p>
+  <ul>
+    <li><strong>Mirrored:</strong> green where the red was.</li>
+    <li><strong>Turned 180°:</strong> yellow in the top-left.</li>
+    <li><strong>Half size:</strong> black around it.</li>
+  </ul>
+  <p>Solid colours make the expected values exact. The assertion still allows ±2 per channel, because edges are smoothed (anti-aliased) and filters round. The points are chosen away from edges anyway.</p>
+  <p>To prove the tests catch mistakes, the flip was broken on purpose. The flip test failed with <em>pixel (20, 20) is rgb(255, 0, 0), expected rgb(0, 255, 0)</em>, and passed again once the flip was restored.</p>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Canvas filters in Safari.</strong> Brightness and contrast use <code>ctx.filter</code>. Older Safari versions ignore it, so pictures would draw unadjusted there. Step 19 (brightness) must check Safari, and fall back to manipulating the pixels if needed.</li>
+    <li><strong>Every bitmap must be closed.</strong> Code that takes bitmaps out of the cache must never close them itself, and must not keep them after <code>clear()</code>.</li>
+    <li><strong>Pixel tests stay small.</strong> Synthetic images and a handful of points each. No photos, no text, no screenshot comparisons, which break with every font or browser update.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm test
+npm run test:browser
+npm run test:e2e -- e2e/stage.spec.ts
+npm run dev</code></pre>
+  <ul>
+    <li>Take a few pictures, then turn the camera off: the stage shows the last one. Click others in the timeline: the stage follows.</li>
+    <li>Turn the camera on: the stage is live again, even with a picture selected.</li>
+    <li>Click through many pictures quickly, then look at DevTools &gt; Memory: it stays bounded (30 decoded pictures at most).</li>
+  </ul>
+  <div class="note">Checked while building: 195 unit tests and 8 browser tests pass; end-to-end, all 53 in Chromium, once. The broken-flip check failed as it should. Screenshot taken with Playwright of the stage with the camera off. Not checked: memory in DevTools with a long animation, Safari's canvas filter.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/render/renderer.ts</code>, <code>renderer.test.ts</code>, <code>renderer.browser.test.ts</code>, <code>fit.ts</code>, <code>index.ts</code>; <code>src/adapters/render/bitmapCache.ts</code>, <code>bitmapCache.test.ts</code>; <code>src/studio/StagePicture.tsx</code>, <code>media.ts</code>, <code>Studio.tsx</code>, <code>CameraMessage.tsx</code>, <code>studio.scss</code>; <code>vitest.config.mts</code>, <code>package.json</code>; <code>e2e/stage.spec.ts</code>; <code>CLAUDE.md</code> (browser tests for drawing code), <code>README.md</code>, <code>ROADMAP.md</code>; <code>public/steps/15-renderer.html</code>, <code>index.html</code>, <code>14-reorder.html</code> (next link).</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit (195 in total): 11 for the renderer's maths, using a recording context; 6 for the bitmap cache, with fake bitmaps that record <code>close()</code>.</li>
+    <li>Browser, 8 pixel tests:
+      <ul>
+        <li>an unmoved picture;</li>
+        <li>flips;</li>
+        <li>rotation;</li>
+        <li>scale;</li>
+        <li>moving;</li>
+        <li>letterboxing;</li>
+        <li>brightness;</li>
+        <li><code>renderAt</code> by time.</li>
+      </ul>
+    </li>
+    <li>End-to-end: 2 in <code>stage.spec.ts</code>.</li>
+  </ul>
+  <p>No existing test changed.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li><code>renderAt</code> is in <code>core/</code>, takes any 2D context and a time, and never fetches pictures itself</li>
+    <li>every <code>ImageBitmap</code> leaving the cache is closed</li>
+    <li>the stage stays live while the camera is on</li>
+    <li><code>npm test</code> stays Node-only; <code>npm run test:browser</code> passes</li>
+    <li><code>npm run test:e2e</code>, <code>npm run lint</code>, <code>npm run typecheck</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="14-reorder.html">Previous: 14 · Drag to reorder</a>
+    <span>Next: 16 · Playback</span>
+  </nav>
+</main>
+</body>
+</html>

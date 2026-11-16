@@ -566,7 +566,7 @@ registry entry.
 - [x] 12 Frame operations ([page](public/steps/12-frame-operations.html))
 - [x] 13 Resize a picture's duration ([page](public/steps/13-resize.html))
 - [x] 14 Drag to reorder ([page](public/steps/14-reorder.html))
-- [ ] 15 Renderer
+- [x] 15 Renderer ([page](public/steps/15-renderer.html))
 - [ ] 16 Playback
 - [ ] 17 Onion skin
 - [ ] 18 Move, scale, rotate, flip

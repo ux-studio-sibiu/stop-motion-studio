@@ -1,12 +1,17 @@
 import { createImageCache } from "@/adapters/images/imageCache";
+import { createBitmapCache } from "@/adapters/render/bitmapCache";
+import { appRepository } from "@/adapters/storage/appRepository";
 import type { Frame, ProjectRepository } from "@/core/model";
 
 // The open project's thumbnails, in memory so the timeline can show them instantly.
-// Full pictures stay in IndexedDB and are read when playback and export need them.
 export const thumbs = createImageCache();
+
+// Full pictures, decoded for the renderer (stage, playback, export), the most recent 30.
+export const bitmaps = createBitmapCache({ fetch: (imageId) => appRepository().getImage(imageId) });
 
 export function clearMedia(): void {
   thumbs.clear();
+  bitmaps.clear();
 }
 
 // Fetches the thumbnails of these frames that aren't in memory yet: all of them at once when

@@ -3,7 +3,8 @@ import type { Camera as CameraState } from "./useCamera";
 
 // What the stage says when there's no live picture, in words a child (or the grown-up
 // helping) can act on, with the one button that helps.
-export function CameraMessage({ camera }: { camera: CameraState }) {
+// `more`: there are pictures already (the message sits over one on the stage).
+export function CameraMessage({ camera, more = false }: { camera: CameraState; more?: boolean }) {
   const retry = <button type="button" className="icon-button" onClick={camera.start}><RotateCcw size={24} />Try again</button>;
 
   switch (camera.status) {
@@ -11,7 +12,7 @@ export function CameraMessage({ camera }: { camera: CameraState }) {
       return (
         <div className="camera-message">
           <Camera size={48} />
-          <p>Turn on the camera to start taking pictures.</p>
+          <p>{more ? "Turn on the camera to take more pictures." : "Turn on the camera to start taking pictures."}</p>
           <button type="button" className="icon-button is-primary" onClick={camera.start}><Camera size={24} />Turn on camera</button>
         </div>
       );
