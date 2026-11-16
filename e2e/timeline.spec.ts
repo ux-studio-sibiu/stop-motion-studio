@@ -38,6 +38,20 @@ test("clicking selects a picture; arrow keys, Home and End move the selection", 
   await expect(page.getByRole("option", { selected: true })).toHaveCount(0);
 });
 
+test("the previous and next buttons step through the pictures, round past either end", async ({ studio, page }) => {
+  const next = page.getByRole("button", { name: "Next picture" });
+  const previous = page.getByRole("button", { name: "Previous picture" });
+  await expect(studio.picture(3)).toHaveAttribute("aria-selected", "true");   // the last capture
+  await next.click();
+  await expect(studio.picture(1)).toHaveAttribute("aria-selected", "true");   // round to the start
+  await next.click();
+  await expect(studio.picture(2)).toHaveAttribute("aria-selected", "true");
+  await previous.click();
+  await previous.click();
+  await expect(studio.picture(3)).toHaveAttribute("aria-selected", "true");   // round to the end
+  await expect(studio.selected()).toHaveCount(1);
+});
+
 test("the timeline takes focus for the keys but never shows a focus ring", async ({ studio, page }) => {
   const outline = () => studio.track().evaluate((element) => getComputedStyle(element).outlineStyle);
   await studio.picture(2).click();

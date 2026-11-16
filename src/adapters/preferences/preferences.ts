@@ -7,6 +7,7 @@
 
 export const PREFERENCES = {
   cameraDevice: "stop-motion-studio:camera",
+  cameraOff: "stop-motion-studio:camera-off",   // "1" once the child turned the camera off
   timelineZoom: "stop-motion-studio:timeline-zoom",
 } as const;
 

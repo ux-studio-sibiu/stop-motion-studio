@@ -70,6 +70,9 @@ function applyResult(result: CommandResult | undefined) {
   const timeout = setTimeout(stop, 2000);   // they never arrived (another tab changed things): give up
 }
 
+// Fields with their own undo (typing). A slider or checkbox has none, so Ctrl+Z there is ours.
 function isTextField(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement && (target.isContentEditable || target.tagName === "INPUT" || target.tagName === "TEXTAREA");
+  if (!(target instanceof HTMLElement)) return false;
+  if (target instanceof HTMLInputElement) return !["range", "checkbox", "radio", "button", "submit", "color", "file"].includes(target.type);
+  return target.isContentEditable || target.tagName === "TEXTAREA";
 }

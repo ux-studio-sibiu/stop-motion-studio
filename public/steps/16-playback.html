@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>16 Playback · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 16 of 33 · Part 5 Playback</p>
+  <h1>Playback</h1>
+  <p class="intro">The animation plays. Press the big Play button (or Enter) and the stage shows it at its speed, over the live camera, while a red playhead runs along the timeline. A picture that lasts three ticks stays three times as long. The speed control goes from slow to fast, Loop starts it again at the end, and dragging along the ruler scrubs through it.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>src/core/playback/clock.ts</code>: <code>startClock</code> and <code>readClock</code>, which tick is on screen at a given moment. 6 tests with made-up time.</li>
+    <li><code>setFps(projectId, from, to)</code> in <code>core/commands</code>: an undoable speed change. 2 tests against storage.</li>
+    <li>The store: <code>loop</code> (on by default, kept between projects) and <code>setLoop</code>. 1 test.</li>
+    <li><code>src/studio/usePlayback.ts</code>:
+      <ul>
+        <li>the <code>requestAnimationFrame</code> loop;</li>
+        <li>where playback starts, and what pausing selects;</li>
+        <li>decoding the next 4 pictures ahead of the playhead;</li>
+        <li>Enter.</li>
+      </ul>
+    </li>
+    <li><code>src/studio/PlaybackBar.tsx</code>: Play / Pause, the speed slider (5, 8, 10, 12 or 15 pictures per second, "Slow … Fast"), and Loop.</li>
+    <li><code>StagePicture</code> draws the playhead while playing, over the camera. It keeps the last picture until the next one is decoded, so there's no black flash.</li>
+    <li>The timeline:
+      <ul>
+        <li>the playhead line, shown where playback is, or where Play will start;</li>
+        <li>scrubbing on the ruler;</li>
+        <li>paging along to keep the playhead in view.</li>
+      </ul>
+    </li>
+    <li><code>e2e/playback.spec.ts</code> (4 tests).</li>
+  </ul>
+
+  <h2>Decisions</h2>
+
+  <h3>Counting from the start time</h3>
+  <p>The clock never adds "one tick" per screen refresh. It works out <code>tick = start + floor(elapsed ms × fps / 1000)</code> from when Play was pressed, so playback keeps the right speed however unevenly the browser draws. Browsers stop drawing in a background tab. When the tab comes back, the clock jumps to where the animation would be by then, instead of racing through everything it missed. The clock is pure maths with <code>now</code> passed in, so its tests use made-up times and nothing waits.</p>
+
+  <h3>Where it starts, where it stops</h3>
+  <ul>
+    <li><strong>Play</strong> starts at the first selected picture, or at the start if none is selected. The playhead line sits there before you press it.</li>
+    <li><strong>Pause</strong> selects the picture it stopped on, so the stage, the timeline and the next Play agree.</li>
+    <li><strong>Reaching the end</strong> without Loop goes back to the start for the next Play.</li>
+    <li><strong>Clicking a picture</strong>, scrubbing, or taking a picture stops playback.</li>
+  </ul>
+
+  <h3>A snapshot of the frames</h3>
+  <p>Playback plays the frames as they were when Play was pressed. Changing the speed or the loop setting while it plays starts it again from where it is, with the new setting.</p>
+
+  <h3>Speed is part of the animation, loop isn't</h3>
+  <p>The speed is saved with the animation, because the video will play at it, and changing it is undoable. Everything is counted in ticks, so the whole timeline, ruler included, rescales. Loop is how you watch, so it lives in the store only.</p>
+
+  <h3>The stage while playing</h3>
+  <p>Playback draws over the live camera; the camera keeps running underneath, so stopping shows the live view again at once. Pictures are decoded a few ahead of the playhead (4). If one still isn't ready, the stage keeps the previous picture rather than flashing black.</p>
+
+  <h3>A bug the tests found</h3>
+  <p>Ctrl+Z didn't undo while the speed slider had keyboard focus. The undo shortcut skipped every <code>&lt;input&gt;</code>, so a text field's own undo would win. But a slider has no undo of its own. The shortcut now skips only fields you type in.</p>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Long animations at high speed</strong> rely on decoding keeping up (about 5 ms per picture). At 15 pictures per second that's fine. If it stutters, decode further ahead.</li>
+    <li><strong>The speed slider</strong> saves one undo step per notch it passes, so dragging from slow to fast makes four.</li>
+    <li><strong>Onion skin (step 17)</strong> draws over the camera too; it must hide while playing.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <pre><code>npm test
+npm run test:e2e</code></pre>
+  <ul>
+    <li>Take a few pictures, make one longer (step 13), press Play: the long one stays longer, and the red line runs along.</li>
+    <li>Turn Loop off: it stops at the end. Turn it on: it keeps going.</li>
+    <li>Move the speed slider while it plays: it speeds up, and the timeline gets shorter. Ctrl+Z puts the speed back.</li>
+    <li>Drag along the ruler: the stage follows the pointer.</li>
+  </ul>
+  <div class="note">Checked while building: 204 unit tests pass. End-to-end, one Chromium run of all 57: 56 passed; the slider undo bug failed and was fixed, then <code>playback.spec.ts</code> passed on its own. Not checked: screenshots of the playback bar and playhead, a long animation's smoothness, a background tab.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/playback/clock.ts</code>, <code>clock.test.ts</code>; <code>src/core/commands/frameCommands.ts</code>; <code>src/adapters/storage/frameCommands.test.ts</code>; <code>src/store/editorStore.ts</code>, <code>editorStore.test.ts</code>; <code>src/studio/usePlayback.ts</code>, <code>PlaybackBar.tsx</code>, <code>StagePicture.tsx</code>, <code>Studio.tsx</code>, <code>Timeline.tsx</code>, <code>useCapture.ts</code>, <code>useHistory.ts</code>, <code>studio.scss</code>; <code>e2e/playback.spec.ts</code>; <code>public/steps/16-playback.html</code>, <code>index.html</code>, <code>15-renderer.html</code> (next link); <code>ROADMAP.md</code>.</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit (204 in total): 6 for the clock, 2 for <code>setFps</code>, 1 for loop.</li>
+    <li>End-to-end, 4:
+      <ul>
+        <li>play to the end without loop;</li>
+        <li>Enter and what pausing selects;</li>
+        <li>speed and undo;</li>
+        <li>scrubbing.</li>
+      </ul>
+    </li>
+  </ul>
+  <p>No existing test changed.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>the clock is pure and counts from the start time</li>
+    <li>a long picture plays for its whole length</li>
+    <li>taking a picture, clicking one, or scrubbing stops playback</li>
+    <li>a speed change is one undoable command</li>
+    <li><code>npm test</code>, <code>npm run test:e2e</code>, <code>npm run lint</code>, <code>npm run typecheck</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="15-renderer.html">Previous: 15 · Renderer</a>
+    <span>Next: 17 · Onion skin</span>
+  </nav>
+</main>
+</body>
+</html>

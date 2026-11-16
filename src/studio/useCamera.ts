@@ -82,9 +82,10 @@ export function useCamera(): Camera {
     }
   }, [release]);
 
-  const start = useCallback(() => { wanted.current = true; void open(chosen.current); }, [open]);
+  // Turning the camera on or off is remembered on this device, so a reload keeps it that way.
+  const start = useCallback(() => { wanted.current = true; savePreference(PREFERENCES.cameraOff, null); void open(chosen.current); }, [open]);
 
-  const stop = useCallback(() => { wanted.current = false; release(); setStatus("idle"); }, [release]);
+  const stop = useCallback(() => { wanted.current = false; savePreference(PREFERENCES.cameraOff, "1"); release(); setStatus("idle"); }, [release]);
 
   const selectDevice = useCallback((id: string) => { wanted.current = true; void open(id); }, [open]);
 
@@ -95,9 +96,10 @@ export function useCamera(): Camera {
     const refreshDevices = () => { void listCameras().then((list) => { if (active) setDevices(list); }); };
     refreshDevices();
 
-    // Start straight away only when the browser already allowed the camera; otherwise wait
-    // for the "Turn on camera" button, so the permission prompt follows a tap.
-    void cameraPermissionGranted().then((granted) => { if (active && granted) start(); });
+    // Start straight away only when the browser already allowed the camera and the child didn't
+    // turn it off last time; otherwise wait for the button, so a permission prompt follows a tap.
+    const turnedOff = readText(PREFERENCES.cameraOff) === "1";
+    void cameraPermissionGranted().then((granted) => { if (active && granted && !turnedOff) start(); });
 
     // Turn the camera (and its light) off while the tab is hidden, back on when it returns.
     const onVisibility = () => {

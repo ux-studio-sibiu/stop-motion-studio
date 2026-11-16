@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
-import { Camera, CopyPlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
-import { formatSeconds, inOrder, moveIds, neighbourAfterDelete, nudgeGap, pxPerTick, rulerScale, sameOrder, selectRange, ticksToSeconds, toggleInSelection, totalTicks, type Frame } from "@/core/model";
+import { Camera, ChevronLeft, ChevronRight, CopyPlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
+import { formatSeconds, frameIndexAt, frameStarts, inOrder, moveIds, neighbourAfterDelete, nudgeGap, pxPerTick, rulerScale, sameOrder, selectRange, ticksToSeconds, toggleInSelection, totalTicks, type Frame } from "@/core/model";
 import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, withHoldPreview } from "@/store/editorStore";
 import { editorStore, useEditor, useOrderedFrames } from "@/store/useEditor";
 import { thumbs } from "./media";
@@ -131,6 +131,7 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: Timelin
 
   const onPick = (id: string, event: MouseEvent) => {
     if (reorder.takeClick()) return;   // this click ended a drag
+    editorStore.getState().pause();    // picking a picture while it plays stops there
     if (event.shiftKey) extendTo(id);
     else if (event.ctrlKey || event.metaKey) toggle(id);
     else selectOnly(id);
@@ -138,6 +139,49 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: Timelin
   };
 
   const resize = useResize(frames, selection, tickWidth, onResize, onPick);
+
+  // The previous / next picture buttons: one picture along, round to the other end past the
+  // first or last. With nothing selected, Next goes to the first picture and Previous to the last.
+  const step = (direction: -1 | 1) => {
+    if (order.length === 0) return;
+    editorStore.getState().pause();
+    const current = focusId ? order.indexOf(focusId) : -1;
+    const target = current < 0 ? (direction > 0 ? 0 : order.length - 1) : (current + direction + order.length) % order.length;
+    selectOnly(order[target]);
+  };
+
+  // The playhead: where playback is while playing; otherwise where Play will start (the first
+  // selected picture). Dragging along the ruler scrubs: it stops playback and selects the
+  // picture under the pointer, which the stage then shows.
+  const isPlaying = useEditor((state) => state.isPlaying);
+  const playhead = useEditor((state) => state.playhead);
+  const firstSelected = inOrder(order, selection)[0];
+  const playFrom = isPlaying ? playhead : firstSelected ? frameStarts(frames)[order.indexOf(firstSelected)] : undefined;
+  const scrubbing = useRef<number | null>(null);
+  const scrubTo = (clientX: number, ruler: HTMLElement) => {
+    const total = totalTicks(frames);
+    if (total === 0) return;
+    const tick = Math.min(total - 1, Math.max(0, Math.floor((clientX - ruler.getBoundingClientRect().left) / tickWidth)));
+    editorStore.getState().seek(tick);
+    selectOnly(frames[frameIndexAt(frames, tick)].id);
+  };
+  const onRulerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || frames.length === 0) return;
+    editorStore.getState().pause();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    scrubbing.current = event.pointerId;
+    scrubTo(event.clientX, event.currentTarget);
+  };
+  const onRulerMove = (event: PointerEvent<HTMLDivElement>) => { if (scrubbing.current === event.pointerId) scrubTo(event.clientX, event.currentTarget); };
+  const onRulerUp = () => { scrubbing.current = null; };
+
+  // While playing, keep the playhead in view: when it reaches the right edge, page along.
+  useEffect(() => {
+    const element = scroller.current;
+    if (!isPlaying || !element) return;
+    const x = playhead * tickWidth;
+    if (x < element.scrollLeft || x > element.scrollLeft + element.clientWidth - 48) element.scrollTo({ left: Math.max(0, x - 48) });
+  }, [isPlaying, playhead, tickWidth]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLOListElement>) => {
     if (order.length === 0) return;
@@ -203,11 +247,14 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: Timelin
         <span className="tools-gap" />
         <button type="button" className="icon-button is-small" aria-label={`Duplicate ${pictures}`} title={`Duplicate ${pictures} (Ctrl + D)`} disabled={count === 0} onClick={duplicateSelection}><CopyPlus size={20} /></button>
         <button type="button" className="icon-button is-small" aria-label={`Delete ${pictures}`} title={`Delete ${pictures} (Delete key)`} disabled={count === 0} onClick={deleteSelection}><Trash2 size={20} /></button>
+        <button type="button" className="icon-button is-small" aria-label="Previous picture" title="Previous picture (←)" disabled={order.length === 0} onClick={() => step(-1)}><ChevronLeft size={20} /></button>
+        <button type="button" className="icon-button is-small" aria-label="Next picture" title="Next picture (→)" disabled={order.length === 0} onClick={() => step(1)}><ChevronRight size={20} /></button>
         <span className="duration" aria-label="Length of the animation">{seconds < 10 ? `${seconds.toFixed(1)} s` : formatSeconds(seconds)}</span>
       </div>
 
       <div ref={scroller} className="timeline-scroll">
-        <div className="ruler" aria-hidden="true" style={{ width: rulerSeconds * zoom, backgroundSize: `${markSeconds * zoom}px 100%` }}>
+        {playFrom !== undefined && <div className={`playhead${isPlaying ? " is-playing" : ""}`} aria-hidden="true" style={{ left: playFrom * tickWidth }} />}
+        <div className="ruler" aria-hidden="true" title="Drag along here to scrub through the animation" style={{ width: rulerSeconds * zoom, backgroundSize: `${markSeconds * zoom}px 100%` }} onPointerDown={onRulerDown} onPointerMove={onRulerMove} onPointerUp={onRulerUp} onPointerCancel={onRulerUp}>
           {labels.map((at) => <span key={at} className="ruler-label" style={{ left: at * zoom }}>{formatSeconds(at)}</span>)}
         </div>
 

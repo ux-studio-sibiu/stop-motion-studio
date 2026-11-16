@@ -83,6 +83,16 @@ export function reorderFrames(projectId: string, before: readonly string[], afte
   return { label: moved.length === 1 ? "Move picture" : `Move ${moved.length} pictures`, do: write(after), undo: write(before) };
 }
 
+// Changes the speed (pictures per second). Every length is in ticks, so the whole animation,
+// ruler and all, scales evenly.
+export function setFps(projectId: string, from: number, to: number): Command {
+  const write = (fps: number) => async (repository: ProjectRepository) => {
+    if (from === to) throw new Error("The speed didn't change.");
+    await repository.updateProject(projectId, { fps });
+  };
+  return { label: "Change speed", do: write(to), undo: write(from) };
+}
+
 // Changes how long pictures last: one command for a whole drag or key press, however many
 // pictures it changed. Undo puts every length back. The changed pictures are selected.
 export function setHold(projectId: string, changes: readonly { id: string; from: number; to: number }[]): Command {

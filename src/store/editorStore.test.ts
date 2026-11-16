@@ -121,6 +121,13 @@ describe("playback slice", () => {
     expect(store.getState().isPlaying).toBe(false);
   });
 
+  it("loops by default, and keeps the choice when another project opens", () => {
+    expect(store.getState().loop).toBe(true);
+    store.getState().setLoop(false);
+    store.getState().loadProject(createProject(), []);
+    expect(store.getState().loop).toBe(false);
+  });
+
   it("seeks to whole, non-negative ticks", () => {
     store.getState().seek(3.6);
     expect(store.getState().playhead).toBe(4);

@@ -29,9 +29,11 @@ export type SelectionSlice = {
 export type PlaybackSlice = {
   isPlaying: boolean;
   playhead: number;                          // ticks from the start (PLAN.md §3)
+  loop: boolean;                             // start again at the end; kept when another project opens
   play: () => void;
   pause: () => void;
   seek: (tick: number) => void;
+  setLoop: (loop: boolean) => void;
 };
 
 export type UiSlice = {
@@ -58,6 +60,7 @@ export function createEditorStore() {
   return createStore<EditorState>()((set, get) => ({
     ...EMPTY,
     timelineZoom: DEFAULT_TIMELINE_ZOOM,
+    loop: true,
 
     loadProject: (project, frames) => set({ ...EMPTY, project, frames: byId(frames) }),
 
@@ -93,6 +96,8 @@ export function createEditorStore() {
     pause: () => set({ isPlaying: false }),
 
     seek: (tick) => set({ playhead: Number.isFinite(tick) ? Math.max(0, Math.round(tick)) : 0 }),
+
+    setLoop: (loop) => set({ loop }),
 
     setTimelineZoom: (pxPerSecond) => set({ timelineZoom: Math.min(MAX_TIMELINE_ZOOM, Math.max(MIN_TIMELINE_ZOOM, pxPerSecond)) }),
 

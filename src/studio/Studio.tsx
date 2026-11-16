@@ -3,27 +3,29 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ChevronLeft, Download, Layers, Play, Redo2, Undo2 } from "lucide-react";
+import { ChevronLeft, Download, Redo2, Undo2 } from "lucide-react";
 import { editorStore, useEditor } from "@/store/useEditor";
 import { CameraMessage } from "./CameraMessage";
 import { CameraPanel } from "./CameraPanel";
 import { CameraView } from "./CameraView";
+import { PlaybackBar } from "./PlaybackBar";
 import { StagePicture } from "./StagePicture";
 import { Timeline } from "./Timeline";
 import { useCamera } from "./useCamera";
 import { useCapture } from "./useCapture";
 import { useHistory } from "./useHistory";
+import { usePlayback } from "./usePlayback";
 import { useProject } from "./useProject";
-import { deleteFrames, duplicateFrames, reorderFrames, setHold } from "@/core/commands";
+import { deleteFrames, duplicateFrames, reorderFrames, setFps, setHold } from "@/core/commands";
 import "./studio.scss";
 
-// The studio screen. Areas still holding a placeholder are filled by later steps
-// (playback 16, properties 18).
+// The studio screen. The properties panel is still a placeholder (steps 18-20).
 export function Studio() {
   const projectId = useSearchParams().get("project");
   const status = useProject(projectId);
   const projectName = useEditor((state) => state.project?.name);
   const hasPictures = useEditor((state) => (state.project?.frameIds.length ?? 0) > 0);
+  const isPlaying = useEditor((state) => state.isPlaying);
   const camera = useCamera();
   const video = useRef<HTMLVideoElement | null>(null);
   const [videoReady, setVideoReady] = useState(false);
@@ -31,6 +33,7 @@ export function Studio() {
   const canCapture = camera.status === "live" && status === "ready" && videoReady;
   const history = useHistory(projectId);
   const { capture, capturing } = useCapture(video, canCapture, history.run);
+  usePlayback();
   const duplicate = (ids: readonly string[]) => {
     const { project, frames } = editorStore.getState();
     if (!project) return;
@@ -71,7 +74,12 @@ export function Studio() {
 
       <main className="stage" aria-label="Stage">
         <div className={`stage-frame${capturing ? " is-capturing" : ""}`}>
-          {camera.stream ? <CameraView stream={camera.stream} onVideo={onVideo} /> : hasPictures ? (
+          {camera.stream ? (
+            <>
+              <CameraView stream={camera.stream} onVideo={onVideo} />
+              {isPlaying && <StagePicture />}
+            </>
+          ) : hasPictures ? (
             <>
               <StagePicture />
               <div className="stage-note"><CameraMessage camera={camera} more /></div>
@@ -87,14 +95,7 @@ export function Studio() {
 
       <Timeline onDelete={(ids) => projectId && history.run(deleteFrames(projectId, ids))} onDuplicate={(ids) => duplicate(ids)} onResize={(changes) => (projectId ? history.run(setHold(projectId, changes)) : Promise.resolve(false))} onReorder={(before, after, moved) => { if (projectId) void history.run(reorderFrames(projectId, before, after, moved)); }} />
 
-      <footer className="playback-bar">
-        <button type="button" className="big-button is-play" aria-label="Play" disabled><Play size={40} /></button>
-        <label className="speed">
-          <span>Speed</span>
-          <input type="range" min={5} max={15} defaultValue={8} disabled />
-        </label>
-        <button type="button" className="icon-button" aria-label="See-through" disabled><Layers size={24} /><span className="desktop-only">See-through</span></button>
-      </footer>
+      <PlaybackBar onSpeed={(from, to) => { if (projectId && from !== to) void history.run(setFps(projectId, from, to)); }} />
     </div>
   );
 }

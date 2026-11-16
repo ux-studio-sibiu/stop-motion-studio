@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { addFrames, createHistory, deleteFrames, duplicateFrames, reorderFrames, setHold, type History } from "@/core/commands";
+import { addFrames, createHistory, deleteFrames, duplicateFrames, reorderFrames, setFps, setHold, type History } from "@/core/commands";
 import { createFrame, createProject, moveIds, type Project, type ProjectRepository } from "@/core/model";
 import { openStudioDb, type StudioDb } from "@/adapters/storage/db";
 import { createDexieRepository } from "@/adapters/storage/dexieRepository";
@@ -140,6 +140,20 @@ describe("reorderFrames", () => {
     const ids = await takePictures(2);
     await expect(history.run(reorderFrames(project.id, ids, [...ids], [ids[0]]))).rejects.toThrow();
     expect(history.state().undoLabel).toBe("Take picture");
+  });
+});
+
+describe("setFps", () => {
+  it("changes the speed; undo puts it back", async () => {
+    await history.run(setFps(project.id, 8, 12));
+    expect((await repository.getProject(project.id))?.fps).toBe(12);
+    await history.undo();
+    expect((await repository.getProject(project.id))?.fps).toBe(8);
+  });
+
+  it("isn't recorded when the speed stays the same", async () => {
+    await expect(history.run(setFps(project.id, 8, 8))).rejects.toThrow();
+    expect(history.state().canUndo).toBe(false);
   });
 });
 

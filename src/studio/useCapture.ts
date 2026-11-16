@@ -23,6 +23,7 @@ export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: b
     const project = editorStore.getState().project;
     if (!enabled || !element || !project || busy.current) return;
 
+    editorStore.getState().pause();   // the stage goes back to the live camera for the shot
     busy.current = true;
     setCapturing(true);
     try {

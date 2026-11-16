@@ -74,11 +74,25 @@ test("a blocked camera says so and offers to try again", async ({ studio, page }
   // With permission already granted the studio tries at once and lands on "blocked" by itself;
   // otherwise it waits for the button. Wait for either, then press the button if it's there.
   const turnOn = page.getByRole("button", { name: "Turn on camera" });
-  const blocked = page.getByText(/The camera is blocked/);
+  const blocked = page.getByRole("main", { name: "Stage" }).getByText(/The camera is blocked/);   // the camera box says it too, in short
   await expect(turnOn.or(blocked)).toBeVisible();
   if (await turnOn.isVisible()) await turnOn.click();
 
   await expect(blocked).toBeVisible();
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
   await expect(studio.captureButton()).toBeDisabled();
+});
+
+test("the camera stays as it was left after a reload: off stays off, on comes back on @real-camera", async ({ studio, page }) => {
+  await studio.open();
+  await studio.cameraOn();
+  await page.getByRole("button", { name: "Camera off" }).click();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Camera on" })).toBeVisible();
+  await expect(page.locator("video")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Camera on" }).click();
+  await expect(page.getByRole("button", { name: "Camera off" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Camera off" })).toBeVisible();   // started by itself
 });
