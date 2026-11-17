@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createFrame, DEFAULT_TRANSFORM, type Transform } from "@/core/model";
-import { adjustFilter, applyMatrix, containSize, drawOnionSkin, frameCorners, frameMatrix, onionOpacity, outlineFilter, renderAt, startTick, type DrawableImage } from "@/core/render";
+import { adjustFilter, applyMatrix, transformCss, containSize, drawOnionSkin, frameCorners, frameMatrix, onionOpacity, outlineFilter, renderAt, startTick, type DrawableImage } from "@/core/render";
 
 // The renderer's maths, in Node. What it really looks like on a canvas is checked pixel by
 // pixel in renderer.browser.test.ts.
@@ -160,5 +160,38 @@ describe("frameCorners", () => {
     const round = (points: { x: number; y: number }[]) => points.map(({ x, y }) => ({ x: Math.round(x), y: Math.round(y) }));
     expect(round(frameCorners(transform({ scale: 0.5 }), full, canvas))).toEqual([{ x: 40, y: 23 }, { x: 120, y: 23 }, { x: 120, y: 68 }, { x: 40, y: 68 }]);
     expect(round(frameCorners(transform(), { width: 90, height: 90 }, canvas))).toEqual([{ x: 35, y: 0 }, { x: 125, y: 0 }, { x: 125, y: 90 }, { x: 35, y: 90 }]);   // a square picture, letterboxed
+  });
+});
+
+describe("transformCss (timeline thumbnails)", () => {
+  it("is none for a picture that wasn't changed", () => {
+    expect(transformCss(DEFAULT_TRANSFORM)).toBe("none");
+  });
+
+  it("moves in percent of the frame, then turns, then scales, mirrored when flipped", () => {
+    expect(transformCss({ ...DEFAULT_TRANSFORM, x: 0.1, y: -0.25, scale: 1.5, rotation: 30, flipX: true })).toBe("translate(10%, -25%) rotate(30deg) scale(-1.5, 1.5)");
+  });
+
+  // What the browser does with that CSS on a frame-sized element, origin at its centre: the photo's
+  // corners must land where the stage's renderer puts them.
+  it("puts the photo's corners where frameMatrix does", () => {
+    const frame = { width: 1280, height: 720 };
+    const photo = containSize(640, 480, frame.width, frame.height);   // a 4:3 camera in a 16:9 frame
+    const transform = { ...DEFAULT_TRANSFORM, x: 0.15, y: -0.1, scale: 0.8, rotation: -20, flipY: true };
+    const [tx, ty, r, sx, sy] = transformCss(transform).match(/-?[\d.]+/g)!.map(Number);
+    const angle = (r * Math.PI) / 180;
+    const css = (px: number, py: number) => {
+      // The photo point, relative to the element's centre: scale, rotate, translate.
+      const x = (px - photo.width / 2) * sx;
+      const y = (py - photo.height / 2) * sy;
+      return { x: frame.width / 2 + (tx / 100) * frame.width + x * Math.cos(angle) - y * Math.sin(angle), y: frame.height / 2 + (ty / 100) * frame.height + x * Math.sin(angle) + y * Math.cos(angle) };
+    };
+    const matrix = frameMatrix(transform, photo, frame);
+    for (const [px, py] of [[0, 0], [photo.width, 0], [photo.width, photo.height], [0, photo.height]]) {
+      const want = applyMatrix(matrix, px, py);
+      const got = css(px, py);
+      expect(got.x).toBeCloseTo(want.x, 1);
+      expect(got.y).toBeCloseTo(want.y, 1);
+    }
   });
 });

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>23 Objects and speech bubbles · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 23 of 33 · Part 8 Elements</p>
+  <h1>Objects on pictures: speech bubbles</h1>
+  <p class="intro">A dinosaur can talk now. The new <strong>Objects</strong> tab puts things on a picture, with the camera off. A speech bubble is the first kind of object; more will come.</p>
+  <ul>
+    <li><strong>Adding:</strong> the tab shows the kinds of object as icons. Drag one onto the picture on the stage and it lands where it's dropped. A click, or the keyboard, puts it near the top instead. A new bubble is picked straight away, with the keyboard in its text.</li>
+    <li><strong>Settings, in the tab:</strong> below the icons, in a card of its own, the picked object's settings. For a bubble, in two groups:
+      <ul>
+        <li><em>Bubble:</em> its shape from a dropdown (speech, thought or spiked), a Tail checkbox, its colour, its outline (none, thin, medium or thick) and the outline's colour;</li>
+        <li><em>Text:</em> the text, shown on the picture as it's typed; its size, font and colour.</li>
+      </ul>
+    </li>
+    <li><strong>Placing, on the stage:</strong> the same for every kind of object, with nothing for it in the tab.
+      <ul>
+        <li>Click an object to pick it, then drag it to move it.</li>
+        <li>Its corners size it, the round handle turns it, and a bubble's dot moves its tail.</li>
+        <li>Delete removes it, the arrow keys nudge it, and Enter or a double-click goes to a bubble's text.</li>
+      </ul>
+    </li>
+  </ul>
+  <p>Each change is one undo step. An object belongs to its picture: move the picture or copy it, and the object goes along. The timeline thumbnails show a picture's objects, and its move, size, turn and flip, as they change. See-through shows the previous pictures' objects, so they can be lined up too.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><strong>The model</strong>, <code>src/core/model/element.ts</code>:
+      <ul>
+        <li>the <code>Element</code> type (an object: a kind, a box, its own settings), and <code>Frame.elements</code>;</li>
+        <li>the speech bubble's settings, <code>BubbleProps</code>: shape, tail and whether it shows, text, text size, font, text colour, fill, outline and outline colour; <code>bubbleProps</code> reads what's stored defensively, with defaults;</li>
+        <li><code>BUBBLE_FONTS</code>: Nunito (the app's, self-hosted) in two weights, and Comic, Classic and Typewriter from fonts most computers have, each with a generic fallback;</li>
+        <li>the box maths: <code>moveBox</code>, <code>resizeBox</code> (from a corner, also when turned), <code>rotateBox</code>, <code>boxCorners</code>, <code>boxAt</code> (where a drop lands), and <code>pointInBox</code> / <code>boxPoint</code> (the tail, in the box's own terms and back);</li>
+        <li><code>cloneElements</code> and <code>sameElements</code>. <code>createFrame</code> and <code>cloneFrame</code> handle <code>elements</code>: a copied picture's objects are its own.</li>
+      </ul>
+    </li>
+    <li><strong>One command</strong>, <code>setElements(projectId, frameId, from, to, label)</code> in <code>core/commands</code>, for any change to a picture's objects.</li>
+    <li><strong>Old frames:</strong> frames saved before this step read as having no objects, through a Dexie reading hook in <code>db.ts</code>; no migration.</li>
+    <li><strong>Drawing</strong>, in <code>src/core/render/</code>:
+      <ul>
+        <li><code>text.ts</code>: <code>wrapText</code> (canvas text doesn't wrap) and <code>fitText</code> (the largest size that fits, down to a readable minimum);</li>
+        <li><code>bubble.ts</code>: speech, thought and spiked bubbles, with or without their tail, in their colours, outline and font;</li>
+        <li><code>elements.ts</code>: a plain map from kind to drawing function. <code>renderAt</code> draws a picture's objects on top of it, so the stage, playback and export match.</li>
+        <li><code>drawOnionSkin</code> includes a ghost picture's objects, drawn whole on a scratch canvas (<code>scratch.ts</code>, shared with the brightness fallback), then laid down faintly in one go;</li>
+        <li><code>transformCss</code>: a picture's move, size, turn and flip as a CSS transform, for the thumbnails.</li>
+      </ul>
+    </li>
+    <li><strong>The store:</strong> an elements preview (a fourth entry in the shared preview table) and <code>selectedElement</code>. <code>useShownFrames</code> includes the preview.</li>
+    <li><strong>The Objects tab</strong>, <code>src/features/objects/</code>:
+      <ul>
+        <li><code>ObjectsPanel</code>: the icons, then the picked object's settings card, placed by kind;</li>
+        <li><code>ObjectTile</code>: an icon dragged onto the stage with pointer events (a finger works too), an icon following the pointer and the stage lit up while it's over it;</li>
+        <li><code>BubbleSettings</code>: a bubble's settings;</li>
+        <li><code>ObjectEditor</code>: the stage layer, the same box editing for every kind;</li>
+        <li><code>objectFrame</code>: the picture being edited, and the shared show-then-save.</li>
+      </ul>
+      <code>Studio.tsx</code> places the tab and its stage layer directly, like the others. <code>useStudioCommands</code> gains <code>setObjects</code>.
+    </li>
+    <li><strong>Thumbnails</strong>, <code>src/studio/timeline/Thumb.tsx</code>: the photo fitted like the stage fits it, moved with <code>transformCss</code>, brightness and contrast on the photo only, and the objects drawn on a small canvas on top. The timeline uses changes not saved yet, so a thumbnail follows a drag or typing as it happens. The thumbnail sits inside the picture's dotted outline. A mark on thumbnails of pictures with objects.</li>
+    <li>The canvas draws again once web fonts have loaded (<code>useCanvasDraw</code>), so text never keeps a fallback font.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>Objects belong to their picture.</strong> They live on the frame, so reordering, duplicating and deleting a picture take its objects along with no extra code. The box is in fractions of the frame, and isn't moved by the picture's own position or size.</li>
+    <li><strong>Settings in the tab, placement on the stage.</strong> What an object <em>is</em> (shape, text, colours) is chosen in the tab, per kind. Where it is, how big and how it's turned is done by hand on the stage, the same for every kind, with no number fields.</li>
+    <li><strong>Drag and drop to add</strong>, with pointer events rather than HTML drag and drop, so it works on a tablet. A click still adds, so the keyboard can too.</li>
+    <li><strong>One command, the whole list.</strong> <code>setElements</code> saves a picture's objects from what they were to what they become, so adding, typing, moving, restyling and deleting are each one undo step. A run of typing or nudges is one step (<code>saveSoon</code>).</li>
+    <li><strong>Typing in the tab.</strong> The text box is a normal <code>&lt;textarea&gt;</code> in the settings card, so typing, selecting and the on-screen keyboard work as usual; the bubble on the picture follows as it's typed.</li>
+    <li><strong>Readable at GIF size.</strong> The text size is the largest the text gets; it shrinks to fit the bubble, but never below 3.5% of the frame's height, so a 360 px tall GIF still gets 13 px text.</li>
+    <li><strong>Old bubbles look as before.</strong> Settings added later are read with defaults: a tail, a medium dark outline, white, Nunito.</li>
+    <li><strong>Kinds are a plain map</strong> (<code>elements.ts</code>), not a registry. A new kind adds a drawing function there, a tile and a settings component in the tab. An unknown kind is skipped, never an error.</li>
+    <li><strong>Thumbnails use CSS, not the renderer.</strong> The small saved photo, moved with a CSS transform (tested to land where the renderer puts it), with only the objects drawn: cheap for hundreds of pictures. Only a thumbnail whose objects changed redraws.</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Enter is Play's shortcut.</strong> It used to start playback even when a stage editing layer had the keyboard. <code>ownsKey</code> (<code>keyboard.ts</code>) now leaves Space and Enter to anything with <code>role="application"</code>, which both stage editing layers have.</li>
+    <li><strong>See-through is drawn over the stage</strong>, objects included, so with see-through on they look tinted by the previous picture. That's how see-through already worked.</li>
+    <li><strong>Fonts:</strong> Nunito is self-hosted from <code>public/fonts/nunito/</code> (<code>src/styles/_fonts.scss</code>), with the files our own build had downloaded, so there are no requests to Google. The SIL Open Font License text still needs adding there as <code>OFL.txt</code> before the app is published. Comic, Classic and Typewriter use fonts already on the computer, so they can look a little different where those are missing.</li>
+    <li><strong>Arrow keys:</strong> with the keyboard on the stage layer, they nudge the picked object, not the timeline's selection.</li>
+    <li><strong>Thumbnails:</strong> text is too small to read there, and the saved thumbnail photo is low resolution, so a heavily zoomed picture looks blurry in it.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li>Drag a bubble onto picture 3, type, then move picture 3 to the start (Ctrl+←): the bubble goes with it, and its thumbnail shows it. Duplicate it: the copy has one too.</li>
+    <li>Make it spiked, without a tail, with a thick blue outline; undo once: only the outline colour goes back.</li>
+    <li>Turn see-through on and pick picture 4: picture 3's bubble shows faintly.</li>
+    <li>Reload: everything is still there.</li>
+  </ul>
+  <div class="note">Checked while building:
+    <ul>
+      <li>293 unit tests and 21 pixel tests pass; typecheck and lint are clean.</li>
+      <li>End-to-end, against the dev server: the objects, picture, stage, timeline, frames, reorder and resize specs pass. The other specs and the full suite weren't run.</li>
+      <li>Screenshots of the tab, a drag onto the picture, a spiked bubble in the Comic font, and thumbnails of a moved picture with a bubble.</li>
+    </ul>
+  </div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/model/element.ts</code>, <code>element.test.ts</code>, <code>types.ts</code>, <code>project.ts</code>, <code>project.test.ts</code>, <code>repository.ts</code>, <code>index.ts</code>; <code>src/core/commands/frameCommands.ts</code>; <code>src/core/render/text.ts</code>, <code>text.test.ts</code>, <code>bubble.ts</code>, <code>elements.ts</code>, <code>scratch.ts</code>, <code>adjust.ts</code>, <code>renderer.ts</code>, <code>renderer.test.ts</code>, <code>renderer.browser.test.ts</code>, <code>index.ts</code>; <code>src/adapters/storage/db.ts</code>, <code>dexieRepository.test.ts</code>, <code>frameCommands.test.ts</code>; <code>src/store/editorStore.ts</code>, <code>editorStore.test.ts</code>, <code>useEditor.ts</code>; <code>src/features/objects/</code> (<code>ObjectsPanel.tsx</code>, <code>ObjectTile.tsx</code>, <code>BubbleSettings.tsx</code>, <code>ObjectEditor.tsx</code>, <code>objectFrame.ts</code>, <code>_objects.scss</code>), <code>src/features/README.md</code>; <code>src/studio/Studio.tsx</code>, <code>StagePicture.tsx</code>, <code>media.ts</code>, <code>useCanvasDraw.ts</code>, <code>useStudioCommands.ts</code>, <code>keyboard.ts</code>, <code>timeline/Thumb.tsx</code>, <code>timeline/TimelineFrame.tsx</code>, <code>timeline/Timeline.tsx</code>, <code>timeline/_frame.scss</code>, <code>timeline/_timeline.scss</code>; <code>src/app/layout.tsx</code>, <code>src/styles/_fonts.scss</code>, <code>globals.scss</code>, <code>public/fonts/nunito/</code>; <code>e2e/objects.spec.ts</code>, <code>picture.spec.ts</code>, <code>timeline.spec.ts</code>, <code>frames.spec.ts</code>, <code>fixtures.ts</code>; <code>CLAUDE.md</code> (the spec map), <code>PLAN.md</code>; <code>public/steps/23-speech-bubbles.html</code>, <code>index.html</code>, <code>22-plugin-registry.html</code> (next link); <code>ROADMAP.md</code>.</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit (293 in total):
+      <ul>
+        <li>16 for the element model: new bubbles, settings read defensively (and old bubbles), the box maths, <code>boxAt</code>, <code>boxPoint</code> undoing <code>pointInBox</code>, cloning;</li>
+        <li>8 for wrapping and fitting text;</li>
+        <li>3 for <code>transformCss</code>, one checking the photo's corners land where <code>frameMatrix</code> puts them;</li>
+        <li>2 for <code>setElements</code>; 1 for frames saved before objects; 2 for the store.</li>
+      </ul>
+    </li>
+    <li>Pixel, 8:
+      <ul>
+        <li>a bubble with text; fill and text colour; no tail; the outline's colour, thickness or none;</li>
+        <li>the thought bubble's oval; the spiked burst;</li>
+        <li><code>renderAt</code> drawing objects on top; a see-through ghost including its bubble, as faint as its picture.</li>
+      </ul>
+    </li>
+    <li>End-to-end, 6 in <code>objects.spec.ts</code>:
+      <ul>
+        <li>typing in the tab, drawn, saved, and back to the text with Enter;</li>
+        <li>dragging onto the picture (and dropping elsewhere);</li>
+        <li>the thumbnail showing the bubble and following a drag;</li>
+        <li>move, size and delete, each one undo;</li>
+        <li>staying with a reordered picture, and copied with a duplicate;</li>
+        <li>shape, tail, outline, text size, font and colours, each one undo.</li>
+      </ul>
+    </li>
+  </ul>
+  <p><strong>Tests changed:</strong></p>
+  <ul>
+    <li>the <code>cloneFrame</code> test's source picture now has a bubble, and checks the copy's is its own;</li>
+    <li>the Picture tab spec also checks the thumbnail follows size, turn, flip and reset;</li>
+    <li>the thumbnail helpers in <code>fixtures.ts</code>, and the brightness, frames and timeline checks, look at the photo inside the thumbnail, where it now is.</li>
+  </ul>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>objects move, get copied and get deleted with their picture</li>
+    <li>every change to an object is one undo step; a run of typing is one</li>
+    <li>a drag onto the picture lands where it's dropped; a drop elsewhere adds nothing</li>
+    <li>settings are in the tab, placement only on the stage</li>
+    <li>text stays readable at small sizes (3.5% of the frame's height at least)</li>
+    <li>bubbles from before the settings look as they did</li>
+    <li>thumbnails and see-through show objects; thumbnails follow changes as they happen</li>
+    <li><code>npm test</code>, <code>npm run test:browser</code>, <code>npm run lint</code>, <code>npm run typecheck</code> and the relevant specs pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="22-plugin-registry.html">Previous: 22 · Feature folders</a>
+    <span>Next: 24 · Overlay layer: text and shapes in time</span>
+  </nav>
+</main>
+</body>
+</html>

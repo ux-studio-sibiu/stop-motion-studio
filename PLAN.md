@@ -25,12 +25,12 @@ plan keeps its shape and changes what is listed under "What changed from the ori
 | Frame order | A `frameIds: string[]` list on the project record, not an `order` number on each frame | Reorder/insert/delete changes one record instead of renumbering N frames, and undo is a single swap |
 | Timeline | **Time-scaled**: each picture's width is its duration. Drag its right edge to make it longer or shorter (snaps to whole ticks), drag the body to reorder. A faint seconds ruler sits above the strip | Duration is something kids can see and grab, instead of a number in a panel |
 | Time unit | **Ticks** (`1/fps`) for everything on the timeline: picture `hold`, overlay `start` / `length` | One unit keeps the two layers lined up when the speed changes; the ruler converts ticks to seconds for display |
-| Things on top of pictures | **Elements** (speech bubbles, text, shapes, stickers): one shape of data, two homes. On a frame they belong to that picture and move with it; on the overlay layer they live in time, spanning any number of pictures | The same drawing, editing and registry code serves both |
+| Things on top of pictures | **Elements** (speech bubbles, text, shapes, stickers): one shape of data, two homes. On a frame they belong to that picture and move with it; on the overlay layer they live in time, spanning any number of pictures | The same drawing and editing code serves both |
 | Moving pictures | **Fast by hand, precise by keyboard**: drag, wheel/pinch and a rotate handle on the stage; arrow nudges of 1 project px (Shift: 10) and number fields. For lining up: see-through (the picture before) with a "spot the difference" look, snap guides while dragging, and a view zoom (Ctrl + wheel or pinch, Space-drag to pan) | Bumped cameras and sets are the normal case in stop-motion; realigning has to be quick |
 | Two zooms | **View zoom** (look closer, UI state, not saved) is separate from **picture scale** (part of the frame, exported) | Zooming in to check alignment must never change the animation |
 | Duplicates | **A duplicate is visually identical to its source**: same image, copies of `hold`, `transform`, `adjust` and `elements`; only ids are new. One `cloneFrame()` in `core/` does it, with a test that fails when a new `Frame` field isn't copied | Duplicating is how kids make pauses and variations; a copy that jumps or loses its bubble breaks trust |
-| Undo/redo | **Command pattern from day one**: every change to a project is a command with `do()` / `undo()` | Retrofitting undo is painful. Commands are also the one safe way plugins change a project |
-| Extension | **Feature folders, composed directly**: each feature's code lives in `src/features/<name>/`, and `Studio.tsx` imports its components and places them in its JSX. Plain arrays only where there are many items of one kind shown alike: element kinds (step 23), exporters (step 25). *Changed in step 22: a plugin registry was built, then removed.* | Moving a piece of UI is moving its line, which matters while the UX is still being tried out. A registry decides placement for the features, so each experiment needed a new slot. Nothing is ever loaded from outside: this is a kids' app |
+| Undo/redo | **Command pattern from day one**: every change to a project is a command with `do()` / `undo()` | Retrofitting undo is painful. Commands are also the one safe way features change a project |
+| Extension | **Feature folders, composed directly**: each feature's code lives in `src/features/<name>/`, and `Studio.tsx` imports its components and places them in its JSX. Plain lists only where there are many items of one kind handled alike: element kinds (a map of drawing functions, step 23), exporters (step 25). *Changed in step 22: a plugin registry was built, then removed.* | Moving a piece of UI is moving its line, which matters while the UX is still being tried out. A registry decides placement for the features, so each experiment needed a new slot. Nothing is ever loaded from outside: this is a kids' app |
 | Rendering | Canvas 2D, one `renderAt(time)` shared by preview, onion skin and export: the picture, its elements, then the overlays active at that time | What you see is what you export |
 | Drag & drop | Plain pointer events for both reordering (`useReorder`) and resizing (`useResize`); no drag library. *Changed in step 14: the plan was `@dnd-kit/sortable`.* | dnd-kit's keyboard dragging needs each picture to take focus, but the timeline keeps focus on the list (`aria-activedescendant`), so Ctrl+arrows move pictures instead. Our own drag also fits the resize grip, group moves and the time-scaled widths without fighting a library, and adds no dependency. Touch: hold to pick up |
 | Remembered UI state | One registry, `src/studio/remembered.ts`: typed `definePreference(name, parse)` entries in `localStorage` (camera, camera off, open tab, loop, see-through, zoom, and per animation its view and selection), used through `useRememberedState` / `useRememberedStore`. *Added after step 18.* | A child finds the studio as they left it. One place to see and add what's remembered; every stored value is checked by its parser, because anything can be in storage. Remembered by default (repo `CLAUDE.md`); moment-to-moment state isn't |
@@ -137,7 +137,8 @@ type StoredThumb = { imageId: string; projectId: string; blob: Blob };   // ~160
 
 // Added in steps 23-24 (types sketched here so earlier steps leave room for them):
 
-// Something drawn on top of a picture. `kind` is registered in the plugin registry (step 22).
+// Something drawn on top of a picture (an "object" in the app). `kind` says how it's drawn: a plain
+// map from kind to drawing function (core/render/elements.ts).
 type Element = {
   id: string;
   kind: string;             // "speech-bubble", "text", "rect", "ellipse", "arrow", ...
@@ -175,28 +176,14 @@ type Overlay = {
 | Extension point | Shape | First users |
 |---|---|---|
 | Commands | `Command { label; do(ctx); undo(ctx) }` in `core/commands` | delete, duplicate, insert, reorder, resize, transform, adjust, element and overlay edits |
-| Features | A folder in `src/features/`, its components placed by hand in `Studio.tsx` | camera, picture, see-through |
-| Element kinds | An array of `{ id; label; icon; defaults; draw(ctx, props, box) }` (step 23) | speech bubble, text, rectangle, ellipse, arrow |
+| Features | A folder in `src/features/`, its components placed by hand in `Studio.tsx` | camera, picture, see-through, objects |
+| Element kinds | A map from kind to its drawing function (`core/render/elements.ts`), its defaults and settings reader in `core/model`, and its tile and settings component placed by hand in the Objects tab (step 23) | speech bubble; later text, rectangle, ellipse, arrow |
 | Exporters | An array of `{ id; label; isSupported(); run(…, onProgress) }` (step 25) | GIF, video, image sequence, project archive |
 | Storage | `ProjectRepository` in `core/model` | Dexie now, Supabase later |
 
 Features change a project only through the commands the studio passes them, so everything they do
 can be undone. Lists of data (element kinds, exporters) are the "dynamic data" exception in
 `COMPONENT_PATTERNS.md`; everything else composes content as JSX children.
-
----|---|---|
-| Commands | `Command { label; do(ctx); undo(ctx) }` | delete, duplicate, insert, reorder, resize, transform, adjust, element and overlay edits |
-| Element kinds | `ElementKindDef { id; label; icon; defaults; draw(ctx, props, box) }` (an editor comes with step 23) | speech bubble, text, rectangle, ellipse, arrow |
-| Exporters | `ExporterDef { id; label; icon; isSupported(); run({ project, frames, images }, onProgress) }` | GIF, video, image sequence, project archive |
-| Stage tools | `StageToolDef { id; panel; modes; zoomable?; Tool }`: an interactive layer, there while its panel's tab is open | moving a picture (with snapping and zoom), later drawing |
-| Stage layers | `StageLayerDef { id; modes; Layer }`: drawn over the picture or the camera *(added in step 22)* | see-through |
-| Controls | `ControlDef { id; Control }`: in the bar under the stage, after Play *(added in step 22)* | see-through's button and options |
-| Panels | `PanelDef { id; label; title?; icon; Panel }`: a side-panel tab | camera, picture (position and adjustments) |
-| Frame sources | `FrameSourceDef { id; label; icon; pick(): Promise<Blob[]> }` | photo import (the webcam stays in the studio: the stage needs its live video) |
-| Storage | `ProjectRepository` | Dexie now, Supabase later |
-
-Every registered thing has an `id` and an optional `order`, and gets the studio's `StudioApi` (`src/studio/plugins.ts`: commands, camera, capture, stage mode). The registry is the one place where the studio renders lists from data, the "dynamic data" exception in
-`COMPONENT_PATTERNS.md`. Everything else composes content as JSX children.
 
 ---
 

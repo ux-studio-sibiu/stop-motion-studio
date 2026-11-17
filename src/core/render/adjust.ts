@@ -1,5 +1,6 @@
 import type { Adjust } from "../model";
 import type { DrawableImage } from "./renderer";
+import { scratchCanvas } from "./scratch";
 
 // Brightness and contrast without ctx.filter (step 20). The renderer uses the canvas filter
 // where the browser has one (adjustFilter); older Safari doesn't, so there the picture is copied,
@@ -41,9 +42,9 @@ export function adjustedCopy(image: DrawableImage, adjust: Adjust): DrawableImag
   const key = `${adjust.brightness},${adjust.contrast}`;
   const kept = copies.get(image);
   if (kept?.key === key) return kept.canvas;
-  const canvas = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(image.width, image.height) : Object.assign(document.createElement("canvas"), { width: image.width, height: image.height });
-  const ctx = canvas.getContext("2d") as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+  const ctx = scratchCanvas(image.width, image.height);
   if (!ctx) return image;
+  const { canvas } = ctx;
   ctx.drawImage(image, 0, 0);
   const pixels = ctx.getImageData(0, 0, image.width, image.height);
   adjustPixels(pixels.data, adjust);

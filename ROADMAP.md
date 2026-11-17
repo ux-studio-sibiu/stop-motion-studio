@@ -421,6 +421,11 @@ neighbours. Step 18 is moving; step 19 is lining up.
   bubble readable at GIF size (minimum font size relative to frame height).
 - **Check:** add a bubble to picture 3, move picture 3 to the start, the bubble goes with it; export
   later shows it.
+- **Changed after the step:** bubbles became the first kind of *object*, in an **Objects** tab:
+  icons dragged onto the picture, and below them the picked object's settings (a bubble: shape
+  speech / thought / spiked, tail on or off, colour, outline and its colour, text, text size, font,
+  text colour); position, size and turn are set only on the stage. Text is typed in the tab
+  instead of over the canvas.
 
 ### 24 · Overlay layer: text and shapes in time
 - **Builds:** the `Overlay` type and an `overlays` table (Dexie version 2) *(core + adapter)*; a second
@@ -584,7 +589,7 @@ feature folder of its own.
 - [x] 20 Brightness and contrast
 - [x] 21 Storage safety
 - [x] 22 Plugin registry (became feature folders)
-- [ ] 23 Speech bubbles on pictures
+- [x] 23 Speech bubbles on pictures
 - [ ] 24 Overlay layer: text and shapes in time
 - [ ] 25 GIF export
 - [ ] 26 Video export

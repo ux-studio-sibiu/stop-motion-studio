@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Camera, ChevronLeft, Download, Image as ImageIcon, Redo2, Undo2 } from "lucide-react";
+import { Camera, ChevronLeft, Download, Image as ImageIcon, Redo2, Shapes, Undo2 } from "lucide-react";
 import { CameraPanel } from "@/features/camera/CameraPanel";
+import { ObjectEditor } from "@/features/objects/ObjectEditor";
+import { ObjectsPanel } from "@/features/objects/ObjectsPanel";
 import { OnionSkin } from "@/features/onion-skin/OnionSkin";
 import { SeeThroughMenu } from "@/features/onion-skin/SeeThroughMenu";
 import { AdjustControls } from "@/features/picture/AdjustControls";
@@ -108,6 +110,7 @@ export function Studio() {
                 <SafeZone />
                 {/* Each tab's tools on the stage, only while that tab is open. */}
                 {editing && <StageEditor save={commands.transformPictures} />}
+                {stageMode === "frame" && stageTool === "objects" && <ObjectEditor save={commands.setObjects} />}
               </StageView>
               <div className="stage-note"><CameraMessage camera={camera} more /></div>
             </>
@@ -122,6 +125,9 @@ export function Studio() {
         <PanelTab id="picture" label="Picture" title="Adjust your picture" icon={<ImageIcon size={31} />}>
           <PictureControls save={commands.transformPictures} />
           <AdjustControls save={commands.adjustPictures} />
+        </PanelTab>
+        <PanelTab id="objects" label="Objects" title="Things on the picture" icon={<Shapes size={31} />}>
+          <ObjectsPanel save={commands.setObjects} onStage={stageMode === "frame"} />
         </PanelTab>
       </SidePanel>
 

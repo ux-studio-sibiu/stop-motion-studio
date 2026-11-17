@@ -8,3 +8,4 @@ export * from "./selection";
 
 export * from "./transform";
 export * from "./snap";
+export * from "./element";

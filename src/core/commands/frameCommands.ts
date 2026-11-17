@@ -1,4 +1,4 @@
-import { clampAdjust, clampHold, cloneFrame, sameAdjust, sameOrder, sameTransform, type Adjust, type Frame, type Transform, type FrameInsert, type ProjectRepository, type RemovedFrame } from "../model";
+import { clampAdjust, clampHold, cloneElements, cloneFrame, sameAdjust, sameElements, sameOrder, sameTransform, type Adjust, type Element, type Frame, type Transform, type FrameInsert, type ProjectRepository, type RemovedFrame } from "../model";
 import type { Command } from "./command";
 
 // Takes pictures out of the animation. Undo puts them back exactly where they were (and
@@ -104,6 +104,18 @@ export function setAdjusts(projectId: string, changes: readonly { id: string; fr
     return {};
   };
   return { label: changes.length > 1 ? `${label} (${changes.length} pictures)` : label, do: write("to"), undo: write("from") };
+}
+
+// A picture's bubbles (step 23): adding, moving, resizing, turning, typing, deleting. One command
+// sets the frame's whole list, from what it was to what it becomes, so every edit (a whole drag,
+// all the typing in one go) is one undo step. The picture is selected, so the stage shows it.
+export function setElements(projectId: string, frameId: string, from: readonly Element[], to: readonly Element[], label: string): Command {
+  const write = (elements: readonly Element[]) => async (repository: ProjectRepository) => {
+    if (sameElements(from, to)) throw new Error("Nothing changed.");
+    await repository.updateFrames(projectId, [{ id: frameId, elements: cloneElements(elements) }]);
+    return { select: [frameId] };
+  };
+  return { label, do: write(to), undo: write(from) };
 }
 
 // Changes how long pictures last: one command for a whole drag or key press, however many

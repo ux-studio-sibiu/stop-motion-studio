@@ -187,13 +187,13 @@
     z-index: 50;
 
     .thumb {
-      display: block;
+      display: flex;
+      justify-content: center;
       width: 100%;
       height: 100%;
+      overflow: hidden;
       border-radius: inherit;
       background-color: var(--color-stage);
-      background-position: center;
-      background-size: cover;
     }
 
     .drag-count {

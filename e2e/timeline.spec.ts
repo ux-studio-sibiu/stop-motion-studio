@@ -124,7 +124,7 @@ test("a long picture shows its thumbnail once and a gap before the next, still o
   const thumb = await studio.widthOf(studio.thumb(1));
   expect(thumb).toBeGreaterThan(40);
   expect(thumb).toBeLessThan(250);   // once, not stretched or repeated along the picture
-  expect(await studio.thumb(1).evaluate((element) => getComputedStyle(element).backgroundRepeat)).not.toContain("repeat-x");
+  expect(await studio.thumbPhoto(1).evaluate((element) => getComputedStyle(element).backgroundRepeat)).toBe("no-repeat");
 
   // The next picture starts exactly at 2 s on the ruler, and its visible part 5 px after the first ends.
   const [secondSlot, firstPicture, twoSeconds] = await Promise.all([studio.picture(2).boundingBox(), studio.picture(1).locator(".picture").boundingBox(), page.locator(".ruler-label").nth(2).boundingBox()]);

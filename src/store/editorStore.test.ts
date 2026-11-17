@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createFrame, createProject, type Frame, type Project } from "@/core/model";
+import { createBubble, createFrame, createProject, withProps, type Frame, type Project } from "@/core/model";
 import { createEditorStore, MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, orderedFrames, withPreview, type EditorStore } from "@/store/editorStore";
 
 let store: EditorStore;
@@ -175,6 +175,25 @@ describe("stage view", () => {
     expect(store.getState().stageView).toEqual({ zoom: 2, x: 0.5, y: 0 });
     store.getState().loadProject(createProject(), []);
     expect(store.getState().stageView).toEqual({ zoom: 1, x: 0, y: 0 });
+  });
+});
+
+describe("objects (step 23)", () => {
+  beforeEach(() => store.getState().loadProject({ ...project, frameIds: [a.id, b.id] }, [a, b]));
+
+  it("previews a picture's bubbles until the saved ones match", () => {
+    const bubble = createBubble("speech", "Hi");
+    store.getState().previewElements({ [a.id]: [bubble] });
+    expect(withPreview(orderedFrames(store.getState()), "elements", store.getState().elementsPreview)[0].elements).toEqual([bubble]);
+    store.getState().syncProject({ ...project, frameIds: [a.id, b.id] }, [{ ...a, elements: [withProps(bubble, {})] }, b]);
+    expect(store.getState().elementsPreview).toEqual({});
+  });
+
+  it("remembers the picked object until another animation opens", () => {
+    store.getState().selectElement("y");
+    expect(store.getState().selectedElement).toBe("y");
+    store.getState().loadProject({ ...project, frameIds: [] }, []);
+    expect(store.getState().selectedElement).toBeNull();
   });
 });
 

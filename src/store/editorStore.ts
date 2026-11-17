@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { clampAdjust, clampHold, clampSafeMargin, safeMargin, sameAdjust, sameTransform, type Frame, type Project } from "@/core/model";
+import { clampAdjust, clampHold, clampSafeMargin, cloneElements, safeMargin, sameAdjust, sameElements, sameTransform, type Frame, type Project } from "@/core/model";
 import { clampView, FIT_VIEW, type StageView } from "@/core/render";
 
 // Live editor state (PLAN.md §1): what the studio is showing and doing right now.
@@ -43,7 +43,8 @@ export type UiSlice = {
   // yet), by frame id. Only the screen uses them (withPreview); the saved frames are unchanged
   // until the command runs. An entry goes once the saved frame has that value (syncProject) or is
   // cleared. One each for a picture's length (step 13), its position (step 18) and its brightness
-  // and contrast (step 20); PREVIEWS says how each is kept in range and compared.
+  // and contrast (step 20), and its bubbles (step 23); PREVIEWS says how each is kept in range and
+  // compared.
   holdPreview: Preview<"hold">;
   previewHolds: (holds: Preview<"hold">) => void;
   clearHoldPreview: (ids?: readonly string[]) => void;
@@ -53,6 +54,13 @@ export type UiSlice = {
   adjustPreview: Preview<"adjust">;
   previewAdjusts: (adjusts: Preview<"adjust">) => void;
   clearAdjustPreview: (ids?: readonly string[]) => void;
+  elementsPreview: Preview<"elements">;
+  previewElements: (elements: Preview<"elements">) => void;
+  clearElementsPreview: (ids?: readonly string[]) => void;
+  // Objects (step 23): the one picked on the stage (its id, on the picture shown); the Objects tab
+  // shows its settings.
+  selectedElement: string | null;
+  selectElement: (id: string | null) => void;
   // See-through: the picture(s) before the next shot drawn faintly over the live camera.
   onionSkin: OnionSkin;
   setOnionSkin: (changes: Partial<OnionSkin>) => void;
@@ -84,7 +92,7 @@ export type OnionSkin = { on: boolean; opacity: number; count: number; outline: 
 export type EditorState = ProjectSlice & SelectionSlice & PlaybackSlice & UiSlice;
 
 // The frame fields that can be previewed, and a preview of one: a value by frame id.
-export type PreviewField = "hold" | "transform" | "adjust";
+export type PreviewField = "hold" | "transform" | "adjust" | "elements";
 export type Preview<F extends PreviewField> = Readonly<Record<string, Frame[F]>>;
 
 // How each preview's values are kept in range, and when one is the same as the saved value.
@@ -92,6 +100,7 @@ const PREVIEWS: { [F in PreviewField]: { clean: (value: Frame[F]) => Frame[F]; s
   hold: { clean: clampHold, same: (a, b) => a === b },
   transform: { clean: (transform) => ({ ...transform }), same: sameTransform },
   adjust: { clean: clampAdjust, same: sameAdjust },
+  elements: { clean: cloneElements, same: sameElements },
 };
 
 export const MIN_TIMELINE_ZOOM = 40;
@@ -99,7 +108,7 @@ export const MAX_TIMELINE_ZOOM = 640;
 export const DEFAULT_TIMELINE_ZOOM = 160;   // a tick at the default 8 fps is 20 px wide
 export const DEFAULT_ONION_SKIN: OnionSkin = { on: true, opacity: 0.4, count: 1, outline: false, difference: false };
 
-const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0, holdPreview: {}, transformPreview: {}, adjustPreview: {}, stageView: FIT_VIEW } as const;
+const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0, holdPreview: {}, transformPreview: {}, adjustPreview: {}, elementsPreview: {}, selectedElement: null, stageView: FIT_VIEW } as const;
 
 // A factory, so every test (and, if ever needed, a second studio) gets its own store.
 export function createEditorStore() {
@@ -121,8 +130,9 @@ export function createEditorStore() {
       const holdPreview = unsaved("hold", state.holdPreview, next);
       const transformPreview = unsaved("transform", state.transformPreview, next);
       const adjustPreview = unsaved("adjust", state.adjustPreview, next);
+      const elementsPreview = unsaved("elements", state.elementsPreview, next);
       const safeMarginPreview = state.safeMarginPreview !== null && safeMargin(project) !== state.safeMarginPreview ? state.safeMarginPreview : null;
-      set({ project, frames: next, selection: state.selection.filter((id) => id in next), holdPreview, transformPreview, adjustPreview, safeMarginPreview });
+      set({ project, frames: next, selection: state.selection.filter((id) => id in next), holdPreview, transformPreview, adjustPreview, elementsPreview, safeMarginPreview });
     },
 
     unloadProject: () => set(EMPTY),
@@ -166,6 +176,9 @@ export function createEditorStore() {
     clearTransformPreview: (ids) => set({ transformPreview: without(get().transformPreview, ids) }),
     previewAdjusts: (adjusts) => set({ adjustPreview: added("adjust", get().adjustPreview, get().frames, adjusts) }),
     clearAdjustPreview: (ids) => set({ adjustPreview: without(get().adjustPreview, ids) }),
+    previewElements: (elements) => set({ elementsPreview: added("elements", get().elementsPreview, get().frames, elements) }),
+    clearElementsPreview: (ids) => set({ elementsPreview: without(get().elementsPreview, ids) }),
+    selectElement: (id) => set({ selectedElement: id }),
   }));
 }
 

@@ -1,5 +1,7 @@
 import { frameIndexAt, frameStarts, type Adjust, type Frame, type Transform } from "../model";
 import { adjustedCopy, canvasFilterWorks } from "./adjust";
+import { drawElements } from "./elements";
+import { scratchCanvas, type ScratchContext } from "./scratch";
 import { containSize } from "./fit";
 
 // The one renderer (PLAN.md §1): the stage, playback, onion skin and export all draw through
@@ -33,6 +35,9 @@ export function renderAt(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderin
   const image = images(frame.imageId);
   if (!image) return { frameIndex, missing: true };
   drawFrame(ctx, scene, frame, image);
+  // The picture's bubbles on top (step 23), in frame coordinates: the picture's own position and
+  // size don't move them.
+  drawElements(ctx, scene, frame.elements ?? []);
   return { frameIndex, missing: false };
 }
 
@@ -60,6 +65,9 @@ export function drawFrame(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderi
 // is drawn at `opacity`, older ones fainter (× 0.5 each). Returns the pictures that weren't
 // decoded yet (and so were left out), so the caller can decode them and draw again.
 // `outline` turns the ghosts into broad black-and-white shapes (outlineFilter).
+// A ghost includes its picture's objects (speech bubbles), so they can be lined up too: drawn
+// whole on a scratch canvas first, then laid down faintly in one go, so a bubble's overlapping
+// parts don't show through each other.
 // `difference` ("spot the difference", step 19) draws only the nearest picture, at full strength:
 // the canvas is shown with CSS `mix-blend-mode: difference` over the camera or the picture, so
 // what lines up goes black and what doesn't glows. Only a looking aid: export never draws it.
@@ -79,10 +87,34 @@ export function drawOnionSkin(ctx: CanvasRenderingContext2D | OffscreenCanvasRen
     if (!image) { missing.push(frame.imageId); continue; }
     ctx.save();
     ctx.globalAlpha = onionOpacity(shown.opacity, back);
-    drawFrame(ctx, scene, frame, image, shown.style);
+    const layer = frame.elements?.length ? ghostLayer(scene) : null;
+    if (layer) {
+      drawFrame(layer, scene, frame, image, shown.style);
+      layer.save();
+      if (shown.style !== "none" && canvasFilterWorks(layer)) layer.filter = shown.style;
+      drawElements(layer, scene, frame.elements);
+      layer.restore();
+      ctx.drawImage(layer.canvas, 0, 0);
+    } else {
+      drawFrame(ctx, scene, frame, image, shown.style);
+    }
     ctx.restore();
   }
   return missing;
+}
+
+// The scratch canvas a ghost with objects is drawn on, cleared, at the scene's size. One, kept.
+let ghost: ScratchContext | null = null;
+function ghostLayer(size: { width: number; height: number }): ScratchContext | null {
+  if (!ghost || ghost.canvas.width !== size.width || ghost.canvas.height !== size.height) {
+    ghost = scratchCanvas(size.width, size.height);
+    if (!ghost) return null;
+  }
+  ghost.save();
+  ghost.setTransform(1, 0, 0, 1, 0, 0);
+  ghost.clearRect(0, 0, size.width, size.height);
+  ghost.restore();
+  return ghost;
 }
 
 // A picture's four corners on the canvas (top-left, top-right, bottom-right, bottom-left), for its
@@ -136,6 +168,18 @@ export function frameMatrix(transform: Transform, size: { width: number; height:
   const e = cx - a * (size.width / 2) - c * (size.height / 2);
   const f = cy - b * (size.width / 2) - d * (size.height / 2);
   return [a, b, c, d, e, f];
+}
+
+// The same placement as frameMatrix, as a CSS transform for an element the size of the frame
+// with the photo fitted inside it (background-size: contain) and the default transform-origin
+// (its centre): the timeline thumbnails, so they show a picture moved, sized, turned or flipped as
+// the stage does. Percentages of the element are fractions of the frame, so it works at any size.
+// "none" for a picture that wasn't changed.
+export function transformCss(transform: Transform): string {
+  const { x, y, scale, rotation, flipX, flipY } = transform;
+  if (x === 0 && y === 0 && scale === 1 && rotation === 0 && !flipX && !flipY) return "none";
+  const n = (value: number) => Math.round(value * 1e4) / 1e4;
+  return `translate(${n(x * 100)}%, ${n(y * 100)}%) rotate(${n(rotation)}deg) scale(${n(scale * (flipX ? -1 : 1))}, ${n(scale * (flipY ? -1 : 1))})`;
 }
 
 // Where the matrix sends a point of the picture (for tests and hit-testing, step 18).

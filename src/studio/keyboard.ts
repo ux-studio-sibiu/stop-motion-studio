@@ -11,9 +11,10 @@ export function isTextEntry(target: EventTarget | null): boolean {
 }
 
 // Anything that already does something with Space or Enter: a text field, or a button, link,
-// menu or other input (Space presses a button, Enter follows a link). Capture (Space) and
-// play (Enter) leave those keys to it.
+// menu or other input (Space presses a button, Enter follows a link), or a widget that handles its
+// own keys (role="application": the stage's editing layers, where Enter starts typing in a
+// bubble, step 23). Capture (Space) and play (Enter) leave those keys to it.
 export function ownsKey(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  return isTextEntry(target) || ["INPUT", "SELECT", "BUTTON", "A", "SUMMARY"].includes(target.tagName);
+  return isTextEntry(target) || ["INPUT", "SELECT", "BUTTON", "A", "SUMMARY"].includes(target.tagName) || target.getAttribute("role") === "application";
 }

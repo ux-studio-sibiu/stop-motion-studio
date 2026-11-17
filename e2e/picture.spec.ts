@@ -76,19 +76,23 @@ test("the round handle turns the picture", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Undo" })).toHaveAttribute("title", "Undo: Turn picture");
 });
 
-test("the Picture tab sets exact numbers, flips and resets", async ({ page }) => {
+test("the Picture tab sets exact numbers, flips and resets; the thumbnail follows", async ({ studio, page }) => {
   await field(page, "Size").fill("150");
   await field(page, "Turn").fill("-30");
   await expect(field(page, "Size")).toHaveValue("150");
   const flip = page.getByRole("button", { name: "Flip left to right" });
   await flip.click();
   await expect(flip).toHaveAttribute("aria-pressed", "true");
+  // The thumbnail shows the picture sized, turned and flipped, as the stage does.
+  const thumb = studio.thumbPhoto(1);
+  await expect.poll(() => thumb.evaluate((element) => element.style.transform)).toContain("rotate(-30deg) scale(-1.5, 1.5)");
 
   await page.getByRole("button", { name: "Reset position" }).click();
   await expect(field(page, "Size")).toHaveValue("100");
   await expect(field(page, "Turn")).toHaveValue("0");
   await expect(flip).toHaveAttribute("aria-pressed", "false");
   await expect(page.getByRole("button", { name: "Undo" })).toHaveAttribute("title", "Undo: Reset picture");
+  await expect.poll(() => thumb.evaluate((element) => element.style.transform)).toBe("");
 });
 
 test("with two pictures selected, they move together", async ({ studio, page }) => {
@@ -181,7 +185,7 @@ test("brightness shows on the stage and the thumbnail; a run of arrow presses is
   await expect(page.getByRole("button", { name: "Undo" })).toHaveAttribute("title", "Undo: Change brightness");
   const after = await stageColour(page);
   expect(after.reduce((a, b) => a + b)).toBeGreaterThan(before.reduce((a, b) => a + b));   // brighter
-  await expect(studio.picture(1).locator(".thumb")).toHaveCSS("filter", "brightness(1.2)");
+  await expect(studio.thumbPhoto(1)).toHaveCSS("filter", "brightness(1.2)");
 
   await page.getByRole("button", { name: "Undo" }).click();   // the four presses, in one step
   await expect(page.getByText("Brightness: 100%")).toBeVisible();

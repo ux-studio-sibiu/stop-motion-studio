@@ -29,3 +29,4 @@ export async function loadMissingThumbs(repository: ProjectRepository, projectId
     if (blob) thumbs.put(imageId, blob);
   }));
 }
+

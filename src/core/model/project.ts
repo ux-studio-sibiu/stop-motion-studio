@@ -1,4 +1,5 @@
 import { newId } from "./ids";
+import { cloneElements, type Element } from "./element";
 import type { Adjust, Frame, Project, Transform } from "./types";
 
 // Bump when the stored shape changes, together with a Dexie migration (step 06+)
@@ -47,9 +48,9 @@ export function createProject({ name = DEFAULT_NAME, width = DEFAULT_WIDTH, heig
   };
 }
 
-type FrameOptions = { hold?: number; transform?: Partial<Transform>; adjust?: Partial<Adjust> };
+type FrameOptions = { hold?: number; transform?: Partial<Transform>; adjust?: Partial<Adjust>; elements?: Element[] };
 
-export function createFrame(projectId: string, imageId: string, { hold = 1, transform, adjust }: FrameOptions = {}): Frame {
+export function createFrame(projectId: string, imageId: string, { hold = 1, transform, adjust, elements = [] }: FrameOptions = {}): Frame {
   return {
     id: newId(),
     projectId,
@@ -57,15 +58,16 @@ export function createFrame(projectId: string, imageId: string, { hold = 1, tran
     hold: clampHold(hold),
     transform: { ...DEFAULT_TRANSFORM, ...transform },
     adjust: { ...DEFAULT_ADJUST, ...adjust },
+    elements: cloneElements(elements),
   };
 }
 
-// An exact copy with a new id: same picture (shared, not copied), same length, position and
-// brightness. Nested objects are copied, never shared, so moving the copy can't move the
+// An exact copy with a new id: same picture (shared, not copied), same length, position,
+// brightness and bubbles. Nested objects are copied, never shared, so moving the copy can't move the
 // source. Every field added to Frame must be handled here; a test fails if a nested object
 // is shared or a field goes missing.
 export function cloneFrame(frame: Frame): Frame {
-  return { ...frame, id: newId(), transform: { ...frame.transform }, adjust: { ...frame.adjust } };
+  return { ...frame, id: newId(), transform: { ...frame.transform }, adjust: { ...frame.adjust }, elements: cloneElements(frame.elements) };
 }
 
 // The safe zone's width: 0 (the whole picture is filmed) to 60 project px, whole pixels.

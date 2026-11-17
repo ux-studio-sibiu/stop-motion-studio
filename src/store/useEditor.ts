@@ -25,11 +25,12 @@ export function useOrderedFrames() {
   return useEditorShallow(orderedFrames);
 }
 
-// The frames in order as they should be drawn now: with any move (step 18) or brightness and
-// contrast change (step 20) that isn't saved yet. For everything that draws pictures.
+// The frames in order as they should be drawn now: with any move (step 18), brightness and
+// contrast change (step 20) or bubble edit (step 23) that isn't saved yet. For everything that draws pictures.
 export function useShownFrames() {
   const saved = useOrderedFrames();
   const transforms = useEditor((state) => state.transformPreview);
   const adjusts = useEditor((state) => state.adjustPreview);
-  return useMemo(() => withPreview(withPreview(saved, "transform", transforms), "adjust", adjusts), [saved, transforms, adjusts]);
+  const elements = useEditor((state) => state.elementsPreview);
+  return useMemo(() => withPreview(withPreview(withPreview(saved, "transform", transforms), "adjust", adjusts), "elements", elements), [saved, transforms, adjusts, elements]);
 }

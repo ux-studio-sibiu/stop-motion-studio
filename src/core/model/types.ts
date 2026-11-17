@@ -1,3 +1,5 @@
+import type { Element } from "./element";
+
 // The animation data model (PLAN.md §3). Plain data: no classes, no methods, so it
 // stores in IndexedDB, serialises to an archive and diffs for undo without conversion.
 
@@ -40,6 +42,7 @@ export type Frame = {
   hold: number;            // whole ticks on screen, >= 1
   transform: Transform;
   adjust: Adjust;
+  elements: Element[];     // speech bubbles and the like, on this picture only (step 23)
 };
 
 export type StoredImage = {

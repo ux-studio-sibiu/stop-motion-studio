@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampAdjust, clampSafeMargin, cleanName, sameAdjust, cloneFrame, safeMargin, createFrame, createProject, DEFAULT_ADJUST, DEFAULT_NAME, MAX_NAME_LENGTH, DEFAULT_TRANSFORM, MAX_HEIGHT, MAX_WIDTH, SCHEMA_VERSION, type Frame } from "@/core/model";
+import { createBubble, clampAdjust, clampSafeMargin, cleanName, sameAdjust, cloneFrame, safeMargin, createFrame, createProject, DEFAULT_ADJUST, DEFAULT_NAME, MAX_NAME_LENGTH, DEFAULT_TRANSFORM, MAX_HEIGHT, MAX_WIDTH, SCHEMA_VERSION, type Frame } from "@/core/model";
 
 describe("createProject", () => {
   it("uses the defaults", () => {
@@ -74,7 +74,7 @@ describe("createFrame", () => {
 });
 
 describe("cloneFrame", () => {
-  const source = createFrame("p1", "img-1", { hold: 3, transform: { x: 0.1, scale: 1.4, rotation: 12, flipX: true }, adjust: { brightness: 1.3 } });
+  const source = createFrame("p1", "img-1", { hold: 3, transform: { x: 0.1, scale: 1.4, rotation: 12, flipX: true }, adjust: { brightness: 1.3 }, elements: [createBubble("speech", "Hi")] });
 
   it("copies every field except the id", () => {
     const copy = cloneFrame(source);
@@ -93,6 +93,7 @@ describe("cloneFrame", () => {
     }
     copy.transform.x = 0.9;
     expect(source.transform.x).toBe(0.1);
+    expect(copy.elements[0].props).not.toBe(source.elements[0].props);   // a copied bubble's text is its own
   });
 });
 

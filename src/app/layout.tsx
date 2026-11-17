@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import { Nunito } from "next/font/google";
 import "@/styles/globals.scss";
 
-// Rounded, very legible at large sizes. next/font self-hosts it, so no request to Google at runtime.
-const nunito = Nunito({ subsets: ["latin"], variable: "--font-ui" });
+// The app's font, Nunito, is self-hosted from public/fonts/nunito/ (src/styles/_fonts.scss): no
+// request to Google at runtime, while building or while developing.
 
 export const metadata: Metadata = {
   title: "Stop-motion Studio",
@@ -12,7 +11,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={nunito.variable}>
+    <html lang="en">
+      <head>
+        {/* The font almost every page needs, fetched straight away instead of once the CSS asks for it. */}
+        <link rel="preload" href="/fonts/nunito/nunito-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
+      </head>
       <body>{children}</body>
     </html>
   );

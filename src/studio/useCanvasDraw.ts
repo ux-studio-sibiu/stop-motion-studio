@@ -18,6 +18,9 @@ export function useCanvasDraw(canvas: RefObject<HTMLCanvasElement | null>, draw:
       if (missing.length) void Promise.all(missing.map((id) => bitmaps.load(id))).then((decoded) => { if (decoded.some(Boolean)) run(); });
     };
     run();
+    // Text on the canvas (speech bubbles) needs its web font: draw again once it has loaded, or the first
+    // drawing would keep the fallback font.
+    void document.fonts?.ready.then(run);
     return () => { stopped = true; };
   }, [canvas, draw]);
 }

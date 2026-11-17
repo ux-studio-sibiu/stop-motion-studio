@@ -1,9 +1,11 @@
 @use "breakpoints" as *;
 @use "controls";
+@use "fonts";
 
 // Design tokens. Light is the default on :root, dark redefines the same names,
 // so no colour exists only inside a media query.
 :root {
+  --font-ui: "Nunito", "Nunito Fallback";   // self-hosted (_fonts.scss)
   --color-bg: #fbf7f0;
   --color-surface: #ffffff;
   --color-ink: #1f2433;

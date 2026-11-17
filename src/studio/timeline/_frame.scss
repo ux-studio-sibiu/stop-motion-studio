@@ -2,11 +2,34 @@
 
 // One picture on the timeline: its slot, thumbnail, selection, grip, length bubble and number.
 .nsc-studio {
+  // Inside any thumbnail (Thumb.tsx; also the reorder ghost): a frame-shaped view, so the photo's
+  // move and the objects line up as on the stage.
+  .thumb {
+    .view {
+      position: relative;
+      flex: none;
+      height: 100%;
+      aspect-ratio: var(--thumb-ratio, 16 / 9);
+    }
+
+    // The photo fitted inside the frame like the stage fits it (contain), then moved (transformCss).
+    .photo {
+      position: absolute;
+      inset: 0;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: contain;
+    }
+
+    .objects { position: absolute; inset: 0; width: 100%; height: 100%; }
+  }
+
   // The slot is exactly as wide as the picture lasts. The picture inside stops 5 px early, so
   // there's a gap after every picture without pushing the next one off its time on the ruler.
   .frame {
     --frame-gap: 5px;
     --frame-radius: 6px;
+    --thumb-inset: 4px;   // between the dotted outline and the thumbnail
 
     position: relative;
     flex: none;
@@ -22,13 +45,14 @@
     .picture {
       position: absolute;
       inset: 0 var(--frame-gap) 0 0;
+      box-sizing: border-box;
       min-width: 2px;   // a very narrow picture still shows as a sliver
+      padding: var(--thumb-inset);   // the thumbnail sits inside the dotted line, never over it
       border-radius: var(--frame-radius);
-      overflow: hidden;   // rounds the thumbnail's corners only where it meets the picture's edge
+      overflow: hidden;
       background: color-mix(in srgb, var(--color-line) 55%, var(--color-surface));   // the time after the thumbnail
 
-      // The picture's time after the thumbnail ends: a dotted outline (hidden under the
-      // thumbnail where that covers it).
+      // The picture's whole time: a dotted outline, around the thumbnail too.
       &::before {
         content: "";
         position: absolute;
@@ -39,16 +63,17 @@
     }
 
     // The thumbnail, once: as wide as the project's shape allows at this height, never wider
-    // than the picture (then cover-cropped to its middle).
+    // than the picture (then showing its middle).
     .thumb {
       position: relative;
-      display: block;
+      display: flex;
+      justify-content: center;
       height: 100%;
       max-width: 100%;
-      aspect-ratio: var(--thumb-ratio, 16 / 9);   // square corners: the picture's rounded clip does the rounding
+      overflow: hidden;   // what's moved off the frame, and a narrow picture's sides
+      aspect-ratio: var(--thumb-ratio, 16 / 9);
+      border-radius: calc(var(--frame-radius) - var(--thumb-inset) / 2);
       background-color: var(--color-stage);
-      background-position: center;
-      background-size: cover;
     }
 
     // The selection ring goes over the thumbnail and the dotted part alike.
@@ -124,6 +149,22 @@
       z-index: 2;
       pointer-events: none;
     }
+  }
+
+  // A picture with a speech bubble (step 23): a small mark in the top-right corner.
+  .badge {
+    position: absolute;
+    top: var(--space-1);
+    right: var(--space-1);
+    display: grid;
+    place-items: center;
+    width: 1.125rem;
+    height: 1.125rem;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--color-ink);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.25);
+    pointer-events: none;
   }
 
   .frame-number {

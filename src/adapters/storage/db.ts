@@ -23,6 +23,9 @@ export function openStudioDb(name = DB_NAME): StudioDb {
     images: "id, projectId",
     thumbs: "imageId, projectId",
   });
+  // Frames saved before speech bubbles (step 23) have no `elements`: they read as having none,
+  // so no migration is needed.
+  db.frames.hook("reading", (frame) => (Array.isArray(frame.elements) ? frame : { ...frame, elements: [] }));
   return db;
 }
 

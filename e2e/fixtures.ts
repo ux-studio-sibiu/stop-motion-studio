@@ -163,12 +163,15 @@ export class Studio {
     return (await locator.boundingBox())?.width ?? 0;
   }
 
-  // The element showing a picture's thumbnail (once, as a background image).
+  // A picture's thumbnail (once), and inside it the photo (a background image, moved like the
+  // picture) and, when it has any, its objects (a canvas).
   readonly thumb = (number: number) => this.picture(number).locator(".thumb");
+  readonly thumbPhoto = (number: number) => this.thumb(number).locator(".photo");
+  readonly thumbObjects = (number: number) => this.thumb(number).locator("canvas.objects");
 
-  // Resolves when the picture's thumbnail (a background image) is a real, loaded JPEG.
+  // Resolves when the picture's thumbnail photo is a real, loaded JPEG.
   async thumbnailOf(number: number): Promise<{ type: string; size: number }> {
-    return this.thumb(number).evaluate(async (element) => {
+    return this.thumbPhoto(number).evaluate(async (element) => {
       const url = getComputedStyle(element).backgroundImage.match(/url\("?(.*?)"?\)/)?.[1];
       if (!url) return { type: "", size: 0 };
       const blob = await fetch(url).then((response) => response.blob());

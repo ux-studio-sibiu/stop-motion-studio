@@ -2,17 +2,17 @@
 
 import type { MouseEvent, PointerEvent, ReactNode } from "react";
 import { ticksToSeconds, type Frame } from "@/core/model";
-import { adjustFilter } from "@/core/render";
-import { thumbs } from "../media";
+import { Thumb } from "./Thumb";
 import type { Drag } from "./useReorder";
 import { optionId } from "./useTimelineSelection";
+import { MessageCircle } from "lucide-react";
 
 const LABEL_MIN_WIDTH = 24;   // narrower pictures don't show their number
 
 // One picture, as wide as it lasts. The slot (the <li>) is exactly that wide; inside it the
 // picture leaves a small gap at its end, so pictures look separate while every one still starts
-// exactly at its time on the ruler. The thumbnail is shown once: a short picture shows the
-// middle of it (cover-cropped), a long one shows it at the start and a dotted outline for the
+// exactly at its time on the ruler. The thumbnail (Thumb: the picture as the stage shows it) is
+// shown once: a short picture shows the middle of it, a long one shows it at the start and a dotted outline for the
 // rest of its time. Children: the resize grip and its bubble, when selected.
 type TimelineFrameProps = {
   frame: Frame;
@@ -27,13 +27,13 @@ type TimelineFrameProps = {
 };
 
 export function TimelineFrame({ frame, number, width, selected, insertAfter, dragging, onPick, onPress, children }: TimelineFrameProps) {
-  const url = thumbs.url(frame.imageId);
   const className = `frame${selected ? " is-selected" : ""}${insertAfter ? " is-insert-point" : ""}${dragging ? " is-dragging" : ""}`;
   return (
     <li id={optionId(frame.id)} role="option" aria-selected={selected} aria-label={`Picture ${number}`} className={className} style={{ width }} onClick={(event) => onPick(frame.id, event)} onPointerDown={(event) => onPress(frame.id, event)}>
       <span className="picture">
-        <span className="thumb" style={{ backgroundImage: url ? `url("${url}")` : undefined, filter: adjustFilter(frame.adjust) === "none" ? undefined : adjustFilter(frame.adjust) }} />
+        <Thumb frame={frame} />
         {width >= LABEL_MIN_WIDTH && <span className="frame-number">{number}</span>}
+        {frame.elements.length > 0 && <span className="badge" title="Has a speech bubble" aria-hidden="true"><MessageCircle size={12} strokeWidth={2.5} /></span>}
       </span>
       {children}
     </li>
@@ -44,10 +44,9 @@ export function TimelineFrame({ frame, number, width, selected, insertAfter, dra
 // long the pictures are, with a count when several move together.
 export function DragGhost({ drag, frames }: { drag: Drag; frames: readonly Frame[] }) {
   const first = frames.find((frame) => frame.id === drag.ids[0]);
-  const url = first ? thumbs.url(first.imageId) : undefined;
   return (
     <div className="drag-ghost" aria-hidden="true" style={{ left: drag.x, top: drag.y }}>
-      <span className="thumb" style={{ backgroundImage: url ? `url("${url}")` : undefined }} />
+      {first && <Thumb frame={first} />}
       {drag.ids.length > 1 && <span className="drag-count">{drag.ids.length}</span>}
     </div>
   );

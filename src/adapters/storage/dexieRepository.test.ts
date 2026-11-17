@@ -18,6 +18,21 @@ afterEach(async () => {
   await Promise.all(opened.splice(0).map((db) => db.delete()));
 });
 
+describe("frames saved before speech bubbles (step 23)", () => {
+  it("read as having no bubbles", async () => {
+    const db = openStudioDb(`old-${crypto.randomUUID()}`);
+    const repository = createDexieRepository(db);
+    const project = createProject();
+    await repository.createProject(project);
+    const old: Partial<ReturnType<typeof createFrame>> = createFrame(project.id, "img");
+    delete old.elements;   // the shape before step 23
+    await db.frames.put(old as never);
+    await repository.updateProject(project.id, { frameIds: [old.id!] });
+    expect((await repository.loadProject(project.id))?.frames[0].elements).toEqual([]);
+    await db.delete();
+  });
+});
+
 describeRepositoryContract("Dexie", async () => {
   let clock = 0;
   return { repository: createDexieRepository(freshDb(), () => clock), tick: (ms = 1) => { clock += ms; } };

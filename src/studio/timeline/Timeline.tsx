@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent, typ
 import { Camera, ChevronLeft, ChevronRight, CopyPlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { formatSeconds, inOrder, moveIds, neighbourAfterDelete, nudgeGap, pxPerTick, rulerScale, sameOrder, ticksToSeconds, totalTicks } from "@/core/model";
 import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, withPreview } from "@/store/editorStore";
-import { editorStore, useEditor, useOrderedFrames } from "@/store/useEditor";
+import { editorStore, useEditor, useShownFrames } from "@/store/useEditor";
 import { DragGhost, TimelineFrame, formatHold } from "./TimelineFrame";
 import { useReorder } from "./useReorder";
 import { useResize, type HoldChange } from "./useResize";
@@ -29,9 +29,9 @@ type TimelineProps = {
 //   useReorder            dragging pictures to a new place
 //   useScrub              the playhead, scrubbing along the ruler
 export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: TimelineProps) {
-  const saved = useOrderedFrames();
+  const shown = useShownFrames();   // with any move, brightness or object change not saved yet, for the thumbnails
   const holdPreview = useEditor((state) => state.holdPreview);
-  const frames = useMemo(() => withPreview(saved, "hold", holdPreview), [saved, holdPreview]);   // with any resize in progress
+  const frames = useMemo(() => withPreview(shown, "hold", holdPreview), [shown, holdPreview]);   // and any resize in progress
   const selection = useEditor((state) => state.selection);
   const fps = useEditor((state) => state.project?.fps ?? 8);
   const projectId = useEditor((state) => state.project?.id);

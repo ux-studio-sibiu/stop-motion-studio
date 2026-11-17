@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { addFrames, createHistory, deleteFrames, duplicateFrames, reorderFrames, setAdjusts, setFps, setHold, setSafeMargin, setTransforms, type History } from "@/core/commands";
-import { createFrame, createProject, moveIds, type Project, type ProjectRepository } from "@/core/model";
+import { addFrames, createHistory, deleteFrames, duplicateFrames, reorderFrames, setAdjusts, setElements, setFps, setHold, setSafeMargin, setTransforms, type History } from "@/core/commands";
+import { createBubble, createFrame, createProject, moveIds, withProps, type Project, type ProjectRepository } from "@/core/model";
 import { openStudioDb, type StudioDb } from "@/adapters/storage/db";
 import { createDexieRepository } from "@/adapters/storage/dexieRepository";
 
@@ -190,6 +190,34 @@ describe("setAdjusts", () => {
     expect(await adjustOf(a)).toEqual({ brightness: 1.5, contrast: 0.5 });
     await expect(history.run(setAdjusts(project.id, [{ id: a, from: normal, to: { ...normal } }]))).rejects.toThrow();
     expect(history.state().undoLabel).toBe("Change brightness");
+  });
+});
+
+describe("setElements", () => {
+  const elementsOf = async (id: string) => (await repository.loadProject(project.id))?.frames.find((frame) => frame.id === id)?.elements;
+
+  it("adds, changes and removes a picture's bubbles, each one undo step", async () => {
+    const [a] = await takePictures(1);
+    const bubble = createBubble("speech");
+    expect(await history.run(setElements(project.id, a, [], [bubble], "Add speech bubble"))).toEqual({ select: [a] });
+    expect(await elementsOf(a)).toEqual([bubble]);
+
+    const typed = withProps(bubble, { text: "Hello!" });
+    await history.run(setElements(project.id, a, [bubble], [typed], "Change text"));
+    expect((await elementsOf(a))?.[0].props.text).toBe("Hello!");
+    await history.run(setElements(project.id, a, [typed], [], "Delete speech bubble"));
+    expect(await elementsOf(a)).toEqual([]);
+
+    await history.undo();
+    expect(await elementsOf(a)).toEqual([typed]);
+    await history.undo();
+    expect(await elementsOf(a)).toEqual([bubble]);
+    expect(history.state().undoLabel).toBe("Add speech bubble");
+  });
+
+  it("isn't recorded when nothing changed", async () => {
+    const [a] = await takePictures(1);
+    await expect(history.run(setElements(project.id, a, [], [], "Nothing"))).rejects.toThrow();
   });
 });
 
