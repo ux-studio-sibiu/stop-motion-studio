@@ -5,6 +5,7 @@ export * from "./stageView";
 export * from "./adjust";
 export * from "./bubble";
 export * from "./elements";
+export * from "./drawing";
 export * from "./lettering";
 export * from "./shape";
 export * from "./text";

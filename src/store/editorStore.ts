@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { clampAdjust, clampHold, clampSafeMargin, cloneElements, cloneOverlays, frameIndexAt, overlaysOf, safeMargin, sameAdjust, sameElements, sameOverlays, sameTransform, type Frame, type Overlay, type Project } from "@/core/model";
+import { clampAdjust, clampHold, clampSafeMargin, cloneElements, cloneOverlays, copyOf, frameIndexAt, overlaysOf, safeMargin, sameAdjust, sameElements, sameOverlays, sameTransform, type Element, type Frame, type Overlay, type Project } from "@/core/model";
 import { clampView, FIT_VIEW, type StageView } from "@/core/render";
 
 // Live editor state (PLAN.md §1): what the studio is showing and doing right now.
@@ -74,6 +74,11 @@ export type UiSlice = {
   // Objects tab shows its settings.
   selectedElement: string | null;
   selectElement: (id: string | null) => void;
+  // The object copied with Ctrl+C, to paste onto other pictures (step 24b): a copy of its own.
+  // Kept when another animation opens, so things can be carried between animations; not after a
+  // reload.
+  clipboard: Element | null;
+  setClipboard: (element: Element | null) => void;
   // See-through: the picture(s) before the next shot drawn faintly over the live camera.
   onionSkin: OnionSkin;
   setOnionSkin: (changes: Partial<OnionSkin>) => void;
@@ -131,6 +136,7 @@ export function createEditorStore() {
     loop: true,
     onionSkin: DEFAULT_ONION_SKIN,
     panelTab: null,
+    clipboard: null,
     safeMarginPreview: null,
     storageNotice: null,
 
@@ -204,6 +210,7 @@ export function createEditorStore() {
     previewOverlays: (overlays) => set({ overlaysPreview: cloneOverlays(overlays) }),
     clearOverlaysPreview: () => set({ overlaysPreview: null }),
     selectElement: (id) => set({ selectedElement: id }),
+    setClipboard: (element) => set({ clipboard: element ? copyOf(element) : null }),
   }));
 }
 

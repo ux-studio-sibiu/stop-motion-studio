@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { addFrames, createHistory, deleteFrames, duplicateFrames, reorderFrames, setAdjusts, setElements, setFps, setHold, setOverlays, setSafeMargin, setTransforms, type History } from "@/core/commands";
+import { addFrames, createHistory, deleteFrames, duplicateFrames, reorderFrames, setAdjusts, setElements, setElementsOf, setFps, setHold, setOverlays, setSafeMargin, setTransforms, type History } from "@/core/commands";
 import { createBubble, createFrame, createOverlay, createProject, createText, moveIds, moveOverlay, overlaysOf, withProps, type Project, type ProjectRepository } from "@/core/model";
 import { openStudioDb, type StudioDb } from "@/adapters/storage/db";
 import { createDexieRepository } from "@/adapters/storage/dexieRepository";
@@ -378,5 +378,28 @@ describe("setOverlays (step 24)", () => {
     await history.undo();   // undoing the delete doesn't touch it either
     expect(await saved()).toEqual([title]);
     expect(await order()).toEqual([a, b]);
+  });
+});
+
+describe("setElementsOf (pasting onto several pictures)", () => {
+  const elementsOf = async (id: string) => (await repository.loadProject(project.id))?.frames.find((frame) => frame.id === id)?.elements;
+
+  it("changes several pictures' objects in one step; one undo puts them all back", async () => {
+    const [a, b, c] = await takePictures(3);
+    const bubble = createBubble("speech");
+    const copy = { ...bubble, id: "copy" };
+    await history.run(setElementsOf(project.id, [{ frameId: a, from: [], to: [bubble] }, { frameId: c, from: [], to: [copy] }], "Paste speech bubble"));
+    expect(await elementsOf(a)).toEqual([bubble]);
+    expect(await elementsOf(b)).toEqual([]);
+    expect(await elementsOf(c)).toEqual([copy]);
+    await history.undo();
+    expect(await elementsOf(a)).toEqual([]);
+    expect(await elementsOf(c)).toEqual([]);
+  });
+
+  it("isn't recorded when nothing changed", async () => {
+    const [a] = await takePictures(1);
+    await expect(history.run(setElementsOf(project.id, [{ frameId: a, from: [], to: [] }], "Paste"))).rejects.toThrow();
+    expect(history.state().undoLabel).toBe("Take picture");   // the step before it, nothing new
   });
 });

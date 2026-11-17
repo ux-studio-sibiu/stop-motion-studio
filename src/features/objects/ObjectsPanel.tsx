@@ -1,7 +1,7 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { bubbleProps, createBubble, createOverlay, createShape, createText, hasText, objectLabel, overlayEnd, shapeProps, SHAPE, SPEECH_BUBBLE, TEXT, textProps, formatTicks, withProps, type Element } from "@/core/model";
+import { bubbleProps, createBubble, DRAWING, createOverlay, createShape, createText, hasText, objectLabel, overlayEnd, shapeProps, SHAPE, SPEECH_BUBBLE, TEXT, textProps, formatTicks, withProps, type Element } from "@/core/model";
 import { useEditor } from "@/store/useEditor";
 import { ObjectIcon } from "@/studio/ObjectIcon";
 import { addOverlay } from "@/studio/overlayEditing";
@@ -61,6 +61,7 @@ export function ObjectsPanel({ saves, onStage }: { saves: ObjectSaves; onStage: 
         {element.kind === SPEECH_BUBBLE && <BubbleSettings key={element.id} props={bubbleProps(element)} set={set} type={type} />}
         {element.kind === TEXT && <TextSettings key={element.id} props={textProps(element)} set={set} type={type} />}
         {element.kind === SHAPE && <ShapeSettings key={element.id} props={shapeProps(element)} set={set} type={type} />}
+        {element.kind === DRAWING && <p className="hint">Draw more on it, or rub lines out, in the Draw tab. Here it moves, sizes and turns as one.</p>}
         <button type="button" className="icon-button is-small is-danger" aria-label={`Delete ${name}`} onClick={() => removePlaced(frame, selected, saves)}><Trash2 size={18} /><span>Delete</span></button>
       </section>
     );

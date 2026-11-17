@@ -1,7 +1,6 @@
-import { inOrder, sameTransform, type Transform } from "@/core/model";
+import { shownIndex, inOrder, sameTransform, type Transform } from "@/core/model";
 import { editorStore, useEditor } from "@/store/useEditor";
 import { saveSoon, settleSoon } from "@/studio/saveSoon";
-import { shownIndex } from "@/studio/StagePicture";
 import type { TransformChange } from "@/studio/useStudioCommands";
 
 // Moving, sizing and turning pictures (step 18), shared by the stage and the Picture tab.

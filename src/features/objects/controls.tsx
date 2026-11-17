@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
-import { BUBBLE_FONTS, NO_FILL, type OutlineWidth, type TextSize } from "@/core/model";
+import { useEffect, useRef } from "react";
+import { BUBBLE_FONTS, type OutlineWidth, type TextSize } from "@/core/model";
+import { INKS, Swatches } from "@/studio/Swatches";
 import { saveNow } from "@/studio/saveSoon";
 import { takeTextFocus } from "./objectEditing";
 
@@ -12,28 +13,8 @@ import { takeTextFocus } from "./objectEditing";
 //   type  changes the text: shown as it's typed, saved as one step once typing stops
 export type SettingsProps<T> = { props: T; set: (patch: Partial<T>, label: string) => void; type: (text: string) => void };
 
-export const INKS = [["#1f2433", "Black"], ["#ffffff", "White"], ["#d62828", "Red"], ["#1d4ed8", "Blue"], ["#15803d", "Green"], ["#7e22ce", "Purple"]] as const;
-export const FILLS = [["#ffffff", "White"], ["#fff3a3", "Yellow"], ["#ffd6e7", "Pink"], ["#cfe8ff", "Blue"], ["#d3f5d0", "Green"], ["#1f2433", "Black"]] as const;
 const SIZES: { id: TextSize; label: string }[] = [{ id: "small", label: "Small" }, { id: "medium", label: "Medium" }, { id: "large", label: "Large" }, { id: "huge", label: "Huge" }];
 const OUTLINES: { id: OutlineWidth; label: string }[] = [{ id: "none", label: "None" }, { id: "thin", label: "Thin" }, { id: "medium", label: "Medium" }, { id: "thick", label: "Thick" }];
-
-type Colours = readonly (readonly [string, string])[];
-
-// A row of colours to pick one from. `none`: a first swatch for no colour at all (see-through).
-export function Swatches({ label, colours, value, none = false, onPick }: { label: string; colours: Colours; value: string; none?: boolean; onPick: (colour: string) => void }) {
-  const id = useId();
-  const all: Colours = none ? [[NO_FILL, "None"], ...colours] : colours;
-  return (
-    <div className="field">
-      <span id={id}>{label}</span>
-      <div className="swatches" role="group" aria-labelledby={id}>
-        {all.map(([colour, name]) => (
-          <button key={colour} type="button" className={`swatch${colour === NO_FILL ? " is-none" : ""}${value === colour ? " is-on" : ""}`} style={colour === NO_FILL ? undefined : { background: colour }} aria-label={name} title={name} aria-pressed={value === colour} onClick={() => onPick(colour)} />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export function OutlinePicker({ value, colour, onWidth, onColour }: { value: OutlineWidth; colour: string; onWidth: (width: OutlineWidth) => void; onColour: (colour: string) => void }) {
   return (

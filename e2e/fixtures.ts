@@ -169,6 +169,28 @@ export class Studio {
   readonly thumbPhoto = (number: number) => this.thumb(number).locator(".photo");
   readonly thumbObjects = (number: number) => this.thumb(number).locator("canvas.objects");
 
+  // The colour the stage draws at a point given as fractions of the picture (the middle by
+  // default), as [r, g, b].
+  async stageColour(x = 0.5, y = 0.5): Promise<number[]> {
+    return this.page.locator(".stage-picture").evaluate((canvas: HTMLCanvasElement, at) => [...canvas.getContext("2d")!.getImageData(Math.round(canvas.width * at.x), Math.round(canvas.height * at.y), 1, 1).data.slice(0, 3)], { x, y });
+  }
+
+  // A point of a stage layer (the Objects or Draw layer), given as fractions of it, in page pixels.
+  async onLayer(layer: Locator, x: number, y: number): Promise<{ x: number; y: number }> {
+    const box = (await layer.boundingBox())!;
+    return { x: box.x + box.width * x, y: box.y + box.height * y };
+  }
+
+  // A drag across a stage layer, between points given as fractions of it.
+  async dragOnStage(layer: Locator, from: [number, number], to: [number, number], steps = 20): Promise<void> {
+    const start = await this.onLayer(layer, ...from);
+    const end = await this.onLayer(layer, ...to);
+    await this.page.mouse.move(start.x, start.y);
+    await this.page.mouse.down();
+    await this.page.mouse.move(end.x, end.y, { steps });
+    await this.page.mouse.up();
+  }
+
   // Resolves when the picture's thumbnail photo is a real, loaded JPEG.
   async thumbnailOf(number: number): Promise<{ type: string; size: number }> {
     return this.thumbPhoto(number).evaluate(async (element) => {

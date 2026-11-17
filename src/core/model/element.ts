@@ -96,6 +96,11 @@ export function boxPoint(box: ElementBox, local: Point, size: Size): Point {
   return { x: centre.x + p.x, y: centre.y + p.y };
 }
 
+// A picture's objects with one replaced (by id) or removed (`null`); like withOverlay for the track.
+export function withElement(elements: readonly Element[], id: string, next: Element | null): Element[] {
+  return elements.flatMap((element) => (element.id !== id ? [element] : next ? [next] : []));
+}
+
 // Elements with nothing shared, for a copied frame or a preview. Ids stay: they only need to be
 // unique within their frame.
 export function cloneElements(elements: readonly Element[]): Element[] {

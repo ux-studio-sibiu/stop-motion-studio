@@ -1,12 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import { boxAt, objectLabel, overlaysDuring, sameElements, withOverlay, type Element, type Frame, type Overlay, type Point } from "@/core/model";
-import { editorStore, useEditor, useShownFrames, useShownOverlays } from "@/store/useEditor";
+import { boxAt, objectLabel, overlaysDuring, withElement, withOverlay, type Element, type Frame, type Overlay, type Point } from "@/core/model";
+import { editorStore, useEditor, useShownOverlays } from "@/store/useEditor";
+import { useStagePicture } from "@/studio/StagePicture";
 import { commitOverlays, deleteOverlay, previewOverlays, type SaveOverlays } from "@/studio/overlayEditing";
 import { startTick } from "@/core/render";
-import { settleSoon } from "@/studio/saveSoon";
-import { shownIndex } from "@/studio/StagePicture";
+import { commitObjects, previewObjects, type SaveObjects } from "@/studio/pictureObjects";
 
 // What the Objects tab and the stage layer share: the objects on the stage, and how a change to
 // one is shown and then saved. An object lives in one of two places:
@@ -14,9 +14,7 @@ import { shownIndex } from "@/studio/StagePicture";
 //   in time         an overlay showing now (step 24): saved with setOverlays
 // Everything else (the box editing, the settings) is the same for both.
 
-// Saves a picture's objects, from what they were to what they become, as one undoable step (the
-// studio's setObjects command).
-export type SaveObjects = (frameId: string, from: readonly Element[], to: readonly Element[], label: string) => Promise<boolean>;
+export type { SaveObjects };
 export type ObjectSaves = { objects: SaveObjects; overlays: SaveOverlays };
 
 // An object on the stage, and the overlay it lives on, if it lives in time.
@@ -29,12 +27,9 @@ export type Placed = { element: Element; overlay?: Overlay };
 //   picked  the picked object, wherever it lives: on the stage, or an overlay that isn't on this
 //           picture (its settings are still in the Objects tab); `onStage` says which
 export function useStageObjects(): { frame: Frame | undefined; overlays: readonly Overlay[]; placed: Placed[]; picked: (Placed & { onStage: boolean }) | undefined } {
-  const frames = useShownFrames();
-  const selection = useEditor((state) => state.selection);
+  const { frames, index, frame } = useStagePicture();
   const selectedId = useEditor((state) => state.selectedElement);
   const overlays = useShownOverlays();
-  const index = shownIndex(frames.map((frame) => frame.id), selection);
-  const frame = frames[index];
   const start = startTick(frames, index);
   const end = start + (frame?.hold ?? 0);
   const placed = useMemo(() => {
@@ -45,27 +40,6 @@ export function useStageObjects(): { frame: Frame | undefined; overlays: readonl
   const elsewhere = onStage ? undefined : overlays.find((overlay) => overlay.element.id === selectedId);
   const picked = onStage ? { ...onStage, onStage: true } : elsewhere ? { element: elsewhere.element, overlay: elsewhere, onStage: false } : undefined;
   return { frame, overlays, placed, picked };
-}
-
-// What's saved for a picture's objects (not the preview): where every change starts from.
-function savedObjects(frameId: string): Element[] {
-  return editorStore.getState().frames[frameId]?.elements ?? [];
-}
-
-// Shows a picture's objects changed, without saving.
-function previewObjects(frameId: string, elements: readonly Element[]): void {
-  editorStore.getState().previewElements({ [frameId]: [...elements] });
-}
-
-// Saves what's shown for a picture, from what's saved, as one step; nothing if nothing changed.
-// A burst still waiting to be saved (typing, nudges) is part of what's shown, so it goes along.
-function commitObjects(frameId: string, save: SaveObjects, label: string): void {
-  settleSoon("object");
-  const state = editorStore.getState();
-  const from = savedObjects(frameId);
-  const to = state.elementsPreview[frameId];
-  if (!to || sameElements(from, to)) { state.clearElementsPreview([frameId]); return; }
-  void save(frameId, from, to, label).then((ok) => { if (!ok) editorStore.getState().clearElementsPreview([frameId]); });
 }
 
 // Adding and removing an object, the same wherever it's offered (the Objects tab, the stage's keys):
@@ -96,7 +70,7 @@ export function removePlaced(frame: Frame, placed: Placed, saves: ObjectSaves): 
 export function previewPlaced(frame: Frame, overlays: readonly Overlay[], placed: Placed, next: Element | null): void {
   const { overlay } = placed;
   if (overlay) previewOverlays(withOverlay(overlays, overlay.id, next ? { ...overlay, element: next } : null));
-  else previewObjects(frame.id, next ? frame.elements.map((item) => (item.id === next.id ? next : item)) : frame.elements.filter((item) => item.id !== placed.element.id));
+  else previewObjects(frame.id, withElement(frame.elements, placed.element.id, next));
 }
 
 // Saves what's shown for the place this object lives in, as one step.

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>24b Free drawing · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 24b (added) · Part 8 Elements</p>
+  <h1>Free drawing on pictures</h1>
+  <p class="intro">A new <strong>Draw</strong> tab: draw on the picture on the stage (camera off) with a pencil, in a colour and one of four widths, and rub lines out with the eraser.</p>
+  <ul>
+    <li><strong>Lines are smoothed:</strong> when you let go, the hand's jitter is taken out and points the line doesn't need are dropped. It's drawn as smooth curves with round ends.</li>
+    <li><strong>The eraser</strong> takes away every line it touches. A ring shows where it is.</li>
+    <li><strong>Clear drawing</strong> takes the whole drawing off the picture.</li>
+    <li>Each line, each erase and Clear drawing is <strong>one undo step</strong>.</li>
+    <li>The tool, the colour and the width are <strong>remembered</strong> after a reload. Picking a colour or a width takes the pencil again.</li>
+    <li>A picture's drawing is <strong>one object</strong>: the thumbnail shows it as it's drawn, see-through shows the previous picture's, playback and export include it, and copying a picture copies it. In the Objects tab it can be moved, sized, turned or deleted as one.</li>
+  </ul>
+
+  <div class="note"><strong>Added after the step: copy and paste between pictures.</strong>
+    <ul>
+      <li><strong>Ctrl+C</strong> copies the picked object in the Objects tab (on the picture or the time track), or the picture's drawing in the Draw tab. <strong>Ctrl+V</strong> pastes it onto every selected picture, or the one on the stage, <strong>in the same place</strong>, so something carried to the next picture doesn't need lining up again. One undo step per paste, however many pictures; the copy on the stage is picked.</li>
+      <li>A drawing pasted onto a picture that has one joins it (one drawing per picture). An object from the time track is pasted onto the picture as an ordinary object; bars have Duplicate for the track.</li>
+      <li>The copy is kept inside the app: across pictures and animations, not after a reload. Text fields keep their own copy and paste.</li>
+      <li>Built: <code>copyOf</code> and <code>pasteInto</code> (<code>core/model/clipboard.ts</code>), <code>mergeDrawings</code>, the <code>setElementsOf</code> command (several pictures' objects in one step; <code>setElements</code> is now the one-picture case of it), the store's <code>clipboard</code>, and <code>useObjectClipboard</code> (the keys) in <code>src/studio/</code>.</li>
+      <li>Tests: 4 unit tests for copy and paste, 2 for <code>setElementsOf</code> against storage, 1 for the store's clipboard; end-to-end, pasting a bubble onto one picture and then three (one undo), and a drawing joining another.</li>
+    </ul>
+  </div>
+
+  <div class="note"><strong>Tidied after the step:</strong>
+    <ul>
+      <li>The thumbnails' 💬 mark is gone: it showed a speech bubble for any object, a drawing included, and thumbnails draw the objects themselves now. The objects spec checks a picture has objects by its thumbnail's objects canvas instead.</li>
+      <li>One "picture on the stage": <code>shownIndex</code> moved to <code>core/model/selection.ts</code> (1 test), and <code>useStagePicture</code> (<code>StagePicture.tsx</code>) is what the Objects and Draw tabs use.</li>
+      <li><code>withElement</code> in core (1 test), like <code>withOverlay</code>: replacing or removing a picture's object, used by the Objects and Draw tabs.</li>
+      <li><code>src/studio/stagePointer.ts</code>: <code>toProjectPoint</code> and <code>frameRunner</code> (a redraw at most once per frame), shared by the Picture tab's editor, the Objects layer and the Draw layer.</li>
+      <li>End-to-end helpers in <code>fixtures.ts</code>: <code>stageColour</code>, <code>onLayer</code>, <code>dragOnStage</code>, used by the objects, overlays, draw and picture specs instead of their own copies. <code>.hint</code> is styled once, with the shared panel styles.</li>
+    </ul>
+  </div>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><strong>The model</strong>, <code>src/core/model/drawing.ts</code>:
+      <ul>
+        <li>the <code>drawing</code> kind (<code>DRAWING</code> in <code>objectKinds.ts</code>): strokes with their points in the drawing's own box, a colour and a width (<code>PENCIL_WIDTHS</code>, a share of the frame's height, so lines look the same at any size);</li>
+        <li><code>simplifyStroke</code>: a light average, then Ramer-Douglas-Peucker, ends kept;</li>
+        <li><code>addStroke</code>: the first stroke makes the drawing; later ones are added and the box is fitted around them all (while it isn't turned);</li>
+        <li><code>eraseStrokes</code>: the strokes within reach of the eraser's path go; none left, the drawing goes;</li>
+        <li><code>drawingProps</code> (read defensively) and <code>strokePoints</code>.</li>
+      </ul>
+    </li>
+    <li><strong>Drawing</strong>: <code>src/core/render/drawing.ts</code>, <code>drawDrawing</code> and <code>drawStroke</code> (curves through the midpoints, round ends; a single point is a dot). <code>elements.ts</code> gains one line.</li>
+    <li><strong>The Draw tab</strong>, <code>src/features/draw/</code>: <code>DrawPanel</code>, <code>DrawLayer</code> (the stage: the line as it's drawn on a canvas of its own, then smoothed and saved), <code>drawSettings</code> (the remembered tool, colour and width, the picture drawn on), <code>_draw.scss</code>. <code>Studio.tsx</code> places the tab and its stage layer directly.</li>
+    <li><strong>Shared, moved to <code>src/studio/</code></strong> so the Draw and Objects tabs both use them without depending on each other: <code>pictureObjects.ts</code> (showing and saving a picture's objects; <code>overlayEditing.ts</code> does the same for the track), <code>Swatches.tsx</code> (the colour rows and palettes), and the field and swatch styles (<code>_side-panel.scss</code>).</li>
+    <li>The Objects tab knows drawings: a pencil icon, and a note to edit it in the Draw tab.</li>
+    <li><code>remembered.ts</code>: <code>drawTool</code>, <code>drawColour</code>, <code>drawWidth</code>.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>One drawing per picture</strong>, all its strokes in one object, not one object per stroke, so picking things in the Objects tab isn't cluttered with dozens of lines.</li>
+    <li><strong>Strokes in the drawing's own box</strong>, like a bubble's tail: moving or sizing the drawing takes its lines along. While the box isn't turned it's kept fitted around the lines; once turned, new lines are added in its turned terms.</li>
+    <li><strong>Smoothing when the line is finished</strong>, not while it's drawn: the line follows the pointer exactly as you draw, and what's kept is light (a couple of hundred pointer points become a few dozen).</li>
+    <li><strong>The eraser takes whole strokes.</strong> Simple to understand and to undo; cutting a line in two can come later.</li>
+    <li><strong>Not on the time track yet.</strong> The model already allows it: an overlay's object can be a drawing. What's left is the Draw layer choosing an overlay to draw into, the way the Objects tab already picks between a picture and an overlay. See PLAN.md §3.</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Touch:</strong> the drawing layer stops a finger from scrolling (<code>touch-action: none</code>), and uses the pointer's coalesced events, so fast lines don't get corners.</li>
+    <li><strong>See-through</strong> tints the stage as before, so a line can look a different colour while see-through is on.</li>
+    <li><strong>Turned drawings:</strong> new lines can reach past a turned drawing's box; its handles in the Objects tab then don't wrap the whole drawing. Rare, and harmless.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li>Draw a wobbly line: it comes out smooth, and the thumbnail shows it.</li>
+    <li>Draw two lines, erase one, undo, Clear drawing, undo.</li>
+    <li>Pick blue, Huge and the eraser, reload: they're as left.</li>
+    <li>In the Objects tab, move the drawing; copy the picture: the copy has it too.</li>
+  </ul>
+  <div class="note">Checked while building:
+    <ul>
+      <li>325 unit tests and 31 pixel tests pass; typecheck and lint are clean.</li>
+      <li>End-to-end, against the dev server: the new draw spec (4), and the objects, overlays and stage specs pass. The other specs and the full suite weren't run.</li>
+      <li>A screenshot of a shaky spiral drawn by hand, smooth, and a thick line with round ends.</li>
+    </ul>
+  </div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/model/drawing.ts</code>, <code>drawing.test.ts</code>, <code>objectKinds.ts</code>, <code>index.ts</code>; <code>src/core/render/drawing.ts</code>, <code>elements.ts</code>, <code>index.ts</code>, <code>renderer.browser.test.ts</code>; <code>src/features/draw/</code> (<code>DrawPanel.tsx</code>, <code>DrawLayer.tsx</code>, <code>drawSettings.ts</code>, <code>_draw.scss</code>); <code>src/studio/pictureObjects.ts</code>, <code>Swatches.tsx</code>, <code>ObjectIcon.tsx</code>, <code>remembered.ts</code>, <code>Studio.tsx</code>, <code>styles/_side-panel.scss</code>; <code>src/features/objects/</code> (<code>objectEditing.ts</code>, <code>controls.tsx</code>, <code>ObjectsPanel.tsx</code>, the settings components, <code>_objects.scss</code>); <code>e2e/draw.spec.ts</code>; <code>CLAUDE.md</code> (the spec map), <code>PLAN.md</code>, <code>ROADMAP.md</code>, <code>src/features/README.md</code>; <code>public/steps/24b-drawing.html</code>, <code>24-overlays.html</code> (next link), <code>index.html</code>.</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit, 8 in <code>drawing.test.ts</code>: a straight line keeps only its ends; jitter goes and corners stay; a dot stays a dot; the first stroke fits the box; later strokes grow it and every stroke stays where it was drawn; a turned drawing keeps its box; the eraser takes only what it reaches, and the drawing goes with its last stroke; stored strokes read defensively.</li>
+    <li>Pixel, 3: strokes in their colour and thickness, smooth (the sharp corner left off), with round ends; a dot; a drawing moving with its box.</li>
+    <li>End-to-end, 4 in <code>draw.spec.ts</code>: a line on the stage and its thumbnail, one undo per line; the eraser and Clear drawing, one undo each; the tool, colour and width remembered after a reload; a picture's drawing as one object in the Objects tab.</li>
+  </ul>
+  <p><strong>Tests changed:</strong> none: the moves to <code>src/studio/</code> keep what the Objects tab does.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>a line shows as it's drawn and is saved smoothed, as one undo step</li>
+    <li>the eraser takes the lines it touches, one undo step</li>
+    <li>thumbnails, see-through, playback and copies show the drawing</li>
+    <li>the tool, colour and width are remembered</li>
+    <li>the drawing model is plain data in <code>core</code>, ready to live on an overlay</li>
+    <li><code>npm test</code>, <code>npm run test:browser</code>, <code>npm run lint</code>, <code>npm run typecheck</code> and the relevant specs pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="24-overlays.html">Previous: 24 · Objects in time</a>
+    <span>Next: 25 · GIF export</span>
+  </nav>
+</main>
+</body>
+</html>

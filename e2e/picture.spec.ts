@@ -174,22 +174,21 @@ test("Ctrl + wheel zooms the stage without changing the picture; Space-drag look
 // Brightness and contrast (step 20), in the Picture tab.
 
 // The colour in the middle of the stage picture, as drawn.
-const stageColour = (page: import("@playwright/test").Page) => page.locator(".stage-picture").evaluate((canvas: HTMLCanvasElement) => [...canvas.getContext("2d")!.getImageData(canvas.width / 2, canvas.height / 2, 1, 1).data.slice(0, 3)]);
 const brightness = (page: import("@playwright/test").Page) => page.getByRole("slider", { name: "Brightness" });
 
 test("brightness shows on the stage and the thumbnail; a run of arrow presses is one undo; it's saved", async ({ studio, page }) => {
-  const before = await stageColour(page);
+  const before = await studio.stageColour();
   await brightness(page).focus();
   for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowRight");
   await expect(page.getByText("Brightness: 120%")).toBeVisible();
   await expect(page.getByRole("button", { name: "Undo" })).toHaveAttribute("title", "Undo: Change brightness");
-  const after = await stageColour(page);
+  const after = await studio.stageColour();
   expect(after.reduce((a, b) => a + b)).toBeGreaterThan(before.reduce((a, b) => a + b));   // brighter
   await expect(studio.thumbPhoto(1)).toHaveCSS("filter", "brightness(1.2)");
 
   await page.getByRole("button", { name: "Undo" }).click();   // the four presses, in one step
   await expect(page.getByText("Brightness: 100%")).toBeVisible();
-  await expect.poll(() => stageColour(page)).toEqual(before);
+  await expect.poll(() => studio.stageColour()).toEqual(before);
   await page.getByRole("button", { name: "Redo" }).click();
   await expect(page.getByText("Brightness: 120%")).toBeVisible();
 

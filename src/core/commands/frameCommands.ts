@@ -110,12 +110,19 @@ export function setAdjusts(projectId: string, changes: readonly { id: string; fr
 // sets the frame's whole list, from what it was to what it becomes, so every edit (a whole drag,
 // all the typing in one go) is one undo step. The picture is selected, so the stage shows it.
 export function setElements(projectId: string, frameId: string, from: readonly Element[], to: readonly Element[], label: string): Command {
-  const write = (elements: readonly Element[]) => async (repository: ProjectRepository) => {
-    if (sameElements(from, to)) throw new Error("Nothing changed.");
-    await repository.updateFrames(projectId, [{ id: frameId, elements: cloneElements(elements) }]);
-    return { select: [frameId] };
+  return setElementsOf(projectId, [{ frameId, from, to }], label);
+}
+
+// Several pictures' objects in one step (pasting onto many, step 24b): every change, or none, and
+// one undo puts them all back. The pictures are selected.
+export function setElementsOf(projectId: string, changes: readonly { frameId: string; from: readonly Element[]; to: readonly Element[] }[], label: string): Command {
+  const write = (pick: "from" | "to") => async (repository: ProjectRepository) => {
+    const changed = changes.filter((change) => !sameElements(change.from, change.to));
+    if (changed.length === 0) throw new Error("Nothing changed.");
+    await repository.updateFrames(projectId, changed.map((change) => ({ id: change.frameId, elements: cloneElements(change[pick]) })));
+    return { select: changed.map((change) => change.frameId) };
   };
-  return { label, do: write(to), undo: write(from) };
+  return { label, do: write("to"), undo: write("from") };
 }
 
 // Changes how long pictures last: one command for a whole drag or key press, however many

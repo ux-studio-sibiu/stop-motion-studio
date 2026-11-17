@@ -6,6 +6,7 @@ The studio's features, one folder each, so a feature's code lives together:
 - `picture/`: the Picture tab (position, size, turn, flip, brightness and contrast) and moving the
   picture on the stage.
 - `onion-skin/`: see-through, on the stage, and its button and options.
+- `draw/`: the Draw tab (pencil, eraser, colour, width) and drawing on the stage (step 24b).
 - `objects/`: the Objects tab (speech bubbles, text, shapes), each kind's settings, and placing
   objects on the stage, on a picture or in time (the overlay track itself is in
   `src/studio/timeline/`).

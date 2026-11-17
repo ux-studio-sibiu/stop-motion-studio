@@ -5,10 +5,11 @@ import { angleTo, boxCentre, boxCorners, boxPoint, bubbleProps, hasText, moveBox
 import { editorStore, useEditor } from "@/store/useEditor";
 import { saveSoon } from "@/studio/saveSoon";
 import { commitPlaced, focusObjectText, previewPlaced, removePlaced, useStageObjects, type ObjectSaves, type Placed } from "./objectEditing";
+import { frameRunner, toProjectPoint, type FrameRunner } from "@/studio/stagePointer";
 
 const CORNERS: readonly Corner[] = ["nw", "ne", "se", "sw"];   // in boxCorners' order
 type Kind = "move" | "resize" | "rotate" | "tail";
-type Gesture = { kind: Kind; corner?: Corner; pointerId: number; start: Point; base: Placed; startAngle: number; latest: Point; frame: number };
+type Gesture = { kind: Kind; corner?: Corner; pointerId: number; start: Point; base: Placed; startAngle: number; latest: Point; redraw: FrameRunner };
 
 // Placing the objects on the stage (steps 23-24), while the Objects tab is open and the camera is
 // off: the picture's own objects, and the overlays showing at its time. A layer over the picture,
@@ -31,11 +32,7 @@ export function ObjectEditor({ saves }: { saves: ObjectSaves }) {
   const selected = placed.find((item) => item.element.id === selectedId);
   const handle = width / 90;   // handle radius, project px
 
-  const toProject = (clientX: number, clientY: number): Point => {
-    const box = layer.current?.getBoundingClientRect();
-    if (!box || box.width === 0) return { x: 0, y: 0 };
-    return { x: ((clientX - box.left) / box.width) * width, y: ((clientY - box.top) / box.height) * height };
-  };
+  const toProject = (clientX: number, clientY: number): Point => toProjectPoint(layer.current, clientX, clientY, size);
 
   // Shows one object changed, without saving; saves what's shown as one step.
   const preview = (item: Placed, next: Element | null) => previewPlaced(frame, overlays, item, next);
@@ -62,7 +59,7 @@ export function ObjectEditor({ saves }: { saves: ObjectSaves }) {
     editorStore.getState().selectElement(picked.element.id);
     const kind = (target?.dataset.handle as Kind | undefined) ?? "move";
     const start = toProject(event.clientX, event.clientY);
-    gesture.current = { kind, corner: target?.dataset.corner as Corner | undefined, pointerId: event.pointerId, start, base: picked, startAngle: angleTo(boxCentre(picked.element.box, size), start), latest: start, frame: 0 };
+    gesture.current = { kind, corner: target?.dataset.corner as Corner | undefined, pointerId: event.pointerId, start, base: picked, startAngle: angleTo(boxCentre(picked.element.box, size), start), latest: start, redraw: frameRunner() };
   };
 
   // Redraw on the next animation frame, not on every pointer event, so dragging stays smooth.
@@ -70,15 +67,14 @@ export function ObjectEditor({ saves }: { saves: ObjectSaves }) {
     const current = gesture.current;
     if (!current || current.pointerId !== event.pointerId) return;
     current.latest = toProject(event.clientX, event.clientY);
-    if (current.frame) return;
-    current.frame = requestAnimationFrame(() => { current.frame = 0; preview(current.base, changed(current)); });
+    current.redraw.request(() => preview(current.base, changed(current)));
   };
 
   const onPointerUp = (event: PointerEvent<HTMLDivElement>) => {
     const current = gesture.current;
     if (!current || current.pointerId !== event.pointerId) return;
     gesture.current = null;
-    if (current.frame) cancelAnimationFrame(current.frame);
+    current.redraw.cancel();
     current.latest = toProject(event.clientX, event.clientY);
     preview(current.base, changed(current));
     const what = objectLabel(current.base.element);

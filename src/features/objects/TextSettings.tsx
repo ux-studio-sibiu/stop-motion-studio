@@ -1,7 +1,8 @@
 "use client";
 
 import type { TextProps } from "@/core/model";
-import { FILLS, Swatches, TextGroup, type SettingsProps } from "./controls";
+import { FILLS, Swatches } from "@/studio/Swatches";
+import { TextGroup, type SettingsProps } from "./controls";
 
 // A text object's settings (step 24): the text, its size, font and colour, and a background
 // colour, or none.

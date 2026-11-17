@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import { insertIndexAfter } from "@/core/model";
+import { shownIndex, insertIndexAfter } from "@/core/model";
 import { drawOnionSkin } from "@/core/render";
 import { useEditor, useShownFrames } from "@/store/useEditor";
 import { bitmaps } from "@/studio/media";
-import { shownIndex } from "@/studio/StagePicture";
 import { useCanvasDraw } from "@/studio/useCanvasDraw";
 import "./_onion-skin.scss";
 

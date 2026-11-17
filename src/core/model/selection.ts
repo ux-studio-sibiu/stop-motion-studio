@@ -24,6 +24,13 @@ export function inOrder(order: readonly string[], ids: Iterable<string>): string
 }
 
 // Where the next picture goes: right after the rightmost selected picture, or at the end.
+// The picture the stage shows when not playing: the rightmost selected one, or the last. -1 if
+// there are none.
+export function shownIndex(order: readonly string[], selection: readonly string[]): number {
+  const id = inOrder(order, selection).at(-1) ?? order.at(-1);
+  return id ? order.indexOf(id) : -1;
+}
+
 export function insertIndexAfter(order: readonly string[], selection: readonly string[]): number {
   const selected = new Set(selection);
   const last = order.findLastIndex((id) => selected.has(id));

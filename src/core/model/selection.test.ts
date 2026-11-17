@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inOrder, insertIndexAfter, selectRange, toggleInSelection } from "@/core/model";
+import { inOrder, insertIndexAfter, selectRange, shownIndex, toggleInSelection } from "@/core/model";
 
 const order = ["a", "b", "c", "d", "e"];
 
@@ -40,5 +40,15 @@ describe("insertIndexAfter", () => {
   it("puts it at the end with nothing selected", () => {
     expect(insertIndexAfter(order, [])).toBe(5);
     expect(insertIndexAfter([], [])).toBe(0);
+  });
+});
+
+describe("shownIndex", () => {
+  it("is the rightmost selected picture, or the last when none is selected, or -1 with none", () => {
+    expect(shownIndex(["a", "b", "c"], ["c", "a"])).toBe(2);
+    expect(shownIndex(["a", "b", "c"], ["a"])).toBe(0);
+    expect(shownIndex(["a", "b", "c"], [])).toBe(2);
+    expect(shownIndex(["a", "b"], ["gone"])).toBe(1);
+    expect(shownIndex([], [])).toBe(-1);
   });
 });

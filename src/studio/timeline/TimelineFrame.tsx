@@ -5,7 +5,6 @@ import type { Frame } from "@/core/model";
 import { Thumb } from "./Thumb";
 import type { Drag } from "./useReorder";
 import { optionId } from "./useTimelineSelection";
-import { MessageCircle } from "lucide-react";
 
 const LABEL_MIN_WIDTH = 24;   // narrower pictures don't show their number
 
@@ -34,7 +33,6 @@ export function TimelineFrame({ frame, number, width, selected, onStage = false,
       <span className="picture">
         <Thumb frame={frame} />
         {width >= LABEL_MIN_WIDTH && <span className="frame-number">{number}</span>}
-        {frame.elements.length > 0 && <span className="badge" title="Has a speech bubble" aria-hidden="true"><MessageCircle size={12} strokeWidth={2.5} /></span>}
       </span>
       {children}
     </li>

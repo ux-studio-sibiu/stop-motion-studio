@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Camera, ChevronLeft, Download, Image as ImageIcon, Redo2, Shapes, Undo2 } from "lucide-react";
+import { Camera, ChevronLeft, Download, Image as ImageIcon, Pencil, Redo2, Shapes, Undo2 } from "lucide-react";
 import { CameraPanel } from "@/features/camera/CameraPanel";
+import { DrawLayer } from "@/features/draw/DrawLayer";
+import { DrawPanel } from "@/features/draw/DrawPanel";
 import { ObjectEditor } from "@/features/objects/ObjectEditor";
 import { ObjectsPanel } from "@/features/objects/ObjectsPanel";
 import { OnionSkin } from "@/features/onion-skin/OnionSkin";
@@ -26,6 +28,7 @@ import { Timeline } from "./timeline/Timeline";
 import { useCamera } from "./useCamera";
 import { useCapture } from "./useCapture";
 import { useHistory } from "./useHistory";
+import { useObjectClipboard } from "./useObjectClipboard";
 import { usePlayback } from "./usePlayback";
 import { useProject } from "./useProject";
 import { useStorageWatch } from "./useStorageWatch";
@@ -60,6 +63,7 @@ export function Studio() {
   const editing = stageMode === "frame" && stageTool === "picture";   // the Picture tab's tools on the stage
   const commands = useStudioCommands(projectId, history.run);   // every undoable change, one object
   const objectSaves = { objects: commands.setObjects, overlays: commands.setOverlays };   // where an object lives: its picture, or in time
+  useObjectClipboard(commands.setObjectsOf);   // Ctrl+C / Ctrl+V of objects between pictures
   const ready = useReady(status !== "loading" && camera.settled);
 
   // Development only: poke at the store from the browser console (window.editorStore.getState()).
@@ -112,6 +116,7 @@ export function Studio() {
                 {/* Each tab's tools on the stage, only while that tab is open. */}
                 {editing && <StageEditor save={commands.transformPictures} />}
                 {stageMode === "frame" && stageTool === "objects" && <ObjectEditor saves={objectSaves} />}
+                {stageMode === "frame" && stageTool === "draw" && <DrawLayer save={commands.setObjects} />}
               </StageView>
               <div className="stage-note"><CameraMessage camera={camera} more /></div>
             </>
@@ -129,6 +134,9 @@ export function Studio() {
         </PanelTab>
         <PanelTab id="objects" label="Objects" title="Things on the picture" icon={<Shapes size={31} />}>
           <ObjectsPanel saves={objectSaves} onStage={stageMode === "frame"} />
+        </PanelTab>
+        <PanelTab id="draw" label="Draw" title="Draw on the picture" icon={<Pencil size={31} />}>
+          <DrawPanel save={commands.setObjects} onStage={stageMode === "frame"} />
         </PanelTab>
       </SidePanel>
 

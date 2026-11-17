@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import { frameIndexAt, inOrder } from "@/core/model";
+import { frameIndexAt, shownIndex, type Frame } from "@/core/model";
 import { renderAt, renderPicture } from "@/core/render";
 import { useEditor, useShownFrames, useShownOverlays } from "@/store/useEditor";
 import { bitmaps } from "./media";
@@ -40,8 +40,11 @@ export function StagePicture() {
   return <canvas ref={canvas} className="stage-picture" width={width} height={height} role="img" aria-label={index >= 0 ? `Picture ${index + 1}` : "No picture"} />;
 }
 
-// The picture the stage shows when not playing: the rightmost selected one, or the last. -1 if none.
-export function shownIndex(order: readonly string[], selection: readonly string[]): number {
-  const id = inOrder(order, selection).at(-1) ?? order.at(-1);
-  return id ? order.indexOf(id) : -1;
+// The picture the stage shows when not playing (shownIndex), with every change not saved yet: what
+// the stage's tools (Objects, Draw) work on. `frames` are all the shown pictures.
+export function useStagePicture(): { frames: Frame[]; index: number; frame: Frame | undefined } {
+  const frames = useShownFrames();
+  const selection = useEditor((state) => state.selection);
+  const index = shownIndex(frames.map((frame) => frame.id), selection);
+  return { frames, index, frame: frames[index] };
 }

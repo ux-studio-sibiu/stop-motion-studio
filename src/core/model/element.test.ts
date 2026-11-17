@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boxAt, BUBBLE_DEFAULTS, BUBBLE_FONTS, bubbleFont, boxCentre, boxCorners, boxPoint, pointInBox, bubbleProps, cloneElements, createBubble, MIN_BOX, moveBox, resizeBox, rotateBox, sameElements, SPEECH_BUBBLE, withProps } from ".";
+import { boxAt, BUBBLE_DEFAULTS, BUBBLE_FONTS, bubbleFont, boxCentre, boxCorners, boxPoint, pointInBox, bubbleProps, cloneElements, createBubble, MIN_BOX, moveBox, resizeBox, rotateBox, sameElements, SPEECH_BUBBLE, withElement, withProps } from ".";
 
 const size = { width: 1000, height: 500 };
 const box = { x: 0.2, y: 0.2, width: 0.4, height: 0.4, rotation: 0 };   // 400 × 200 px, top-left at (200, 100)
@@ -112,5 +112,15 @@ describe("boxCorners, pointInBox and boxPoint", () => {
     expect(at(boxPoint({ ...box, rotation: 90 }, { x: 0.5, y: 1.5 }, size))).toEqual([200, 200]);
     const turned = { ...box, rotation: -37 };
     expect(at(boxPoint(turned, pointInBox(turned, { x: 123, y: 456 }, size), size))).toEqual([123, 456]);
+  });
+});
+
+describe("withElement", () => {
+  it("replaces an object by id, or removes it, and leaves the others as they are", () => {
+    const [a, b] = [createBubble(), createBubble()];
+    const changed = withProps(b, { text: "new" });
+    expect(withElement([a, b], b.id, changed)).toEqual([a, changed]);
+    expect(withElement([a, b], a.id, null)).toEqual([b]);
+    expect(withElement([a, b], "missing", null)).toEqual([a, b]);
   });
 });

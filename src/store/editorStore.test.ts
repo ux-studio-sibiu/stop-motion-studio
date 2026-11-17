@@ -352,3 +352,16 @@ describe("the timeline selection: pictures or an overlay, never both (step 24)",
     expect(selectedOverlayId(store.getState())).toBeNull();
   });
 });
+
+describe("the clipboard (step 24b)", () => {
+  it("keeps a copy of its own of what was copied, also when another animation opens", () => {
+    const bubble = createBubble("speech", "Hi");
+    store.getState().setClipboard(bubble);
+    expect(store.getState().clipboard).toEqual(bubble);
+    expect(store.getState().clipboard?.props).not.toBe(bubble.props);
+    store.getState().loadProject(createProject(), []);
+    expect(store.getState().clipboard).toEqual(bubble);
+    store.getState().setClipboard(null);
+    expect(store.getState().clipboard).toBeNull();
+  });
+});

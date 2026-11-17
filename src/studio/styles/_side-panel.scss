@@ -19,9 +19,11 @@
 
     @include respond-to-max("tablet") { display: none; }
 
+    // The tabs start where a panel's content does, below its title: the panel's padding, the title
+    // (1.125rem text, about 1.6875rem tall) and the gap after it.
     .tabs {
       position: absolute;
-      top: var(--space-3);
+      top: calc(2 * var(--space-3) + 1.6875rem);
       right: 100%;
       display: flex;
       flex-direction: column;
@@ -125,4 +127,58 @@
     font-weight: 700;
   }
 
+}
+
+// Fields, colour swatches and hints the tabs share (Objects, Draw): a label over its control, a row
+// of colours to pick from (Swatches.tsx), and a line of help in muted text.
+.nsc-studio .nsc-side-panel {
+  .hint { margin: 0; color: var(--color-muted); font-size: 0.875rem; }
+
+  .field {
+    display: grid;
+    gap: var(--space-1);
+    min-width: 0;
+    font-size: 0.8125rem;
+    font-weight: 700;
+
+    select,
+    textarea {
+      box-sizing: border-box;
+      width: 100%;
+      border: var(--line-width) solid var(--color-line);
+      border-radius: var(--radius-small);
+      background: var(--color-surface);
+      color: var(--color-ink);
+      font: inherit;
+      font-size: 1rem;
+    }
+
+    select { min-height: var(--hit); padding: 0 var(--space-2); }
+
+    textarea {
+      padding: var(--space-2);
+      font-weight: 700;
+      line-height: 1.3;
+      resize: vertical;
+    }
+
+    select:focus-visible,
+    textarea:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 1px; }
+  }
+
+  .swatches { display: grid; grid-template-columns: repeat(7, minmax(0, 2rem)); gap: 0.3rem; }   // up to seven: "None" and six colours
+
+  .swatch {
+    width: 100%;
+    aspect-ratio: 1;
+    padding: 0;
+    border: var(--line-width) solid var(--color-line);
+    border-radius: 50%;
+    cursor: pointer;
+
+    &.is-on { box-shadow: 0 0 0 3px var(--color-surface), 0 0 0 5px var(--color-focus); }
+    // No colour: white with a red line through it.
+    &.is-none { background: linear-gradient(to top right, transparent calc(50% - 1.5px), var(--color-danger) calc(50% - 1.5px), var(--color-danger) calc(50% + 1.5px), transparent calc(50% + 1.5px)), var(--color-surface); }
+    &:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+  }
 }

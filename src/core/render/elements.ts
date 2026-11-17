@@ -1,5 +1,6 @@
-import { SHAPE, SPEECH_BUBBLE, TEXT, type Element } from "../model";
+import { DRAWING, SHAPE, SPEECH_BUBBLE, TEXT, type Element } from "../model";
 import { drawBubble } from "./bubble";
+import { drawDrawing } from "./drawing";
 import { drawShape, drawText } from "./shape";
 
 // How each kind of object is drawn (step 23). A plain map from kind to drawing function: a new
@@ -12,6 +13,7 @@ const KINDS: Readonly<Record<string, Draw>> = {
   [SPEECH_BUBBLE]: drawBubble,
   [TEXT]: drawText,
   [SHAPE]: drawShape,
+  [DRAWING]: drawDrawing,
 };
 
 // A frame's objects, in order (later ones on top).

@@ -1,7 +1,8 @@
 "use client";
 
 import type { BubbleProps, BubbleVariant } from "@/core/model";
-import { FILLS, OutlinePicker, Swatches, TextGroup, type SettingsProps } from "./controls";
+import { FILLS, Swatches } from "@/studio/Swatches";
+import { OutlinePicker, TextGroup, type SettingsProps } from "./controls";
 
 // A speech bubble's settings, in two groups:
 //   Bubble  its shape, whether it has a tail, its colour and its outline;

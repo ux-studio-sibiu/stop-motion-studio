@@ -22,6 +22,9 @@ export const remembered = {
   timelineView: definePreferenceFamily("view", asTimelineView),         // each animation's zoom and scroll
   selection: definePreferenceFamily("selection", asStringList),         // each animation's selected pictures
   overlaySelection: definePreferenceFamily("overlay-selection", asString),   // each animation's selected bar on the overlay track
+  drawTool: definePreference("draw-tool", asString),                   // the Draw tab: pencil or eraser (step 24b)
+  drawColour: definePreference("draw-colour", asString),               //   the pencil colour
+  drawWidth: definePreference("draw-width", asString),                 //   the pencil width
   stageView: definePreferenceFamily("stage-view", asObject),            // each animation's stage zoom and pan (the store checks)
 };
 

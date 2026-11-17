@@ -10,4 +10,6 @@ export * from "./transform";
 export * from "./snap";
 export * from "./element";
 export * from "./objectKinds";
+export * from "./drawing";
+export * from "./clipboard";
 export * from "./overlay";

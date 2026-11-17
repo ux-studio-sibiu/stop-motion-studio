@@ -141,12 +141,20 @@ type StoredThumb = { imageId: string; projectId: string; blob: Blob };   // ~160
 // map from kind to drawing function (core/render/elements.ts).
 type Element = {
   id: string;
-  kind: string;             // "speech-bubble", "text", "shape" (rectangle, ellipse or arrow), ...
+  kind: string;             // "speech-bubble", "text", "shape" (rectangle, ellipse or arrow), "drawing", ...
   box: { x: number; y: number; width: number; height: number; rotation: number };   // fractions of the frame
   props: Record<string, unknown>;   // kind-specific: text, colours, the bubble's tail point
 };
 
 // Frame gains: elements: Element[]   (on this picture only; reorder / duplicate carry them along)
+
+// A free drawing (step 24b) is an Element of kind "drawing", one per picture:
+//   props: { strokes: { points: number[] /* x, y... in fractions of its box */; colour; width }[] }
+// Strokes live in the drawing's own box, so the Objects tab can move or size it as one. Drawing on
+// the time track later needs no new data: an Overlay's element can be a drawing too. What's left
+// is the editing: the Draw layer draws into the drawing of the picture shown; it would instead take
+// the object it draws into from the same Placed choice the Objects tab uses (on the picture, or an
+// overlay showing then), e.g. a "draw over several pictures" switch that makes or picks an overlay.
 
 // The second timeline layer: an element that lives in time, not on a picture. Kept as a list on
 // the project (Project.overlays, step 24): short, saved and watched with the project.

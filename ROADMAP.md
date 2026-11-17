@@ -449,6 +449,20 @@ neighbours. Step 18 is moving; step 19 is lining up.
   five. Playback still ends at the last picture; export should run to the later end.
   The timeline has one selection: pictures, or one bar; the toolbar's Duplicate and Delete act on it.
 
+
+### 24b · Free drawing on pictures *(added)*
+- **Builds:** a Draw tab (pencil or eraser, colour, four widths, Clear drawing; all remembered) and a
+  drawing layer on the stage; the `drawing` object kind *(core)*: one per picture, holding its
+  strokes in its own box; `simplifyStroke` (jitter out, needless points dropped), `addStroke`,
+  `eraseStrokes` *(core, tested)*; `drawDrawing` with smooth curves *(render, pixel-tested)*.
+- **Decisions:** a drawing is an ordinary object, so thumbnails, see-through, playback, export,
+  copying and undo come with it, and the Objects tab moves, sizes and deletes it as one. Each line,
+  each erase and Clear drawing is one undo step. The eraser takes whole strokes.
+- **Later:** drawing on the time track (a drawing that lasts over several pictures): the model
+  already allows it (PLAN.md §3); the Draw layer would target an overlay the way the Objects tab
+  does (`Placed`).
+- **Check:** draw, see it in the thumbnail; erase one line; undo; reload: tool, colour and width are
+  as left.
 ---
 
 ## Part 9 - Export and import
@@ -564,7 +578,8 @@ pixel test that the exported frame's corners come from 20 px in.
 
 ## Later (not planned)
 
-More picture layers, more overlay tracks, overlays that stick to a picture, sound, free drawing,
+More picture layers, more overlay tracks, overlays that stick to a picture, sound, drawing on the
+time track (free drawing on pictures is step 24b),
 animating elements between keyframes, backgrounds/chroma key, cloud backup and sync (e.g. Supabase
 behind `ProjectRepository`), classroom sharing. Each would start with a `schemaVersion` bump and a
 feature folder of its own.
@@ -596,6 +611,7 @@ feature folder of its own.
 - [x] 22 Plugin registry (became feature folders)
 - [x] 23 Speech bubbles on pictures
 - [x] 24 Overlay layer: text and shapes in time
+- [x] 24b Free drawing on pictures
 - [ ] 25 GIF export
 - [ ] 26 Video export
 - [ ] 27 Project archive

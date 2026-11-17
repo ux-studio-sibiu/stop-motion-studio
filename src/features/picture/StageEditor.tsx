@@ -1,19 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { angleTo, boundsOf, boxLines, moveBy, rotateBy, scaleAround, snapBox, type Point, type SnapLines, type Transform } from "@/core/model";
+import { shownIndex, angleTo, boundsOf, boxLines, moveBy, rotateBy, scaleAround, snapBox, type Point, type SnapLines, type Transform } from "@/core/model";
 import { frameCorners } from "@/core/render";
 import { useEditor, useShownFrames, editorStore } from "@/store/useEditor";
 import { bitmaps } from "@/studio/media";
-import { shownIndex } from "@/studio/StagePicture";
 import { useStagePan } from "./useStagePan";
 import { cancelPreview, commitPreview, commitSoon, previewEach, shownTransform, useEditTargets, type SaveTransforms } from "./transformEditing";
+import { frameRunner, toProjectPoint, type FrameRunner } from "@/studio/stagePointer";
 
 const HANDLE_DISTANCE = 70;   // project px in from the picture's top edge
 const HANDLE_RADIUS = 26;
 const SNAP_DISTANCE = 8;      // screen px: how near an edge or centre has to come to snap
 
-type Edit = { kind: "move" | "turn"; pointerId: number; start: Point; base: Record<string, Transform>; startAngle: number; latest: Point; alt: boolean; snapWithin: number; frame: number };
+type Edit = { kind: "move" | "turn"; pointerId: number; start: Point; base: Record<string, Transform>; startAngle: number; latest: Point; alt: boolean; snapWithin: number; redraw: FrameRunner };
 
 // Direct editing on the stage, over the picture (camera off): drag to move, the round handle to
 // turn, the wheel to size around the pointer; with the keyboard, arrows nudge 1 project pixel
@@ -36,12 +36,7 @@ export function StageEditor({ save }: { save: SaveTransforms }) {
   const [guides, setGuides] = useState<{ x: number | null; y: number | null } | null>(null);
   const size = { width, height };
 
-  // Screen → project pixels.
-  const toProject = (clientX: number, clientY: number): Point => {
-    const box = element.current?.getBoundingClientRect();
-    if (!box || box.width === 0) return { x: 0, y: 0 };
-    return { x: ((clientX - box.left) / box.width) * width, y: ((clientY - box.top) / box.height) * height };
-  };
+  const toProject = (clientX: number, clientY: number): Point => toProjectPoint(element.current, clientX, clientY, size);
 
   const cornersOf = (id: string, transform?: Transform) => {
     const frame = frames.find((candidate) => candidate.id === id);
@@ -98,7 +93,7 @@ export function StageEditor({ save }: { save: SaveTransforms }) {
     const kind = (event.target as Element).closest("[data-handle]") ? "turn" : "move";
     editorStore.getState().pause();
     const base = Object.fromEntries(targets.flatMap((id) => { const t = shownTransform(id); return t ? [[id, t]] : []; }));
-    gesture.current = { kind, pointerId: event.pointerId, start, base, startAngle: centre ? angleTo(centre, start) : 0, latest: start, alt: event.altKey, snapWithin: (SNAP_DISTANCE * width) / (box.width || 1), frame: 0 };
+    gesture.current = { kind, pointerId: event.pointerId, start, base, startAngle: centre ? angleTo(centre, start) : 0, latest: start, alt: event.altKey, snapWithin: (SNAP_DISTANCE * width) / (box.width || 1), redraw: frameRunner() };
   };
 
   // Redraw on the next animation frame, not on every pointer event, so dragging stays smooth.
@@ -108,12 +103,7 @@ export function StageEditor({ save }: { save: SaveTransforms }) {
     if (!current || current.pointerId !== event.pointerId) return;
     current.latest = toProject(event.clientX, event.clientY);
     current.alt = event.altKey;
-    if (current.frame) return;
-    current.frame = requestAnimationFrame(() => {
-      current.frame = 0;
-      if (current.kind === "move") showMove(current);
-      else showTurn(current);
-    });
+    current.redraw.request(() => { if (current.kind === "move") showMove(current); else showTurn(current); });
   };
 
   const onPointerUp = (event: PointerEvent<HTMLDivElement>) => {
@@ -121,7 +111,7 @@ export function StageEditor({ save }: { save: SaveTransforms }) {
     const current = gesture.current;
     if (!current || current.pointerId !== event.pointerId) return;
     gesture.current = null;
-    if (current.frame) cancelAnimationFrame(current.frame);
+    current.redraw.cancel();
     current.alt = event.altKey;
     if (current.kind === "move") showMove(current);
     else showTurn(current);

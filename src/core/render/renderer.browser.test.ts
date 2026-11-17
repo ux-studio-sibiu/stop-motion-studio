@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createBubble, createFrame, createOverlay, createShape, createText, DEFAULT_ADJUST, DEFAULT_TRANSFORM, withProps, type Adjust, type Element, type Transform } from "@/core/model";
+import { addStroke, createBubble, createFrame, createOverlay, createShape, createText, DEFAULT_ADJUST, DEFAULT_TRANSFORM, withProps, type Adjust, type Element, type Transform } from "@/core/model";
 import { drawElements, drawFrame, drawOnionSkin, renderAt, renderPicture, type DrawableImage } from "@/core/render";
 
 // Pixel tests: the renderer draws into a real canvas (Vitest browser mode, Chromium), and we
@@ -321,5 +321,40 @@ describe("text and shapes (step 24)", () => {
     expectColour(picture(1), 80, 45, BLUE_FILL);   // picture 2, ticks 4-7
     expectColour(picture(0), 80, 45, RED);
     expectColour(picture(2), 80, 45, RED);
+  });
+});
+
+describe("free drawing (step 24b)", () => {
+  const frame = { width: W, height: H };
+  const onRed = () => { const ctx = target(); ctx.fillStyle = "rgb(255,0,0)"; ctx.fillRect(0, 0, W, H); return ctx; };
+  const BLUE = [0, 0, 255];
+
+  it("draws a drawing's strokes in their colour and thickness, smooth, with round ends", () => {
+    const drawing = addStroke(undefined, { points: [{ x: 20, y: 45 }, { x: 80, y: 20 }, { x: 140, y: 45 }], colour: "#0000ff", width: "huge" }, frame);   // 4.5 px thick here
+    const ctx = onRed();
+    drawElements(ctx, frame, [drawing]);
+    expectColour(ctx, 20, 45, BLUE);    // a round end, on its point
+    expectColour(ctx, 140, 45, BLUE);
+    expectColour(ctx, 72, 29, BLUE);    // the curve, bending towards the middle point
+    expectColour(ctx, 80, 20, RED);     // without its sharp corner: smoothed
+    expectColour(ctx, 80, 45, RED);     // not filled in
+    expectColour(ctx, 5, 80, RED);
+  });
+
+  it("a single point is a dot", () => {
+    const dot = addStroke(undefined, { points: [{ x: 80, y: 45 }], colour: "#0000ff", width: "huge" }, frame);
+    const ctx = onRed();
+    drawElements(ctx, frame, [dot]);
+    expectColour(ctx, 80, 45, BLUE);
+    expectColour(ctx, 80, 52, RED);
+  });
+
+  it("moves and sizes with its box", () => {
+    const drawing = addStroke(undefined, { points: [{ x: 20, y: 20 }, { x: 60, y: 20 }], colour: "#0000ff", width: "huge" }, frame);
+    const moved = { ...drawing, box: { ...drawing.box, x: drawing.box.x + 0.5, y: drawing.box.y + 0.5 } };   // 80 px right, 45 down
+    const ctx = onRed();
+    drawElements(ctx, frame, [moved]);
+    expectColour(ctx, 120, 65, BLUE);
+    expectColour(ctx, 40, 20, RED);
   });
 });

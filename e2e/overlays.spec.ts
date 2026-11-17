@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, test } from "./fixtures";
+import { expect, test, type Studio } from "./fixtures";
 
 // Objects in time (step 24): dropped on the overlay track under the pictures, an object shows over
 // every picture in its time, whatever pictures are there. Its bar moves and resizes on the track;
@@ -18,19 +18,16 @@ const TICK = 20;
 const YELLOW = [255, 243, 163];   // a new shape's colour
 const track = (page: Page) => page.locator("[data-overlay-track]");
 const bar = (page: Page) => page.getByRole("button", { name: /^Rectangle, from/ });
-const undo = (page: Page) => page.getByRole("button", { name: "Undo" });
-// The colour the stage draws in the middle of the picture, where a new shape goes.
-const middle = (page: Page) => page.locator(".stage-picture").evaluate((canvas: HTMLCanvasElement) => [...canvas.getContext("2d")!.getImageData(canvas.width / 2, canvas.height / 2, 1, 1).data.slice(0, 3)]);
 
 // Drags the Shape icon onto the track, at a tick.
-async function dropShape(page: Page, tick: number) {
+async function dropShape(page: Page, studio: Studio, tick: number) {
   const from = (await page.getByRole("button", { name: "Shape", exact: true }).boundingBox())!;
   const to = (await track(page).boundingBox())!;
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(to.x + tick * TICK + TICK / 2, to.y + to.height / 2, { steps: 12 });
   await page.mouse.up();
-  await expect(undo(page)).toHaveAttribute("title", "Undo: Add rectangle");
+  await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Add rectangle");
 }
 
 // Drags from a point by dx px.
@@ -42,37 +39,37 @@ async function dragBy(page: Page, at: { x: number; y: number }, dx: number) {
 }
 
 test("dropped on the track, an object shows over the pictures in its time and not the others", async ({ studio, page }) => {
-  await dropShape(page, 2);   // from picture 3
+  await dropShape(page, studio, 2);   // from picture 3
   await expect(bar(page)).toHaveAccessibleName("Rectangle, from 0.25 s to 2.25 s");
   await expect(page.locator(".settings .where")).toHaveText(/^Shows from 0.25 s to 2.25 s/);
   await expect(studio.picture(3)).toHaveAttribute("aria-current", "true");   // the stage went to where it starts
-  await expect.poll(() => middle(page)).toEqual(YELLOW);
+  await expect.poll(() => studio.stageColour()).toEqual(YELLOW);
   await studio.picture(4).click();
-  await expect.poll(() => middle(page)).toEqual(YELLOW);
+  await expect.poll(() => studio.stageColour()).toEqual(YELLOW);
   await studio.picture(2).click();
-  await expect.poll(() => middle(page)).not.toEqual(YELLOW);
+  await expect.poll(() => studio.stageColour()).not.toEqual(YELLOW);
 });
 
-test("its bar moves it in time and its end makes it longer, each one undo step; Delete removes it", async ({ page }) => {
-  await dropShape(page, 0);
+test("its bar moves it in time and its end makes it longer, each one undo step; Delete removes it", async ({ studio, page }) => {
+  await dropShape(page, studio, 0);
   const box = (await bar(page).boundingBox())!;
   await dragBy(page, { x: box.x + 60, y: box.y + box.height / 2 }, 2 * TICK);
-  await expect(undo(page)).toHaveAttribute("title", "Undo: Move rectangle in time");
+  await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Move rectangle in time");
   await expect(bar(page)).toHaveAccessibleName("Rectangle, from 0.25 s to 2.25 s");
 
   const moved = (await bar(page).boundingBox())!;
   await dragBy(page, { x: moved.x + moved.width - 3, y: moved.y + moved.height / 2 }, 4 * TICK);
-  await expect(undo(page)).toHaveAttribute("title", "Undo: Change when rectangle shows");
+  await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Change when rectangle shows");
   await expect(bar(page)).toHaveAccessibleName("Rectangle, from 0.25 s to 2.75 s");
 
   await bar(page).press("Delete");
   await expect(bar(page)).toHaveCount(0);
-  await undo(page).click();
+  await studio.undoButton().click();
   await expect(bar(page)).toHaveAccessibleName("Rectangle, from 0.25 s to 2.75 s");
 });
 
 test("it keeps its time when pictures are deleted, and after a reload", async ({ studio, page }) => {
-  await dropShape(page, 2);
+  await dropShape(page, studio, 2);
   await studio.picture(1).click();
   await page.getByRole("button", { name: "Delete picture" }).click();
   await expect(studio.picture(4)).toHaveCount(0);
@@ -83,7 +80,7 @@ test("it keeps its time when pictures are deleted, and after a reload", async ({
 });
 
 test("picked on the track, it's edited on the stage like any object, and stays in time", async ({ studio, page }) => {
-  await dropShape(page, 1);
+  await dropShape(page, studio, 1);
   await studio.picture(4).click();
   await page.getByRole("tab", { name: "Camera" }).click();
   await bar(page).click();   // picks it: the Objects tab, at the picture where it starts
@@ -92,24 +89,24 @@ test("picked on the track, it's edited on the stage like any object, and stays i
   await expect(page.getByRole("region", { name: "rectangle settings" })).toBeVisible();
 
   await page.getByRole("combobox", { name: "Shape" }).selectOption("ellipse");
-  await expect(undo(page)).toHaveAttribute("title", "Undo: Change shape");
+  await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Change shape");
   await expect(page.getByRole("button", { name: /^Ellipse, from 0.13 s/ })).toBeVisible();
 
   const editor = (await page.getByRole("application", { name: /^Objects/ }).boundingBox())!;
   await dragBy(page, { x: editor.x + editor.width / 2, y: editor.y + editor.height / 2 }, 150);
-  await expect(undo(page)).toHaveAttribute("title", "Undo: Move ellipse");
-  await expect.poll(() => middle(page)).not.toEqual(YELLOW);   // it moved off the middle
+  await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Move ellipse");
+  await expect.poll(() => studio.stageColour()).not.toEqual(YELLOW);   // it moved off the middle
   await expect(page.getByRole("button", { name: /^Ellipse, from 0.13 s to 2.13 s/ })).toBeVisible();   // still at its time
 });
 
 test("a picked bar is the timeline's only selection: Duplicate and Delete act on it, a picture click switches back, and it's remembered", async ({ studio, page }) => {
-  await dropShape(page, 0);   // dropped: picked
+  await dropShape(page, studio, 0);   // dropped: picked
   await expect(bar(page)).toHaveAttribute("aria-pressed", "true");
   await expect(studio.picture(1)).toHaveAttribute("aria-selected", "false");   // not selected too: only on the stage
   await expect(studio.picture(1)).toHaveAttribute("aria-current", "true");
 
   await page.getByRole("region", { name: "Timeline" }).getByRole("button", { name: "Duplicate rectangle" }).click();
-  await expect(undo(page)).toHaveAttribute("title", "Undo: Duplicate rectangle");
+  await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Duplicate rectangle");
   const copy = page.getByRole("button", { name: "Rectangle, from 2 s to 4 s" });   // right after the first
   await expect(copy).toHaveAttribute("aria-pressed", "true");                      // the copy is the selection now
   await expect(studio.pictures()).toHaveCount(4);                                  // no picture was copied
@@ -130,25 +127,25 @@ test("a picked bar is the timeline's only selection: Duplicate and Delete act on
 
 test("an overlay that shows at any moment of a picture is on it: one starting partway through is drawn and editable", async ({ studio, page }) => {
   await studio.dragGrip(1, 7 * TICK);   // picture 1 lasts 8 ticks
-  await dropShape(page, 3);             // starts in the middle of picture 1
+  await dropShape(page, studio, 3);             // starts in the middle of picture 1
   await page.getByRole("tab", { name: "Camera" }).click();
   await studio.picture(4).click();
   await bar(page).click();
   await expect(studio.picture(1)).toHaveAttribute("aria-current", "true");
   await expect(page.getByRole("region", { name: "rectangle settings" })).toBeVisible();
-  await expect.poll(() => middle(page)).toEqual(YELLOW);   // drawn on the stage
+  await expect.poll(() => studio.stageColour()).toEqual(YELLOW);   // drawn on the stage
 });
 
 test("a picked overlay keeps its settings in the tab when it isn't on the picture shown, and they still work", async ({ studio, page }) => {
-  await dropShape(page, 0);   // picked, on picture 1
+  await dropShape(page, studio, 0);   // picked, on picture 1
   const box = (await bar(page).boundingBox())!;
   await dragBy(page, { x: box.x + 40, y: box.y + box.height / 2 }, 10 * TICK);   // to tick 10: after every picture
   await expect(bar(page)).toHaveAccessibleName("Rectangle, from 1.25 s to 3.25 s");
   await expect(studio.picture(1)).toHaveAttribute("aria-current", "true");   // the stage still shows picture 1
-  await expect.poll(() => middle(page)).not.toEqual(YELLOW);                  // where it isn't
+  await expect.poll(() => studio.stageColour()).not.toEqual(YELLOW);                  // where it isn't
 
   await expect(page.locator(".settings .where")).toHaveText("Not on this picture: it shows from 1.25 s to 3.25 s");
   await page.getByRole("combobox", { name: "Shape" }).selectOption("ellipse");
-  await expect(undo(page)).toHaveAttribute("title", "Undo: Change shape");
+  await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Change shape");
   await expect(page.getByRole("button", { name: "Ellipse, from 1.25 s to 3.25 s" })).toBeVisible();
 });

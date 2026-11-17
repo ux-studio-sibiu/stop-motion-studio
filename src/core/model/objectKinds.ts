@@ -70,7 +70,7 @@ export function bubbleProps(element: Pick<Element, "props">): BubbleProps {
   };
 }
 
-function isColour(value: unknown): value is string {
+export function isColour(value: unknown): value is string {
   return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
 }
 
@@ -124,12 +124,16 @@ export function shapeProps(element: Pick<Element, "props">): ShapeProps {
   };
 }
 
+// A free drawing (step 24b): its strokes and how they're made are in drawing.ts.
+export const DRAWING = "drawing";
+
 // What an object is called in undo labels, buttons and the timeline: "speech bubble", "text",
 // "arrow"... A kind this studio doesn't know is "object".
 export function objectLabel(element: Pick<Element, "kind" | "props">): string {
   if (element.kind === SPEECH_BUBBLE) return { speech: "speech bubble", thought: "thought bubble", spiked: "spiked bubble" }[bubbleProps(element).variant];
   if (element.kind === TEXT) return "text";
   if (element.kind === SHAPE) return shapeProps(element).form;
+  if (element.kind === DRAWING) return "drawing";
   return "object";
 }
 

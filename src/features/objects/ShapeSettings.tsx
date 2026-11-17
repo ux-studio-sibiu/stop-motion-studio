@@ -1,7 +1,8 @@
 "use client";
 
 import type { ShapeForm, ShapeProps } from "@/core/model";
-import { FILLS, OutlinePicker, Swatches, type SettingsProps } from "./controls";
+import { FILLS, Swatches } from "@/studio/Swatches";
+import { OutlinePicker, type SettingsProps } from "./controls";
 
 // A shape's settings (step 24): which shape it is (one kind, so a rectangle can become an arrow),
 // its colour or none, and its outline. Which way an arrow points is the box's turn, on the stage.
