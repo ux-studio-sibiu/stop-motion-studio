@@ -84,3 +84,26 @@ test("the storage meter says how much space is used", async ({ projects, page },
   await projects.open();
   await expect(page.getByRole("region", { name: "Storage on this device" })).toContainText(/Using .+ of about .+ on this device/);
 });
+
+test("deleting an animation forgets everything remembered about it, and nothing about the others", async ({ projects, page }) => {
+  await projects.open();
+  await projects.newButton().click();
+  await page.waitForURL(/project=/);
+  const id = new URL(page.url()).searchParams.get("project")!;
+  // What the studio remembers per animation (remembered.ts), for this one and for another.
+  const families = ["view", "selection", "stage-view", "overlay-selection"];
+  await page.evaluate(({ id, families }) => {
+    for (const family of families) {
+      localStorage.setItem(`stop-motion-studio:${family}:${id}`, JSON.stringify("x"));
+      localStorage.setItem(`stop-motion-studio:${family}:another`, JSON.stringify("x"));
+    }
+  }, { id, families });
+  await page.getByRole("link", { name: "All projects" }).click();
+  await page.getByRole("button", { name: "Delete My animation" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(projects.cards()).toHaveCount(0);
+
+  const left = await page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith("stop-motion-studio:")).sort());
+  expect(left.filter((key) => key.endsWith(`:${id}`))).toEqual([]);
+  expect(left.filter((key) => key.endsWith(":another"))).toHaveLength(families.length);
+});

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createBubble, createFrame, createProject, withProps, type Frame, type Project } from "@/core/model";
-import { createEditorStore, MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, orderedFrames, withPreview, type EditorStore } from "@/store/editorStore";
+import { createBubble, createFrame, createOverlay, createProject, createText, frameIndexAt, withProps, type Frame, type Project } from "@/core/model";
+import { createEditorStore, MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, orderedFrames, selectedOverlayId, withPreview, type EditorStore } from "@/store/editorStore";
 
 let store: EditorStore;
 let project: Project;
@@ -299,5 +299,56 @@ describe("subscriptions", () => {
     expect(calls).toBe(0);
     store.getState().syncProject({ ...project, frameIds: [a.id, b.id] }, [a, b]);   // the project itself
     expect(calls).toBe(1);
+  });
+});
+
+describe("overlays (step 24)", () => {
+  beforeEach(() => store.getState().loadProject({ ...project, frameIds: [a.id, b.id] }, [a, b]));
+
+  it("previews the overlay list until the saved project has it, and opening another animation drops it", () => {
+    const overlay = createOverlay(createText("Hi"), 0, 8);
+    store.getState().previewOverlays([overlay]);
+    expect(store.getState().overlaysPreview).toEqual([overlay]);
+    store.getState().syncProject({ ...project, frameIds: [a.id, b.id] }, [a, b]);   // saved without it yet
+    expect(store.getState().overlaysPreview).toEqual([overlay]);
+    store.getState().syncProject({ ...project, frameIds: [a.id, b.id], overlays: [overlay] }, [a, b]);
+    expect(store.getState().overlaysPreview).toBeNull();
+
+    store.getState().previewOverlays([]);
+    store.getState().loadProject(createProject(), []);
+    expect(store.getState().overlaysPreview).toBeNull();
+  });
+});
+
+describe("the timeline selection: pictures or an overlay, never both (step 24)", () => {
+  const overlay = { ...createOverlay(createText("Hi"), 1, 4), id: "title" };
+  beforeEach(() => store.getState().loadProject({ ...project, frameIds: [a.id, b.id], overlays: [overlay] }, [a, b]));
+
+  it("picking a bar picks its object and, for the stage, the picture where it starts", () => {
+    store.getState().select([a.id]);
+    store.getState().selectOverlay("title");
+    const state = store.getState();
+    expect(selectedOverlayId(state)).toBe("title");
+    expect(state.selectedElement).toBe(overlay.element.id);
+    expect(state.selection).toEqual([orderedFrames(state)[frameIndexAt(orderedFrames(state), 1)].id]);
+  });
+
+  it("selecting pictures un-picks the bar; a picture's own object stays picked", () => {
+    store.getState().selectOverlay("title");
+    store.getState().select([a.id, b.id]);
+    expect(selectedOverlayId(store.getState())).toBeNull();
+    expect(store.getState().selectedElement).toBeNull();
+
+    store.getState().selectElement("an-object-on-a-picture");
+    store.getState().select([b.id]);
+    expect(store.getState().selectedElement).toBe("an-object-on-a-picture");
+    expect(selectedOverlayId(store.getState())).toBeNull();
+  });
+
+  it("an overlay that's gone can't be picked", () => {
+    store.getState().select([a.id]);
+    store.getState().selectOverlay("missing");
+    expect(store.getState().selection).toEqual([a.id]);
+    expect(selectedOverlayId(store.getState())).toBeNull();
   });
 });

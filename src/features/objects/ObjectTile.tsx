@@ -6,23 +6,41 @@ import type { Point } from "@/core/model";
 
 const DRAG_START = 6;   // px the pointer moves before a press becomes a drag
 
-// One kind of object in the Objects tab, as an icon to drag onto the picture on the stage
-// (ObjectEditor's layer). `onPlace` gets where it was dropped, as fractions of the picture, or
-// null when it was clicked or pressed with the keyboard instead: then it goes to a spot of the
-// caller's choosing. A drop outside the picture does nothing. Pointer events, not HTML drag and
-// drop, so it works with a finger on a tablet too; the icon follows the pointer meanwhile.
-export function ObjectTile({ label, icon, disabled = false, title, onPlace }: { label: string; icon: ReactNode; disabled?: boolean; title?: string; onPlace: (at: Point | null) => void }) {
+// Where a dragged object was dropped:
+//   picture  on the picture on the stage (ObjectEditor's layer), at a point in fractions of it
+//   track    on the timeline's overlay track, at a tick: it lives in time from there (step 24)
+export type Place = { on: "picture"; at: Point } | { on: "track"; tick: number };
+
+// One kind of object in the Objects tab, as an icon to drag onto the picture on the stage or onto
+// the overlay track. `onPlace` gets where it was dropped, or null when it was clicked or pressed
+// with the keyboard instead: then it goes to a spot of the caller's choosing. A drop anywhere else
+// does nothing. Pointer events, not HTML drag and drop, so it works with a finger on a tablet too;
+// the icon follows the pointer meanwhile, and the place it would land lights up.
+export function ObjectTile({ label, icon, disabled = false, title, onPlace }: { label: string; icon: ReactNode; disabled?: boolean; title?: string; onPlace: (place: Place | null) => void }) {
   const [ghost, setGhost] = useState<Point | null>(null);
   const drag = useRef<{ pointerId: number; start: Point; moved: boolean } | null>(null);
   const dragged = useRef(false);   // the click that follows a drag isn't a click
 
-  const stage = () => document.querySelector<HTMLElement>(".nsc-object-editor");
-  const dropAt = (x: number, y: number): Point | null => {
-    const box = stage()?.getBoundingClientRect();
-    if (!box || box.width === 0 || x < box.left || x > box.right || y < box.top || y > box.bottom) return null;
-    return { x: (x - box.left) / box.width, y: (y - box.top) / box.height };
+  // The two drop targets. The track says how wide a tick is (data-tick-width); its left edge is tick 0.
+  const targets = () => ({ picture: document.querySelector<HTMLElement>(".nsc-object-editor"), track: document.querySelector<HTMLElement>("[data-overlay-track]") });
+  const inside = (element: HTMLElement | null, x: number, y: number) => {
+    const box = element?.getBoundingClientRect();
+    return box && box.width > 0 && x >= box.left && x <= box.right && y >= box.top && y <= box.bottom ? box : null;
   };
-  const showDrop = (on: boolean) => { const layer = stage(); if (layer) layer.dataset.dropping = on ? "true" : "false"; };
+  const dropAt = (x: number, y: number): Place | null => {
+    const { picture, track } = targets();
+    const onPicture = inside(picture, x, y);
+    if (onPicture) return { on: "picture", at: { x: (x - onPicture.left) / onPicture.width, y: (y - onPicture.top) / onPicture.height } };
+    const onTrack = inside(track, x, y);
+    const tickWidth = Number(track?.dataset.tickWidth);
+    if (onTrack && tickWidth > 0) return { on: "track", tick: Math.max(0, Math.floor((x - onTrack.left) / tickWidth)) };
+    return null;
+  };
+  const showDrop = (place: Place | null) => {
+    const { picture, track } = targets();
+    if (picture) picture.dataset.dropping = String(place?.on === "picture");
+    if (track) track.dataset.dropping = String(place?.on === "track");
+  };
 
   const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
     if (disabled || event.button !== 0) return;
@@ -35,14 +53,14 @@ export function ObjectTile({ label, icon, disabled = false, title, onPlace }: { 
     if (!current.moved && Math.hypot(event.clientX - current.start.x, event.clientY - current.start.y) < DRAG_START) return;
     current.moved = true;
     setGhost({ x: event.clientX, y: event.clientY });
-    showDrop(dropAt(event.clientX, event.clientY) !== null);
+    showDrop(dropAt(event.clientX, event.clientY));
   };
   const end = (event: PointerEvent<HTMLButtonElement>, drop: boolean) => {
     const current = drag.current;
     if (!current || current.pointerId !== event.pointerId) return;
     drag.current = null;
     setGhost(null);
-    showDrop(false);
+    showDrop(null);
     if (!current.moved) return;
     dragged.current = true;
     const at = drop ? dropAt(event.clientX, event.clientY) : null;

@@ -1,5 +1,5 @@
-import { bubbleFont, bubbleProps, type BubbleVariant, type Element, type OutlineWidth, type TextSize } from "../model";
-import { fitText } from "./text";
+import { bubbleProps, type BubbleVariant, type Element } from "../model";
+import { drawLettering, outlineWidth } from "./lettering";
 
 // Speech bubbles (step 23), drawn on the canvas like the picture, so the stage, playback and
 // export all show the same bubble.
@@ -11,19 +11,6 @@ import { fitText } from "./text";
 // The tail reaches `tail`, a point in fractions of the box, so it moves and turns with the bubble.
 
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-
-const LINE_HEIGHT = 1.15;
-const OUTLINE: Readonly<Record<OutlineWidth, number>> = { none: 0, thin: 0.5, medium: 1, thick: 2 };   // times the usual line
-
-// The largest text for each size, as a fraction of the frame's height.
-const TEXT_MAX: Readonly<Record<TextSize, number>> = { small: 0.05, medium: 0.07, large: 0.1, huge: 0.14 };
-
-// The font sizes a bubble's text may take: at most its size's share of the frame's height, and
-// shrinking to fit down to 3.5%, so it stays readable when the video is small (a 360 px tall GIF
-// still gets 13 px text).
-export function bubbleFontRange(frameHeight: number, size: TextSize = "medium"): { max: number; min: number } {
-  return { max: frameHeight * TEXT_MAX[size], min: frameHeight * 0.035 };
-}
 
 // Where the text goes inside a bubble of this size (px, relative to its top-left corner): inset so
 // it clears the rounded corners, more for the oval thought bubble.
@@ -39,7 +26,7 @@ export function drawBubble(ctx: Ctx, element: Element, frame: { width: number; h
   const cx = element.box.x * frame.width + w / 2;
   const cy = element.box.y * frame.height + h / 2;
   const tail = { x: (props.tail.x - 0.5) * w, y: (props.tail.y - 0.5) * h };   // from the centre
-  const line = Math.max(2, frame.height * 0.004) * OUTLINE[props.outline];
+  const line = outlineWidth(props.outline, frame.height);
 
   ctx.save();
   ctx.translate(cx, cy);
@@ -56,20 +43,8 @@ export function drawBubble(ctx: Ctx, element: Element, frame: { width: number; h
   if (line > 0) for (const part of parts) { part(ctx); ctx.stroke(); }
   for (const part of parts) { part(ctx); ctx.fill(); }
 
-  if (props.text.trim()) {
-    const area = bubbleTextArea(w, h, props.variant);
-    const range = bubbleFontRange(frame.height, props.textSize);
-    const font = bubbleFont(props.font);
-    const fontAt = (size: number) => `${font.weight} ${size}px ${font.family}`;
-    const fitted = fitText(props.text, area, (text, size) => { ctx.font = fontAt(size); return ctx.measureText(text).width; }, { ...range, lineHeight: LINE_HEIGHT });
-    ctx.font = fontAt(fitted.size);
-    ctx.fillStyle = props.textColour;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    const step = fitted.size * LINE_HEIGHT;
-    const top = -h / 2 + area.y + area.height / 2 - ((fitted.lines.length - 1) * step) / 2;
-    fitted.lines.forEach((text, i) => ctx.fillText(text, -w / 2 + area.x + area.width / 2, top + i * step));
-  }
+  const area = bubbleTextArea(w, h, props.variant);
+  drawLettering(ctx, props.text, { ...area, x: area.x - w / 2, y: area.y - h / 2 }, { font: props.font, size: props.textSize, colour: props.textColour, frameHeight: frame.height });
   ctx.restore();
 }
 

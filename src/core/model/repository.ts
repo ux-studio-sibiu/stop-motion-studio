@@ -56,7 +56,7 @@ export interface ProjectRepository {
 
 export type LoadedProject = { project: Project; frames: Frame[] };
 
-export type ProjectChanges = Partial<Pick<Project, "name" | "fps" | "frameIds" | "safeMargin">>;
+export type ProjectChanges = Partial<Pick<Project, "name" | "fps" | "frameIds" | "safeMargin" | "overlays">>;
 
 // What can change on a frame after it's made. The id says which frame.
 export type FrameChanges = { id: string } & Partial<Pick<Frame, "hold" | "transform" | "adjust" | "elements">>;

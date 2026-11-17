@@ -1,83 +1,17 @@
-import { newId } from "./ids";
 import { normaliseAngle, type Point, type Size } from "./transform";
 
-// Objects drawn on top of a picture (step 23): speech bubbles now; text, shapes and stickers
-// later (PLAN.md §3). Each kind has its own settings (`props`), set in the Objects tab; the box
-// (position, size, turn) is set on the stage, the same way for every kind. They belong to their picture (Frame.elements): reordering or
-// duplicating the picture carries them along. The box is in fractions of the frame, like a
-// picture's position, so it survives a change of resolution; it isn't moved by the picture's own
-// position or size. `props` are the kind's own.
+// Objects drawn on top of a picture (step 23) or living in time (overlays, step 24): speech
+// bubbles, text and shapes. Each kind has its own settings (`props`, objectKinds.ts), set in the
+// Objects tab; the box (position, size, turn) is set on the stage, the same way for every kind.
+// On a picture (Frame.elements) they belong to it: reordering or duplicating the picture carries
+// them along. The box is in fractions of the frame, like a picture's position, so it survives a
+// change of resolution; it isn't moved by the picture's own position or size.
 
 // x / y: the top-left corner; rotation: degrees clockwise around the box's centre.
 export type ElementBox = { x: number; y: number; width: number; height: number; rotation: number };
 export type Element = { id: string; kind: string; box: ElementBox; props: Readonly<Record<string, unknown>> };
 
-export const SPEECH_BUBBLE = "speech-bubble";
-
-// A speech bubble's settings:
-//   variant    its shape: speech (rounded, pointed tail), thought (oval, little circles), spiked (a shout)
-//   tail       the point the tail reaches, in fractions of the box (so it moves and turns with the
-//              bubble); it can lie outside the box, and usually does
-//   showTail   whether it has a tail (the point, or a thought bubble's little circles) at all
-//   textSize   how big the text is at most; it still shrinks to fit the bubble
-//   font       one of BUBBLE_FONTS
-//   outline    how thick the outline is, or none
-//   textColour, fill, outlineColour: #rrggbb
-export type BubbleVariant = "speech" | "thought" | "spiked";
-export type TextSize = "small" | "medium" | "large" | "huge";
-export type OutlineWidth = "none" | "thin" | "medium" | "thick";
-export type BubbleProps = { text: string; variant: BubbleVariant; tail: Point; showTail: boolean; textSize: TextSize; font: string; textColour: string; fill: string; outline: OutlineWidth; outlineColour: string };
-
-export const BUBBLE_VARIANTS: readonly BubbleVariant[] = ["speech", "thought", "spiked"];
-export const TEXT_SIZES: readonly TextSize[] = ["small", "medium", "large", "huge"];
-export const OUTLINE_WIDTHS: readonly OutlineWidth[] = ["none", "thin", "medium", "thick"];
-
-// The fonts a bubble can use: `family` is a CSS font-family list, for the canvas and the panel.
-// Nunito is the app's own, self-hosted font; the others are fonts most computers already have,
-// with a generic fallback where they don't.
-export type BubbleFont = { id: string; label: string; family: string; weight: number };
-export const BUBBLE_FONTS: readonly BubbleFont[] = [
-  { id: "rounded", label: "Rounded", family: '"Nunito", "Nunito Fallback", sans-serif', weight: 700 },
-  { id: "chunky", label: "Chunky", family: '"Nunito", "Nunito Fallback", sans-serif', weight: 1000 },
-  { id: "comic", label: "Comic", family: '"Comic Sans MS", "Chalkboard SE", "Comic Neue", cursive', weight: 700 },
-  { id: "classic", label: "Classic", family: 'Georgia, "Times New Roman", serif', weight: 700 },
-  { id: "typewriter", label: "Typewriter", family: '"Courier New", Courier, monospace', weight: 700 },
-];
-export function bubbleFont(id: string): BubbleFont {
-  return BUBBLE_FONTS.find((font) => font.id === id) ?? BUBBLE_FONTS[0];
-}
-
-export const BUBBLE_DEFAULTS: Omit<BubbleProps, "text" | "variant"> = { tail: { x: 0.25, y: 1.45 }, showTail: true, textSize: "medium", font: "rounded", textColour: "#1f2433", fill: "#ffffff", outline: "medium", outlineColour: "#1f2433" };
-
-export const MIN_BOX = 0.06;   // fraction of the frame: smaller than this, a bubble can't be read
-
-// A new bubble near the top of the frame, its tail pointing down and to the left.
-export function createBubble(variant: BubbleVariant = "speech", text = ""): Element {
-  return { id: newId(), kind: SPEECH_BUBBLE, box: { x: 0.3, y: 0.08, width: 0.4, height: 0.24, rotation: 0 }, props: { ...structuredClone(BUBBLE_DEFAULTS), text, variant } };
-}
-
-// A bubble's settings, whatever is stored (anything can be in storage, and bubbles from step 23
-// have only text, variant and tail): unknown or missing values get the defaults.
-export function bubbleProps(element: Pick<Element, "props">): BubbleProps {
-  const { text, variant, tail, showTail, textSize, font, textColour, fill, outline, outlineColour } = element.props as Partial<BubbleProps>;
-  const point = tail && Number.isFinite(tail.x) && Number.isFinite(tail.y) ? { x: tail.x, y: tail.y } : { ...BUBBLE_DEFAULTS.tail };
-  return {
-    text: typeof text === "string" ? text : "",
-    variant: BUBBLE_VARIANTS.includes(variant!) ? variant! : "speech",
-    tail: point,
-    showTail: typeof showTail === "boolean" ? showTail : BUBBLE_DEFAULTS.showTail,
-    textSize: TEXT_SIZES.includes(textSize!) ? textSize! : BUBBLE_DEFAULTS.textSize,
-    font: bubbleFont(typeof font === "string" ? font : "").id,
-    textColour: isColour(textColour) ? textColour : BUBBLE_DEFAULTS.textColour,
-    fill: isColour(fill) ? fill : BUBBLE_DEFAULTS.fill,
-    outline: OUTLINE_WIDTHS.includes(outline!) ? outline! : BUBBLE_DEFAULTS.outline,
-    outlineColour: isColour(outlineColour) ? outlineColour : BUBBLE_DEFAULTS.outlineColour,
-  };
-}
-
-function isColour(value: unknown): value is string {
-  return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
-}
+export const MIN_BOX = 0.06;   // fraction of the frame: smaller than this, an object can't be seen well
 
 export function withProps(element: Element, props: Partial<Record<string, unknown>>): Element {
   return { ...element, props: { ...element.props, ...props } };

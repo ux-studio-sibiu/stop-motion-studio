@@ -1,4 +1,5 @@
 import type { Element } from "./element";
+import type { Overlay } from "./overlay";
 
 // The animation data model (PLAN.md §3). Plain data: no classes, no methods, so it
 // stores in IndexedDB, serialises to an archive and diffs for undo without conversion.
@@ -14,6 +15,9 @@ export type Project = {
   // projects: SAFE_MARGIN (20) then. See safeMargin() and core/render/safeZone.ts.
   safeMargin?: number;
   frameIds: string[];      // the order of the animation
+  // Objects that live in time (step 24), on the timeline's second track. Missing in older
+  // projects: none then. Read it with overlaysOf().
+  overlays?: Overlay[];
   createdAt: number;       // ms since epoch
   updatedAt: number;
 };

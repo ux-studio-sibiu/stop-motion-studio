@@ -76,6 +76,17 @@
       background-color: var(--color-stage);
     }
 
+    // While an overlay is selected (step 24): the picture the stage shows, a quiet dashed ring, so
+    // it reads as "on the stage", not as selected.
+    &.is-on-stage .picture::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      outline: 2px dashed color-mix(in srgb, var(--color-focus) 60%, transparent);
+      outline-offset: -2px;
+    }
+
     // The selection ring goes over the thumbnail and the dotted part alike.
     &.is-selected .picture::after {
       content: "";

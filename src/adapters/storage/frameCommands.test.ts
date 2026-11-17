@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { addFrames, createHistory, deleteFrames, duplicateFrames, reorderFrames, setAdjusts, setElements, setFps, setHold, setSafeMargin, setTransforms, type History } from "@/core/commands";
-import { createBubble, createFrame, createProject, moveIds, withProps, type Project, type ProjectRepository } from "@/core/model";
+import { addFrames, createHistory, deleteFrames, duplicateFrames, reorderFrames, setAdjusts, setElements, setFps, setHold, setOverlays, setSafeMargin, setTransforms, type History } from "@/core/commands";
+import { createBubble, createFrame, createOverlay, createProject, createText, moveIds, moveOverlay, overlaysOf, withProps, type Project, type ProjectRepository } from "@/core/model";
 import { openStudioDb, type StudioDb } from "@/adapters/storage/db";
 import { createDexieRepository } from "@/adapters/storage/dexieRepository";
 
@@ -340,5 +340,43 @@ describe("deleteFrames", () => {
     await history.run(capture());
     expect(history.state().canRedo).toBe(false);
     expect((await order()).slice(0, 2)).toEqual(ids);
+  });
+});
+
+describe("setOverlays (step 24)", () => {
+  const saved = async () => overlaysOf(await repository.getProject(project.id));
+
+  it("adds, moves and removes overlays, each one undo step, and leaves the pictures alone", async () => {
+    const [a] = await takePictures(1);
+    const title = createOverlay(createText("THE END"), 0, 16);
+    await history.run(setOverlays(project.id, [], [title], "Add text"));
+    expect(await saved()).toEqual([title]);
+    const later = moveOverlay(title, 8);
+    await history.run(setOverlays(project.id, [title], [later], "Move text"));
+    await history.run(setOverlays(project.id, [later], [], "Delete text"));
+    expect(await saved()).toEqual([]);
+
+    await history.undo();
+    expect(await saved()).toEqual([later]);
+    await history.undo();
+    expect(await saved()).toEqual([title]);
+    expect((await order())).toEqual([a]);   // the pictures never moved
+  });
+
+  it("isn't recorded when nothing changed", async () => {
+    const title = createOverlay(createText("Hi"), 0, 8);
+    await expect(history.run(setOverlays(project.id, [title], [title], "Move text"))).rejects.toThrow();
+    expect(history.state().canUndo).toBe(false);
+  });
+
+  it("stays at its time when pictures are deleted before it", async () => {
+    const [a, b] = await takePictures(2);
+    const title = createOverlay(createText("Hi"), 2, 4);
+    await history.run(setOverlays(project.id, [], [title], "Add text"));
+    await history.run(deleteFrames(project.id, [a]));
+    expect(await saved()).toEqual([title]);
+    await history.undo();   // undoing the delete doesn't touch it either
+    expect(await saved()).toEqual([title]);
+    expect(await order()).toEqual([a, b]);
   });
 });

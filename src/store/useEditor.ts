@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import { useStore } from "zustand";
 import { useShallow } from "zustand/react/shallow";
-import { createEditorStore, orderedFrames, withPreview, type EditorState } from "./editorStore";
+import type { Overlay } from "@/core/model";
+import { createEditorStore, orderedFrames, shownOverlays, withPreview, type EditorState } from "./editorStore";
 
 // The studio's one store. There is one studio on screen at a time, so a module-level
 // store is simpler than a React context; tests create their own with createEditorStore().
@@ -27,6 +28,13 @@ export function useOrderedFrames() {
 
 // The frames in order as they should be drawn now: with any move (step 18), brightness and
 // contrast change (step 20) or bubble edit (step 23) that isn't saved yet. For everything that draws pictures.
+// The overlays (step 24) as they should look right now: with a drag or an edit not saved yet.
+export function useShownOverlays(): readonly Overlay[] {
+  const project = useEditor((state) => state.project);
+  const preview = useEditor((state) => state.overlaysPreview);
+  return useMemo(() => shownOverlays({ project, overlaysPreview: preview }), [project, preview]);
+}
+
 export function useShownFrames() {
   const saved = useOrderedFrames();
   const transforms = useEditor((state) => state.transformPreview);

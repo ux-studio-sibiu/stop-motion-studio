@@ -2,8 +2,8 @@
 
 import { useCallback, useRef } from "react";
 import { frameIndexAt, inOrder } from "@/core/model";
-import { renderAt, startTick } from "@/core/render";
-import { useEditor, useShownFrames } from "@/store/useEditor";
+import { renderAt, renderPicture } from "@/core/render";
+import { useEditor, useShownFrames, useShownOverlays } from "@/store/useEditor";
 import { bitmaps } from "./media";
 import { useCanvasDraw } from "./useCanvasDraw";
 
@@ -13,6 +13,7 @@ import { useCanvasDraw } from "./useCanvasDraw";
 // The canvas is the project's resolution; CSS scales it to fit the stage.
 export function StagePicture() {
   const frames = useShownFrames();   // with any change not saved yet
+  const overlays = useShownOverlays();   // objects in time (step 24), likewise
   const selection = useEditor((state) => state.selection);
   const isPlaying = useEditor((state) => state.isPlaying);
   const playhead = useEditor((state) => state.playhead);
@@ -21,16 +22,19 @@ export function StagePicture() {
   const canvas = useRef<HTMLCanvasElement>(null);
 
   const index = isPlaying ? frameIndexAt(frames, playhead) : shownIndex(frames.map((frame) => frame.id), selection);
-  const tick = isPlaying ? playhead : startTick(frames, index);
 
   const draw = useCallback((ctx: CanvasRenderingContext2D) => {
     const frame = frames[index];
     if (!frame) return [];
     // Not decoded yet: keep what's on the canvas until it is (no black flash), then draw.
     if (!bitmaps.has(frame.imageId)) return [frame.imageId];
-    renderAt(ctx, { width, height, frames }, bitmaps.get, tick);
+    // Playing: the moment at the playhead. Otherwise the picture on its own, with every overlay
+    // that shows at any moment of it (renderPicture), so they can be seen and edited.
+    const scene = { width, height, frames, overlays };
+    if (isPlaying) renderAt(ctx, scene, bitmaps.get, playhead);
+    else renderPicture(ctx, scene, bitmaps.get, index);
     return [];
-  }, [frames, index, tick, width, height]);
+  }, [frames, overlays, index, isPlaying, playhead, width, height]);
   useCanvasDraw(canvas, draw);
 
   return <canvas ref={canvas} className="stage-picture" width={width} height={height} role="img" aria-label={index >= 0 ? `Picture ${index + 1}` : "No picture"} />;

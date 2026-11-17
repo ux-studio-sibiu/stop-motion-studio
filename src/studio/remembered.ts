@@ -3,7 +3,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { asBoolean, asNumber, asObject, asString, asStringList, asTimelineView, definePreference, definePreferenceFamily, type Preference } from "@/adapters/preferences/preferences";
 import type { StageView } from "@/core/render";
-import type { EditorState, OnionSkin } from "@/store/editorStore";
+import { selectedOverlayId, type EditorState, type OnionSkin } from "@/store/editorStore";
 import { editorStore } from "@/store/useEditor";
 
 // Everything the studio remembers between visits, on this device, in one place. Anything a child
@@ -21,8 +21,15 @@ export const remembered = {
   timelineZoom: definePreference("timeline-zoom", asNumber),            // the zoom a new animation starts at
   timelineView: definePreferenceFamily("view", asTimelineView),         // each animation's zoom and scroll
   selection: definePreferenceFamily("selection", asStringList),         // each animation's selected pictures
+  overlaySelection: definePreferenceFamily("overlay-selection", asString),   // each animation's selected bar on the overlay track
   stageView: definePreferenceFamily("stage-view", asObject),            // each animation's stage zoom and pan (the store checks)
 };
+
+// Forgets everything remembered about one animation, when it's deleted: every per-animation entry
+// above (each preference family), so one added later is forgotten too without another line.
+export function forgetAnimation(id: string): void {
+  for (const entry of Object.values(remembered)) if (typeof entry === "function") entry(id).save(null);
+}
 
 // Remembered values as an external store for React (useSyncExternalStore): read once per key and
 // kept, until this tab saves a new one.
@@ -62,8 +69,8 @@ export function useRememberedStore<T>(preference: Preference<T>, pick: (state: E
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps -- set up once per studio
 }
 
-// The selected pictures of each animation: restored the first time an animation's pictures are
-// there (the ones that still exist), saved whenever the selection changes.
+// The selected pictures of each animation, or its selected overlay bar (step 24): restored the first
+// time an animation's pictures are there (the ones that still exist), saved whenever they change.
 export function useRememberedSelection() {
   useEffect(() => {
     let restoredFor: string | undefined;
@@ -74,9 +81,14 @@ export function useRememberedSelection() {
         restoredFor = id;
         const saved = remembered.selection(id).read();
         if (saved?.length && state.selection.length === 0) state.select(saved);   // select() drops pictures that are gone
+        const overlay = remembered.overlaySelection(id).read();
+        if (overlay) editorStore.getState().selectOverlay(overlay);               // nothing if it's gone
         return;
       }
-      if (restoredFor === id && state.selection !== previous.selection) remembered.selection(id).save(state.selection.length ? [...state.selection] : null);
+      if (restoredFor !== id) return;
+      if (state.selection !== previous.selection) remembered.selection(id).save(state.selection.length ? [...state.selection] : null);
+      const overlay = selectedOverlayId(state);
+      if (overlay !== selectedOverlayId(previous)) remembered.overlaySelection(id).save(overlay);
     });
   }, []);
 }

@@ -1,4 +1,4 @@
-import { frameIndexAt, frameStarts, type Adjust, type Frame, type Transform } from "../model";
+import { activeOverlays, frameIndexAt, overlaysDuring, frameStarts, type Adjust, type Frame, type Overlay, type Transform } from "../model";
 import { adjustedCopy, canvasFilterWorks } from "./adjust";
 import { drawElements } from "./elements";
 import { scratchCanvas, type ScratchContext } from "./scratch";
@@ -14,6 +14,7 @@ export type Scene = {
   height: number;
   frames: readonly Frame[];   // in animation order
   background?: string;        // behind letterboxed pictures (default black)
+  overlays?: readonly Overlay[];   // objects that live in time (step 24), drawn on top while they show
 };
 
 // A decoded picture: an ImageBitmap, an <img>, a canvas... anything drawImage takes, with a size.
@@ -25,19 +26,35 @@ export type ImageSource = (imageId: string) => DrawableImage | undefined;
 // decoded yet), so the caller can draw again once it is.
 export type RenderResult = { frameIndex: number; missing: boolean };
 
-// Draws the animation as it is at `tick` (ticks from the start). A time, not a frame index,
-// because overlays (step 24) live in time, not on a frame.
+// Draws the animation as it is at `tick` (ticks from the start): what playback and export show. A
+// time, not a frame index, because overlays (step 24) live in time, not on a frame: only the ones
+// showing at that moment are drawn.
 export function renderAt(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, scene: Scene, images: ImageSource, tick: number): RenderResult {
-  clear(ctx, scene);
   const frameIndex = frameIndexAt(scene.frames, tick);
+  return drawPicture(ctx, scene, images, frameIndex, activeOverlays(scene.overlays ?? [], tick));
+}
+
+// Draws one picture looked at on its own (the stage when not playing, step 24): with every overlay
+// showing at any moment during it, so one that starts or ends partway through is there to see and
+// edit.
+export function renderPicture(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, scene: Scene, images: ImageSource, frameIndex: number): RenderResult {
+  const start = startTick(scene.frames, frameIndex);
+  const end = start + (scene.frames[frameIndex]?.hold ?? 0);
+  return drawPicture(ctx, scene, images, frameIndex, overlaysDuring(scene.overlays ?? [], start, end));
+}
+
+// A picture with its objects, then the given overlays.
+function drawPicture(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, scene: Scene, images: ImageSource, frameIndex: number, overlays: readonly Overlay[]): RenderResult {
+  clear(ctx, scene);
   const frame = scene.frames[frameIndex];
   if (!frame) return { frameIndex, missing: false };
   const image = images(frame.imageId);
   if (!image) return { frameIndex, missing: true };
   drawFrame(ctx, scene, frame, image);
-  // The picture's bubbles on top (step 23), in frame coordinates: the picture's own position and
-  // size don't move them.
+  // The picture's objects on top (step 23), in frame coordinates: the picture's own position and
+  // size don't move them. Then the overlays (step 24), above everything.
   drawElements(ctx, scene, frame.elements ?? []);
+  drawElements(ctx, scene, overlays.map((overlay) => overlay.element));
   return { frameIndex, missing: false };
 }
 
@@ -203,3 +220,4 @@ function round(value: number): number {
 export function startTick(frames: readonly Pick<Frame, "hold">[], index: number): number {
   return frameStarts(frames)[index] ?? 0;
 }
+

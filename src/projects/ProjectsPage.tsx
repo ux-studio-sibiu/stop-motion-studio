@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clapperboard, Plus } from "lucide-react";
-import { remembered } from "@/studio/remembered";
+import { forgetAnimation } from "@/studio/remembered";
 import { appRepository } from "@/adapters/storage/appRepository";
 import type { Project } from "@/core/model";
 import { createSavedProject } from "./createSavedProject";
@@ -30,8 +30,7 @@ export function ProjectsPage() {
     setDeleting(null);
     if (!project) return;
     await appRepository().deleteProject(project.id);
-    remembered.timelineView(project.id).save(null);   // what was remembered about it goes too
-    remembered.selection(project.id).save(null);
+    forgetAnimation(project.id);   // what was remembered about it goes too
   };
 
   const coverUrl = (project: Project) => {

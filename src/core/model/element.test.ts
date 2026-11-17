@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boxAt, BUBBLE_DEFAULTS, BUBBLE_FONTS, bubbleFont, boxCentre, boxCorners, boxPoint, pointInBox, bubbleProps, cloneElements, createBubble, MIN_BOX, moveBox, resizeBox, rotateBox, sameElements, SPEECH_BUBBLE, withProps } from "./element";
+import { boxAt, BUBBLE_DEFAULTS, BUBBLE_FONTS, bubbleFont, boxCentre, boxCorners, boxPoint, pointInBox, bubbleProps, cloneElements, createBubble, MIN_BOX, moveBox, resizeBox, rotateBox, sameElements, SPEECH_BUBBLE, withProps } from ".";
 
 const size = { width: 1000, height: 500 };
 const box = { x: 0.2, y: 0.2, width: 0.4, height: 0.4, rotation: 0 };   // 400 × 200 px, top-left at (200, 100)

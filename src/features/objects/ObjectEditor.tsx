@@ -1,48 +1,49 @@
 "use client";
 
 import { useRef, type KeyboardEvent, type PointerEvent } from "react";
-import { angleTo, boxCentre, boxCorners, boxPoint, bubbleProps, moveBox, pointInBox, resizeBox, rotateBox, SPEECH_BUBBLE, withProps, type Corner, type Element, type Point } from "@/core/model";
+import { angleTo, boxCentre, boxCorners, boxPoint, bubbleProps, hasText, moveBox, objectLabel, pointInBox, resizeBox, rotateBox, SPEECH_BUBBLE, withProps, type Corner, type Element, type Point } from "@/core/model";
 import { editorStore, useEditor } from "@/store/useEditor";
 import { saveSoon } from "@/studio/saveSoon";
-import { commitObjects, focusObjectText, labelOf, previewObjects, useObjectFrame, type SaveObjects } from "./objectFrame";
+import { commitPlaced, focusObjectText, previewPlaced, removePlaced, useStageObjects, type ObjectSaves, type Placed } from "./objectEditing";
 
 const CORNERS: readonly Corner[] = ["nw", "ne", "se", "sw"];   // in boxCorners' order
 type Kind = "move" | "resize" | "rotate" | "tail";
-type Gesture = { kind: Kind; corner?: Corner; pointerId: number; start: Point; base: Element; startAngle: number; latest: Point; frame: number };
+type Gesture = { kind: Kind; corner?: Corner; pointerId: number; start: Point; base: Placed; startAngle: number; latest: Point; frame: number };
 
-// Placing the objects of the picture on the stage (step 23), while the Objects tab is open and the
-// camera is off. A layer over the picture, drawn in project pixels (the SVG's viewBox). The same
-// for every kind of object: click one to pick it, drag it to move it, the corners to size it, the
-// round handle to turn it; Delete removes it, arrows nudge it. A speech bubble also has a dot for
-// its tail, and Enter or a double-click goes to its text in the Objects tab.
+// Placing the objects on the stage (steps 23-24), while the Objects tab is open and the camera is
+// off: the picture's own objects, and the overlays showing at its time. A layer over the picture,
+// drawn in project pixels (the SVG's viewBox). The same for every kind of object, wherever it
+// lives: click one to pick it, drag it to move it, the corners to size it, the round handle to turn
+// it; Delete removes it, arrows nudge it. A speech bubble also has a dot for its tail, and Enter or
+// a double-click goes to the text in the Objects tab.
 // Like moving a picture (step 18), a gesture is a preview in the store until it ends, then one
 // command saves it, so each is one undo step.
-export function ObjectEditor({ save }: { save: SaveObjects }) {
-  const frame = useObjectFrame();
+export function ObjectEditor({ saves }: { saves: ObjectSaves }) {
+  const { frame, overlays, placed } = useStageObjects();
   const selectedId = useEditor((state) => state.selectedElement);
   const width = useEditor((state) => state.project?.width ?? 1280);
   const height = useEditor((state) => state.project?.height ?? 720);
-  const element = useRef<HTMLDivElement>(null);
+  const layer = useRef<HTMLDivElement>(null);
   const gesture = useRef<Gesture | null>(null);
   if (!frame) return null;
 
   const size = { width, height };
-  const elements = frame.elements;
-  const selected = elements.find((item) => item.id === selectedId);
+  const selected = placed.find((item) => item.element.id === selectedId);
   const handle = width / 90;   // handle radius, project px
 
   const toProject = (clientX: number, clientY: number): Point => {
-    const box = element.current?.getBoundingClientRect();
+    const box = layer.current?.getBoundingClientRect();
     if (!box || box.width === 0) return { x: 0, y: 0 };
     return { x: ((clientX - box.left) / box.width) * width, y: ((clientY - box.top) / box.height) * height };
   };
 
-  // Shows one object changed, without saving.
-  const preview = (next: Element) => previewObjects(frame.id, elements.map((item) => (item.id === next.id ? next : item)));
-  const commit = (label: string) => commitObjects(frame.id, save, label);
+  // Shows one object changed, without saving; saves what's shown as one step.
+  const preview = (item: Placed, next: Element | null) => previewPlaced(frame, overlays, item, next);
+  const commit = (item: Placed, label: string) => commitPlaced(frame, item, saves, label);
 
   const changed = (current: Gesture): Element => {
-    const { base, start, latest } = current;
+    const { start, latest } = current;
+    const base = current.base.element;
     if (current.kind === "move") return { ...base, box: moveBox(base.box, latest.x - start.x, latest.y - start.y, size) };
     if (current.kind === "resize") return { ...base, box: resizeBox(base.box, current.corner!, latest.x - start.x, latest.y - start.y, size) };
     if (current.kind === "rotate") return { ...base, box: rotateBox(base.box, angleTo(boxCentre(base.box, size), latest) - current.startAngle) };
@@ -53,15 +54,15 @@ export function ObjectEditor({ save }: { save: SaveObjects }) {
     if (event.button !== 0) return;
     const target = (event.target as globalThis.Element).closest("[data-element]") as SVGElement | null;
     const id = target?.dataset.element;
-    const picked = elements.find((item) => item.id === id);
+    const picked = placed.find((item) => item.element.id === id);
     if (!picked) { editorStore.getState().selectElement(null); return; }
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.focus({ preventScroll: true });
     editorStore.getState().pause();
-    editorStore.getState().selectElement(picked.id);
+    editorStore.getState().selectElement(picked.element.id);
     const kind = (target?.dataset.handle as Kind | undefined) ?? "move";
     const start = toProject(event.clientX, event.clientY);
-    gesture.current = { kind, corner: target?.dataset.corner as Corner | undefined, pointerId: event.pointerId, start, base: picked, startAngle: angleTo(boxCentre(picked.box, size), start), latest: start, frame: 0 };
+    gesture.current = { kind, corner: target?.dataset.corner as Corner | undefined, pointerId: event.pointerId, start, base: picked, startAngle: angleTo(boxCentre(picked.element.box, size), start), latest: start, frame: 0 };
   };
 
   // Redraw on the next animation frame, not on every pointer event, so dragging stays smooth.
@@ -70,7 +71,7 @@ export function ObjectEditor({ save }: { save: SaveObjects }) {
     if (!current || current.pointerId !== event.pointerId) return;
     current.latest = toProject(event.clientX, event.clientY);
     if (current.frame) return;
-    current.frame = requestAnimationFrame(() => { current.frame = 0; preview(changed(current)); });
+    current.frame = requestAnimationFrame(() => { current.frame = 0; preview(current.base, changed(current)); });
   };
 
   const onPointerUp = (event: PointerEvent<HTMLDivElement>) => {
@@ -79,28 +80,33 @@ export function ObjectEditor({ save }: { save: SaveObjects }) {
     gesture.current = null;
     if (current.frame) cancelAnimationFrame(current.frame);
     current.latest = toProject(event.clientX, event.clientY);
-    preview(changed(current));
-    const what = labelOf(current.base);
-    commit({ move: `Move ${what}`, resize: `Size ${what}`, rotate: `Turn ${what}`, tail: `Move ${what} tail` }[current.kind]);
+    preview(current.base, changed(current));
+    const what = objectLabel(current.base.element);
+    commit(current.base, { move: `Move ${what}`, resize: `Size ${what}`, rotate: `Turn ${what}`, tail: `Move ${what} tail` }[current.kind]);
   };
 
-  const onPointerCancel = () => { gesture.current = null; editorStore.getState().clearElementsPreview([frame.id]); };
+  const onPointerCancel = () => {
+    const current = gesture.current;
+    gesture.current = null;
+    if (!current) return;
+    if (current.base.overlay) editorStore.getState().clearOverlaysPreview();
+    else editorStore.getState().clearElementsPreview([frame.id]);
+  };
 
-  const editText = () => { if (selected?.kind === SPEECH_BUBBLE) focusObjectText(); };
+  const editText = () => { if (selected && hasText(selected.element)) focusObjectText(); };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!selected) return;
+    const { element } = selected;
     const step = event.shiftKey ? 10 : 1;
     const move = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[event.key];
     if (move) {
       event.preventDefault();
-      preview({ ...selected, box: moveBox(selected.box, move[0], move[1], size) });
-      saveSoon("object", selected.id, () => commit(`Move ${labelOf(selected)}`));   // a run of presses is one undo step
+      preview(selected, { ...element, box: moveBox(element.box, move[0], move[1], size) });
+      saveSoon("object", element.id, () => commit(selected, `Move ${objectLabel(element)}`));   // a run of presses is one undo step
     } else if (event.key === "Delete" || event.key === "Backspace") {
       event.preventDefault();
-      previewObjects(frame.id, elements.filter((item) => item.id !== selected.id));
-      commit(`Delete ${labelOf(selected)}`);
-      editorStore.getState().selectElement(null);
+      removePlaced(frame, selected, saves);
     } else if (event.key === "Enter") {
       event.preventDefault();
       editText();
@@ -120,18 +126,19 @@ export function ObjectEditor({ save }: { save: SaveObjects }) {
   };
 
   return (
-    <div ref={element} className="nsc-object-editor" tabIndex={0} role="application" aria-label="Objects: drag one to move it; its corners size it, the round handle turns it, a bubble's dot moves its tail; Enter goes to a bubble's text, Delete removes it" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onKeyDown={onKeyDown} onDoubleClick={editText}>
+    <div ref={layer} className="nsc-object-editor" tabIndex={0} role="application" aria-label="Objects: drag one to move it; its corners size it, the round handle turns it, a bubble's dot moves its tail; Enter goes to its text, Delete removes it" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onKeyDown={onKeyDown} onDoubleClick={editText}>
       <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
-        {elements.map((item) => <polygon key={item.id} data-element={item.id} className={`object${item.id === selectedId ? " is-selected" : ""}`} points={points(boxCorners(item.box, size))} />)}
+        {placed.map(({ element, overlay }) => <polygon key={element.id} data-element={element.id} className={`object${overlay ? " is-overlay" : ""}${element.id === selectedId ? " is-selected" : ""}`} points={points(boxCorners(element.box, size))} />)}
         {selected && (() => {
-          const turn = turnHandle(selected);
-          const tail = selected.kind === SPEECH_BUBBLE && bubbleProps(selected).showTail ? boxPoint(selected.box, bubbleProps(selected).tail, size) : null;
+          const { element } = selected;
+          const turn = turnHandle(element);
+          const tail = element.kind === SPEECH_BUBBLE && bubbleProps(element).showTail ? boxPoint(element.box, bubbleProps(element).tail, size) : null;
           return (
             <g className="handles">
-              {boxCorners(selected.box, size).map((corner, i) => <circle key={CORNERS[i]} data-element={selected.id} data-handle="resize" data-corner={CORNERS[i]} className={`corner is-${CORNERS[i]}`} cx={corner.x} cy={corner.y} r={handle} />)}
+              {boxCorners(element.box, size).map((corner, i) => <circle key={CORNERS[i]} data-element={element.id} data-handle="resize" data-corner={CORNERS[i]} className={`corner is-${CORNERS[i]}`} cx={corner.x} cy={corner.y} r={handle} />)}
               <line className="stem" x1={turn.from.x} y1={turn.from.y} x2={turn.at.x} y2={turn.at.y} />
-              <circle data-element={selected.id} data-handle="rotate" className="turn" cx={turn.at.x} cy={turn.at.y} r={handle * 1.3} />
-              {tail && <circle data-element={selected.id} data-handle="tail" className="tail" cx={tail.x} cy={tail.y} r={handle} />}
+              <circle data-element={element.id} data-handle="rotate" className="turn" cx={turn.at.x} cy={turn.at.y} r={handle * 1.3} />
+              {tail && <circle data-element={element.id} data-handle="tail" className="tail" cx={tail.x} cy={tail.y} r={handle} />}
             </g>
           );
         })()}

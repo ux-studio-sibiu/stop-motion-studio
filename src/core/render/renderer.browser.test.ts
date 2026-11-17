@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createBubble, createFrame, DEFAULT_ADJUST, DEFAULT_TRANSFORM, withProps, type Adjust, type Transform } from "@/core/model";
-import { drawElements, drawFrame, drawOnionSkin, renderAt, type DrawableImage } from "@/core/render";
+import { createBubble, createFrame, createOverlay, createShape, createText, DEFAULT_ADJUST, DEFAULT_TRANSFORM, withProps, type Adjust, type Element, type Transform } from "@/core/model";
+import { drawElements, drawFrame, drawOnionSkin, renderAt, renderPicture, type DrawableImage } from "@/core/render";
 
 // Pixel tests: the renderer draws into a real canvas (Vitest browser mode, Chromium), and we
 // read back the colour at chosen points. The source is a synthetic picture of four solid
@@ -251,5 +251,75 @@ describe("speech bubbles (step 23)", () => {
     renderAt(ctx, { width: W, height: H, frames: [frame] }, () => solid(RED), 0);
     expectColour(ctx, 80, 45, WHITE);
     expectColour(ctx, 5, 5, RED);
+  });
+});
+
+describe("text and shapes (step 24)", () => {
+  // In the middle of the canvas: x 40-120, y 20-70, like the bubbles above.
+  const place = (element: Element, props: Record<string, unknown> = {}) => withProps({ ...element, box: { x: 0.25, y: 2 / 9, width: 0.5, height: 5 / 9, rotation: 0 } }, props);
+  const onRed = () => { const ctx = target(); ctx.fillStyle = "rgb(255,0,0)"; ctx.fillRect(0, 0, W, H); return ctx; };
+  const draw = (element: Element) => { const ctx = onRed(); drawElements(ctx, { width: W, height: H }, [element]); return ctx; };
+  const BLUE_FILL = [0, 0, 255];
+
+  it("a rectangle fills its box", () => {
+    const ctx = draw(place(createShape("rectangle"), { fill: "#0000ff", outline: "none" }));
+    expectColour(ctx, 43, 23, BLUE_FILL);   // right into the corner
+    expectColour(ctx, 80, 45, BLUE_FILL);
+    expectColour(ctx, 36, 45, RED);         // outside
+  });
+
+  it("an ellipse leaves the box's corners clear", () => {
+    const ctx = draw(place(createShape("ellipse"), { fill: "#0000ff", outline: "none" }));
+    expectColour(ctx, 80, 45, BLUE_FILL);
+    expectColour(ctx, 43, 23, RED);
+  });
+
+  it("an arrow points right: a shaft, and a head as tall as the box", () => {
+    const ctx = draw(place(createShape("arrow"), { fill: "#0000ff", outline: "none" }));
+    expectColour(ctx, 50, 45, BLUE_FILL);   // the shaft
+    expectColour(ctx, 50, 25, RED);         // above the shaft
+    expectColour(ctx, 92, 24, BLUE_FILL);   // the head reaches the top, just past the neck
+    expectColour(ctx, 116, 45, BLUE_FILL);  // near the tip
+    expectColour(ctx, 116, 25, RED);
+  });
+
+  it("with no fill, only the outline is drawn", () => {
+    const ctx = draw(place(createShape("rectangle"), { fill: "none", outline: "thick", outlineColour: "#0000ff" }));
+    expectColour(ctx, 80, 45, RED);         // see-through inside
+    expectColour(ctx, 42, 45, BLUE_FILL);   // the outline, inside the box's edge
+  });
+
+  it("text is written in its colour, on its background when it has one", () => {
+    const light = (ctx: CanvasRenderingContext2D) => {
+      const { data } = ctx.getImageData(45, 25, 70, 40);
+      let count = 0;
+      for (let i = 0; i < data.length; i += 4) if (data[i] > 150 && data[i + 1] > 150) count++;
+      return count;
+    };
+    const plain = draw(place(createText("WOW"), { textColour: "#ffffff" }));
+    expect(light(plain)).toBeGreaterThan(20);
+    expectColour(plain, 43, 23, RED);       // no background
+    const boxed = draw(place(createText("WOW"), { textColour: "#ffffff", fill: "#000000" }));
+    expectColour(boxed, 45, 45, [0, 0, 0]); // the background, clear of the text
+    expect(light(boxed)).toBeGreaterThan(20);
+  });
+
+  it("renderAt draws the overlays showing at that time on top, and not the others", () => {
+    const frames = [{ ...createFrame("p", "red", { hold: 4 }), elements: [] }, { ...createFrame("p", "red", { hold: 4 }), elements: [] }];
+    const overlays = [createOverlay(place(createShape("rectangle"), { fill: "#0000ff", outline: "none" }), 2, 4)];   // ticks 2-5
+    const at = (tick: number) => { const ctx = target(); renderAt(ctx, { width: W, height: H, frames, overlays }, () => solid(RED), tick); return ctx; };
+    expectColour(at(1), 80, 45, RED);
+    expectColour(at(2), 80, 45, BLUE_FILL);
+    expectColour(at(5), 80, 45, BLUE_FILL);   // over the second picture too
+    expectColour(at(6), 80, 45, RED);
+  });
+
+  it("renderPicture shows a picture with every overlay showing at any moment of it", () => {
+    const frames = [{ ...createFrame("p", "red", { hold: 4 }), elements: [] }, { ...createFrame("p", "red", { hold: 4 }), elements: [] }, { ...createFrame("p", "red", { hold: 4 }), elements: [] }];
+    const overlays = [createOverlay(place(createShape("rectangle"), { fill: "#0000ff", outline: "none" }), 6, 1)];   // only tick 6: partway through picture 2
+    const picture = (index: number) => { const ctx = target(); renderPicture(ctx, { width: W, height: H, frames, overlays }, () => solid(RED), index); return ctx; };
+    expectColour(picture(1), 80, 45, BLUE_FILL);   // picture 2, ticks 4-7
+    expectColour(picture(0), 80, 45, RED);
+    expectColour(picture(2), 80, 45, RED);
   });
 });

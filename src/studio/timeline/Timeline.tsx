@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
 import { Camera, ChevronLeft, ChevronRight, CopyPlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
-import { formatSeconds, inOrder, moveIds, neighbourAfterDelete, nudgeGap, pxPerTick, rulerScale, sameOrder, ticksToSeconds, totalTicks } from "@/core/model";
-import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, withPreview } from "@/store/editorStore";
-import { editorStore, useEditor, useShownFrames } from "@/store/useEditor";
-import { DragGhost, TimelineFrame, formatHold } from "./TimelineFrame";
+import { formatSeconds, formatTicks, inOrder, moveIds, objectLabel, neighbourAfterDelete, nudgeGap, pxPerTick, rulerScale, sameOrder, ticksToSeconds, totalTicks } from "@/core/model";
+import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, selectedOverlayId, withPreview } from "@/store/editorStore";
+import { editorStore, useEditor, useShownFrames, useShownOverlays } from "@/store/useEditor";
+import { deleteOverlay, duplicateOverlayById, type SaveOverlays } from "../overlayEditing";
+import { OverlayTrack } from "./OverlayTrack";
+import { DragGhost, TimelineFrame } from "./TimelineFrame";
 import { useReorder } from "./useReorder";
 import { useResize, type HoldChange } from "./useResize";
 import { useScrub } from "./useScrub";
@@ -18,6 +20,7 @@ type TimelineProps = {
   onDuplicate: (frameIds: readonly string[]) => void;
   onResize: (changes: HoldChange[]) => Promise<boolean>;
   onReorder: (before: string[], after: string[], moved: string[]) => void;
+  onOverlays: SaveOverlays;   // the overlay track's changes (step 24)
 };
 
 // The timeline, drawn to time: a picture is as wide as it lasts (hold ticks × px per tick), and a
@@ -28,11 +31,16 @@ type TimelineProps = {
 //   useResize             the grip on a picture's edge, [ and ]
 //   useReorder            dragging pictures to a new place
 //   useScrub              the playhead, scrubbing along the ruler
-export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: TimelineProps) {
+//   OverlayTrack          the objects that live in time, under the pictures (step 24)
+export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onOverlays }: TimelineProps) {
   const shown = useShownFrames();   // with any move, brightness or object change not saved yet, for the thumbnails
   const holdPreview = useEditor((state) => state.holdPreview);
   const frames = useMemo(() => withPreview(shown, "hold", holdPreview), [shown, holdPreview]);   // and any resize in progress
   const selection = useEditor((state) => state.selection);
+  // What's selected on the timeline: pictures, or a bar on the overlay track (never both). With a
+  // bar, `selection` is only the picture the stage shows, drawn as "on the stage", not selected.
+  const overlayId = useEditor(selectedOverlayId);
+  const overlay = useShownOverlays().find((item) => item.id === overlayId);
   const fps = useEditor((state) => state.project?.fps ?? 8);
   const projectId = useEditor((state) => state.project?.id);
   const thumbRatio = useEditor((state) => (state.project ? `${state.project.width} / ${state.project.height}` : "16 / 9"));
@@ -92,6 +100,10 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: Timelin
 
   const duplicateSelection = () => { if (selection.length > 0) onDuplicate(selection); };
 
+  // The toolbar's Duplicate and Delete act on what's selected: the bar, or the pictures.
+  const duplicateSelected = () => (overlay ? duplicateOverlayById(overlay.id, onOverlays) : duplicateSelection());
+  const deleteSelected = () => (overlay ? deleteOverlay(overlay.id, onOverlays) : deleteSelection());
+
   // Ctrl/Cmd + arrow: the selected pictures one place along.
   const moveSelection = (direction: -1 | 1) => {
     if (selection.length === 0) return;
@@ -132,8 +144,8 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: Timelin
   // a marker on its right edge shows where.
   const insertAfter = inOrder(order, selection).at(-1);
   const markerId = insertAfter !== order[order.length - 1] ? insertAfter : undefined;
-  const count = selection.length;
-  const pictures = count > 1 ? `${count} pictures` : "picture";
+  const count = overlay ? 1 : selection.length;
+  const pictures = overlay ? objectLabel(overlay.element) : count > 1 ? `${count} pictures` : "picture";
 
   return (
     <section className="timeline" aria-label="Timeline">
@@ -141,8 +153,8 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: Timelin
         <button type="button" className="icon-button is-small" aria-label="Zoom out" disabled={zoom <= MIN_TIMELINE_ZOOM} onClick={() => zoomTo(zoom / ZOOM_STEP)}><ZoomOut size={20} /></button>
         <button type="button" className="icon-button is-small" aria-label="Zoom in" disabled={zoom >= MAX_TIMELINE_ZOOM} onClick={() => zoomTo(zoom * ZOOM_STEP)}><ZoomIn size={20} /></button>
         <span className="tools-gap" />
-        <button type="button" className="icon-button is-small" aria-label={`Duplicate ${pictures}`} title={`Duplicate ${pictures} (Ctrl + D)`} disabled={count === 0} onClick={duplicateSelection}><CopyPlus size={20} /></button>
-        <button type="button" className="icon-button is-small" aria-label={`Delete ${pictures}`} title={`Delete ${pictures} (Delete key)`} disabled={count === 0} onClick={deleteSelection}><Trash2 size={20} /></button>
+        <button type="button" className="icon-button is-small" aria-label={`Duplicate ${pictures}`} title={`Duplicate ${pictures} (Ctrl + D)`} disabled={count === 0} onClick={duplicateSelected}><CopyPlus size={20} /></button>
+        <button type="button" className="icon-button is-small" aria-label={`Delete ${pictures}`} title={`Delete ${pictures} (Delete key)`} disabled={count === 0} onClick={deleteSelected}><Trash2 size={20} /></button>
         <button type="button" className="icon-button is-small" aria-label="Previous picture" title="Previous picture (←)" disabled={order.length === 0} onClick={() => step(-1)}><ChevronLeft size={20} /></button>
         <button type="button" className="icon-button is-small" aria-label="Next picture" title="Next picture (→)" disabled={order.length === 0} onClick={() => step(1)}><ChevronRight size={20} /></button>
         <span className="duration" aria-label="Length of the animation">{seconds < 10 ? `${seconds.toFixed(1)} s` : formatSeconds(seconds)}</span>
@@ -156,11 +168,11 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: Timelin
 
         <ol ref={track} className="track" role="listbox" aria-label="Pictures" aria-orientation="horizontal" aria-multiselectable="true" tabIndex={0} aria-activedescendant={select.focusId ? optionId(select.focusId) : undefined} onKeyDown={onKeyDown} style={{ "--thumb-ratio": thumbRatio } as CSSProperties}>
           {frames.map((frame, index) => (
-            <TimelineFrame key={frame.id} frame={frame} number={index + 1} width={frame.hold * tickWidth} selected={selection.includes(frame.id)} insertAfter={!reorder.drag && frame.id === markerId} dragging={reorder.drag?.ids.includes(frame.id) ?? false} onPick={onPick} onPress={reorder.onFramePointerDown}>
-              {selection.includes(frame.id) && (
+            <TimelineFrame key={frame.id} frame={frame} number={index + 1} width={frame.hold * tickWidth} selected={!overlay && selection.includes(frame.id)} onStage={Boolean(overlay) && selection.includes(frame.id)} insertAfter={!reorder.drag && frame.id === markerId} dragging={reorder.drag?.ids.includes(frame.id) ?? false} onPick={onPick} onPress={reorder.onFramePointerDown}>
+              {!overlay && selection.includes(frame.id) && (
                 <span className="grip" aria-hidden="true" title="Drag to make it shorter or longer ([ and ] keys)" onPointerDown={(event) => resize.onGripDown(frame.id, event)} onPointerMove={resize.onGripMove} onPointerUp={(event) => resize.onGripUp(frame.id, event)} onPointerCancel={resize.cancel} onClick={(event) => event.stopPropagation()} />
               )}
-              {resize.grabbed === frame.id && <span className="hold-bubble" role="status">{formatHold(frame.hold, fps)}</span>}
+              {resize.grabbed === frame.id && <span className="hold-bubble" role="status">{formatTicks(frame.hold, fps)}</span>}
             </TimelineFrame>
           ))}
           {reorder.drag && <li className="drop-marker" aria-hidden="true" style={{ left: reorder.drag.markerX }} />}
@@ -169,6 +181,8 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder }: Timelin
             {frames.length === 0 && <span className="next-hint">Your pictures appear here</span>}
           </li>
         </ol>
+
+        <OverlayTrack frames={frames} tickWidth={tickWidth} fps={fps} onChange={onOverlays} />
       </div>
       {reorder.drag && <DragGhost drag={reorder.drag} frames={frames} />}
     </section>

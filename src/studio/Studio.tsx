@@ -59,6 +59,7 @@ export function Studio() {
   const stageMode = isPlaying ? "playing" : camera.stream ? "camera" : hasPictures ? "frame" : "empty";
   const editing = stageMode === "frame" && stageTool === "picture";   // the Picture tab's tools on the stage
   const commands = useStudioCommands(projectId, history.run);   // every undoable change, one object
+  const objectSaves = { objects: commands.setObjects, overlays: commands.setOverlays };   // where an object lives: its picture, or in time
   const ready = useReady(status !== "loading" && camera.settled);
 
   // Development only: poke at the store from the browser console (window.editorStore.getState()).
@@ -110,7 +111,7 @@ export function Studio() {
                 <SafeZone />
                 {/* Each tab's tools on the stage, only while that tab is open. */}
                 {editing && <StageEditor save={commands.transformPictures} />}
-                {stageMode === "frame" && stageTool === "objects" && <ObjectEditor save={commands.setObjects} />}
+                {stageMode === "frame" && stageTool === "objects" && <ObjectEditor saves={objectSaves} />}
               </StageView>
               <div className="stage-note"><CameraMessage camera={camera} more /></div>
             </>
@@ -127,11 +128,11 @@ export function Studio() {
           <AdjustControls save={commands.adjustPictures} />
         </PanelTab>
         <PanelTab id="objects" label="Objects" title="Things on the picture" icon={<Shapes size={31} />}>
-          <ObjectsPanel save={commands.setObjects} onStage={stageMode === "frame"} />
+          <ObjectsPanel saves={objectSaves} onStage={stageMode === "frame"} />
         </PanelTab>
       </SidePanel>
 
-      <Timeline onDelete={commands.deletePictures} onDuplicate={commands.duplicatePictures} onResize={commands.resizePictures} onReorder={commands.reorderPictures} />
+      <Timeline onOverlays={commands.setOverlays} onDelete={commands.deletePictures} onDuplicate={commands.duplicatePictures} onResize={commands.resizePictures} onReorder={commands.reorderPictures} />
 
       <PlaybackBar onSpeed={commands.setSpeed} onSafeMargin={commands.setSafeMargin}>
         <SeeThroughMenu />

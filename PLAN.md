@@ -141,17 +141,17 @@ type StoredThumb = { imageId: string; projectId: string; blob: Blob };   // ~160
 // map from kind to drawing function (core/render/elements.ts).
 type Element = {
   id: string;
-  kind: string;             // "speech-bubble", "text", "rect", "ellipse", "arrow", ...
+  kind: string;             // "speech-bubble", "text", "shape" (rectangle, ellipse or arrow), ...
   box: { x: number; y: number; width: number; height: number; rotation: number };   // fractions of the frame
   props: Record<string, unknown>;   // kind-specific: text, colours, the bubble's tail point
 };
 
 // Frame gains: elements: Element[]   (on this picture only; reorder / duplicate carry them along)
 
-// The second timeline layer: an element that lives in time, not on a picture.
+// The second timeline layer: an element that lives in time, not on a picture. Kept as a list on
+// the project (Project.overlays, step 24): short, saved and watched with the project.
 type Overlay = {
   id: string;
-  projectId: string;
   track: number;            // 1 for now; more layers later
   start: number;            // ticks from the start of the animation
   length: number;           // ticks, >= 1
@@ -177,7 +177,7 @@ type Overlay = {
 |---|---|---|
 | Commands | `Command { label; do(ctx); undo(ctx) }` in `core/commands` | delete, duplicate, insert, reorder, resize, transform, adjust, element and overlay edits |
 | Features | A folder in `src/features/`, its components placed by hand in `Studio.tsx` | camera, picture, see-through, objects |
-| Element kinds | A map from kind to its drawing function (`core/render/elements.ts`), its defaults and settings reader in `core/model`, and its tile and settings component placed by hand in the Objects tab (step 23) | speech bubble; later text, rectangle, ellipse, arrow |
+| Element kinds | A map from kind to its drawing function (`core/render/elements.ts`), its defaults and settings reader in `core/model`, and its tile and settings component placed by hand in the Objects tab (step 23) | speech bubble, text, shape (rectangle, ellipse, arrow) |
 | Exporters | An array of `{ id; label; isSupported(); run(…, onProgress) }` (step 25) | GIF, video, image sequence, project archive |
 | Storage | `ProjectRepository` in `core/model` | Dexie now, Supabase later |
 

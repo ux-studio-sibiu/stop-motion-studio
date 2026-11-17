@@ -443,6 +443,11 @@ neighbours. Step 18 is moving; step 19 is lining up.
   the longer of the two. Delete-frame undo must not touch overlays.
 - **Check:** add a title from 0 s to 2 s, change the speed, it still covers the same pictures; drag
   pictures around, the title stays at 0-2 s.
+- **As built:** an object goes in time by dropping its Objects tab icon on the track; rectangle,
+  ellipse and arrow are one configurable **Shape** kind; overlays are a list on the project
+  (`Project.overlays`), not a Dexie table, so no migration; one `setOverlays` command instead of
+  five. Playback still ends at the last picture; export should run to the later end.
+  The timeline has one selection: pictures, or one bar; the toolbar's Duplicate and Delete act on it.
 
 ---
 
@@ -590,7 +595,7 @@ feature folder of its own.
 - [x] 21 Storage safety
 - [x] 22 Plugin registry (became feature folders)
 - [x] 23 Speech bubbles on pictures
-- [ ] 24 Overlay layer: text and shapes in time
+- [x] 24 Overlay layer: text and shapes in time
 - [ ] 25 GIF export
 - [ ] 26 Video export
 - [ ] 27 Project archive

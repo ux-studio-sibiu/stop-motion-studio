@@ -68,6 +68,12 @@ export function formatSeconds(seconds: number): string {
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
 }
 
+// A length or a moment for people to read, exact to a hundredth: "1.5 s", "0.13 s", "2 s". For a
+// picture's length, and when an object in time starts and ends.
+export function formatTicks(ticks: number, fps: number): string {
+  return `${Number(ticksToSeconds(ticks, fps).toFixed(2))} s`;
+}
+
 // A drag of `px` pixels on the timeline, in whole ticks (snapped to the nearest).
 export function ticksFromPx(px: number, tickWidth: number): number {
   if (!Number.isFinite(px) || !(tickWidth > 0)) return 0;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatSeconds, frameIndexAt, frameStarts, pxPerTick, resizeHolds, rulerScale, secondsToTicks, ticksFromPx, ticksToSeconds, totalTicks } from "@/core/model";
+import { formatSeconds, formatTicks, frameIndexAt, frameStarts, pxPerTick, resizeHolds, rulerScale, secondsToTicks, ticksFromPx, ticksToSeconds, totalTicks } from "@/core/model";
 
 describe("ticksFromPx", () => {
   it("snaps a drag to the nearest whole tick", () => {
@@ -88,6 +88,15 @@ describe("rulerScale", () => {
     expect(rulerScale(160).markSeconds).toBe(1);
     expect(rulerScale(240).markSeconds).toBe(0.5);
     expect(rulerScale(640).markSeconds).toBe(0.25);
+  });
+});
+
+describe("formatTicks", () => {
+  it("reads as seconds, exact to a hundredth, without trailing zeros", () => {
+    expect(formatTicks(12, 8)).toBe("1.5 s");
+    expect(formatTicks(1, 8)).toBe("0.13 s");
+    expect(formatTicks(16, 8)).toBe("2 s");
+    expect(formatTicks(0, 8)).toBe("0 s");
   });
 });
 

@@ -1,4 +1,4 @@
-import { clampSafeMargin, type ProjectRepository } from "../model";
+import { clampSafeMargin, cleanOverlay, cloneOverlays, sameOverlays, type Overlay, type ProjectRepository } from "../model";
 import type { Command } from "./command";
 
 // Commands that change the animation as a whole, not its pictures (those are frameCommands.ts).
@@ -20,4 +20,15 @@ export function setSafeMargin(projectId: string, from: number, to: number): Comm
     await repository.updateProject(projectId, { safeMargin: clampSafeMargin(margin) });
   };
   return { label: "Change safe zone", do: write(to), undo: write(from) };
+}
+
+// The overlays (step 24): adding, moving in time, changing when they start and end, editing their
+// object on the stage or in the Objects tab, deleting. Like a picture's objects (setElements), one
+// command sets the whole list from what it was to what it becomes, so every edit is one undo step.
+export function setOverlays(projectId: string, from: readonly Overlay[], to: readonly Overlay[], label: string): Command {
+  const write = (overlays: readonly Overlay[]) => async (repository: ProjectRepository) => {
+    if (sameOverlays(from, to)) throw new Error("Nothing changed.");
+    await repository.updateProject(projectId, { overlays: cloneOverlays(overlays).map(cleanOverlay) });
+  };
+  return { label, do: write(to), undo: write(from) };
 }

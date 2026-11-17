@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>23 Objects and speech bubbles · Stop-motion Studio</title>
 <link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
 </head>
 <body>
 <main class="nsc-step">
@@ -58,7 +59,7 @@
         <li><code>ObjectTile</code>: an icon dragged onto the stage with pointer events (a finger works too), an icon following the pointer and the stage lit up while it's over it;</li>
         <li><code>BubbleSettings</code>: a bubble's settings;</li>
         <li><code>ObjectEditor</code>: the stage layer, the same box editing for every kind;</li>
-        <li><code>objectFrame</code>: the picture being edited, and the shared show-then-save.</li>
+        <li><code>objectEditing</code>: the picture being edited, and the shared show-then-save.</li>
       </ul>
       <code>Studio.tsx</code> places the tab and its stage layer directly, like the others. <code>useStudioCommands</code> gains <code>setObjects</code>.
     </li>
@@ -104,7 +105,7 @@
   </div>
 
   <h2>Files in this step</h2>
-  <p><code>src/core/model/element.ts</code>, <code>element.test.ts</code>, <code>types.ts</code>, <code>project.ts</code>, <code>project.test.ts</code>, <code>repository.ts</code>, <code>index.ts</code>; <code>src/core/commands/frameCommands.ts</code>; <code>src/core/render/text.ts</code>, <code>text.test.ts</code>, <code>bubble.ts</code>, <code>elements.ts</code>, <code>scratch.ts</code>, <code>adjust.ts</code>, <code>renderer.ts</code>, <code>renderer.test.ts</code>, <code>renderer.browser.test.ts</code>, <code>index.ts</code>; <code>src/adapters/storage/db.ts</code>, <code>dexieRepository.test.ts</code>, <code>frameCommands.test.ts</code>; <code>src/store/editorStore.ts</code>, <code>editorStore.test.ts</code>, <code>useEditor.ts</code>; <code>src/features/objects/</code> (<code>ObjectsPanel.tsx</code>, <code>ObjectTile.tsx</code>, <code>BubbleSettings.tsx</code>, <code>ObjectEditor.tsx</code>, <code>objectFrame.ts</code>, <code>_objects.scss</code>), <code>src/features/README.md</code>; <code>src/studio/Studio.tsx</code>, <code>StagePicture.tsx</code>, <code>media.ts</code>, <code>useCanvasDraw.ts</code>, <code>useStudioCommands.ts</code>, <code>keyboard.ts</code>, <code>timeline/Thumb.tsx</code>, <code>timeline/TimelineFrame.tsx</code>, <code>timeline/Timeline.tsx</code>, <code>timeline/_frame.scss</code>, <code>timeline/_timeline.scss</code>; <code>src/app/layout.tsx</code>, <code>src/styles/_fonts.scss</code>, <code>globals.scss</code>, <code>public/fonts/nunito/</code>; <code>e2e/objects.spec.ts</code>, <code>picture.spec.ts</code>, <code>timeline.spec.ts</code>, <code>frames.spec.ts</code>, <code>fixtures.ts</code>; <code>CLAUDE.md</code> (the spec map), <code>PLAN.md</code>; <code>public/steps/23-speech-bubbles.html</code>, <code>index.html</code>, <code>22-plugin-registry.html</code> (next link); <code>ROADMAP.md</code>.</p>
+  <p><code>src/core/model/element.ts</code>, <code>element.test.ts</code>, <code>types.ts</code>, <code>project.ts</code>, <code>project.test.ts</code>, <code>repository.ts</code>, <code>index.ts</code>; <code>src/core/commands/frameCommands.ts</code>; <code>src/core/render/text.ts</code>, <code>text.test.ts</code>, <code>bubble.ts</code>, <code>elements.ts</code>, <code>scratch.ts</code>, <code>adjust.ts</code>, <code>renderer.ts</code>, <code>renderer.test.ts</code>, <code>renderer.browser.test.ts</code>, <code>index.ts</code>; <code>src/adapters/storage/db.ts</code>, <code>dexieRepository.test.ts</code>, <code>frameCommands.test.ts</code>; <code>src/store/editorStore.ts</code>, <code>editorStore.test.ts</code>, <code>useEditor.ts</code>; <code>src/features/objects/</code> (<code>ObjectsPanel.tsx</code>, <code>ObjectTile.tsx</code>, <code>BubbleSettings.tsx</code>, <code>ObjectEditor.tsx</code>, <code>objectEditing.ts</code>, <code>_objects.scss</code>), <code>src/features/README.md</code>; <code>src/studio/Studio.tsx</code>, <code>StagePicture.tsx</code>, <code>media.ts</code>, <code>useCanvasDraw.ts</code>, <code>useStudioCommands.ts</code>, <code>keyboard.ts</code>, <code>timeline/Thumb.tsx</code>, <code>timeline/TimelineFrame.tsx</code>, <code>timeline/Timeline.tsx</code>, <code>timeline/_frame.scss</code>, <code>timeline/_timeline.scss</code>; <code>src/app/layout.tsx</code>, <code>src/styles/_fonts.scss</code>, <code>globals.scss</code>, <code>public/fonts/nunito/</code>; <code>e2e/objects.spec.ts</code>, <code>picture.spec.ts</code>, <code>timeline.spec.ts</code>, <code>frames.spec.ts</code>, <code>fixtures.ts</code>; <code>CLAUDE.md</code> (the spec map), <code>PLAN.md</code>; <code>public/steps/23-speech-bubbles.html</code>, <code>index.html</code>, <code>22-plugin-registry.html</code> (next link); <code>ROADMAP.md</code>.</p>
   <p><strong>Tests added:</strong></p>
   <ul>
     <li>Unit (293 in total):
@@ -154,7 +155,7 @@
 
   <nav class="pager">
     <a href="22-plugin-registry.html">Previous: 22 · Feature folders</a>
-    <span>Next: 24 · Overlay layer: text and shapes in time</span>
+    <a href="24-overlays.html">Next: 24 · Objects in time</a>
   </nav>
 </main>
 </body>

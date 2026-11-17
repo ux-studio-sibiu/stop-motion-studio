@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>24 Objects in time · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 24 of 33 · Part 8 Elements</p>
+  <h1>Objects in time: the overlay track, text and shapes</h1>
+  <p class="intro">A title can now stay up for two seconds, whatever pictures are under it. There's a second track under the pictures for <strong>objects that live in time</strong>, and two new kinds of object: <strong>Text</strong> and a configurable <strong>Shape</strong>.</p>
+  <ul>
+    <li><strong>Putting an object in time:</strong> drag an Objects tab icon onto the track under the pictures. It shows from where it was dropped, for 2 seconds to start with, over every picture then. Dropped on the picture instead, an object belongs to that picture, as before.</li>
+    <li><strong>On the track:</strong> each object in time is a bar from when it starts to when it ends.
+      <ul>
+        <li>Drag the bar to move it in time, and its ends to change when it starts or ends.</li>
+        <li>Click it to pick it. It becomes the timeline's selection instead of the pictures, so the toolbar's Duplicate and Delete act on it. The stage goes to the picture where it starts, which gets a quiet dashed ring (on the stage, not selected), and the Objects tab shows its settings.</li>
+        <li>Duplicate puts the copy right after it. Clicking a picture makes the pictures the selection again; Shift- and Ctrl-click still select several pictures.</li>
+        <li>With the keyboard on a bar: ← → move it, Shift with them makes it shorter or longer, Ctrl+D duplicates it, and Delete removes it.</li>
+        <li>The picked bar is remembered after a reload, like selected pictures.</li>
+      </ul>
+      Overlapping bars go in rows, so none hides another.
+    </li>
+    <li><strong>On the stage</strong> it's placed like any object (move, size, turn), and its settings are in the Objects tab, which also says when it shows.</li>
+    <li><strong>Text:</strong> text on its own, with its size, font and colour, and a background colour or none.</li>
+    <li><strong>Shape:</strong> one kind of object whose shape is a setting: rectangle, ellipse or arrow. It has a colour or none, and an outline. Turn an arrow on the stage to point it anywhere.</li>
+  </ul>
+  <p>Every change is one undo step. Moving, resizing, reordering or deleting pictures never moves an object in time, and changing the speed keeps it over the same pictures.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><strong>The model</strong>, <code>src/core/model/</code>:
+      <ul>
+        <li><code>overlay.ts</code>: the <code>Overlay</code> type (an object, a start and a length in ticks, a track number); <code>createOverlay</code>, <code>cleanOverlay</code> (whole ticks, at least one), <code>overlaysOf</code> (read defensively); <code>activeOverlays</code> (what shows at a tick, stacked by start); <code>moveOverlay</code>, <code>resizeOverlay</code>; <code>overlayLanes</code> (rows for the track); <code>withOverlay</code>, <code>cloneOverlays</code>, <code>sameOverlays</code>;</li>
+        <li><code>Project.overlays</code>, and <code>overlays</code> in <code>ProjectChanges</code>;</li>
+        <li><code>objectKinds.ts</code>: the kinds and their settings, moved out of <code>element.ts</code> (which keeps the box maths). New: <code>TEXT</code> with <code>createText</code> / <code>textProps</code>, <code>SHAPE</code> with <code>createShape</code> / <code>shapeProps</code>, <code>NO_FILL</code>, <code>objectLabel</code> (what an object is called) and <code>hasText</code>.</li>
+      </ul>
+    </li>
+    <li><strong>One command</strong>, <code>setOverlays(projectId, from, to, label)</code> in <code>core/commands</code>, for any change to the overlays, like <code>setElements</code> for a picture's objects.</li>
+    <li><strong>Drawing</strong>, in <code>src/core/render/</code>:
+      <ul>
+        <li><code>renderAt</code> draws the overlays showing at the time on top of the picture and its objects (<code>Scene.overlays</code>): playback and export; <code>renderPicture</code> draws a picture with every overlay that overlaps it: the stage when not playing;</li>
+        <li><code>shape.ts</code>: <code>drawText</code> and <code>drawShape</code>; <code>elements.ts</code> gains two lines;</li>
+        <li><code>lettering.ts</code>: fitted text and outline thickness, shared by bubbles and text (taken out of <code>bubble.ts</code>).</li>
+      </ul>
+    </li>
+    <li><strong>The store:</strong> <code>overlaysPreview</code>, the overlay list while a change is in progress, gone once it's saved; <code>useShownOverlays</code>. <strong>The timeline's selection</strong> is pictures or one bar, never both: <code>selectedOverlayId</code> (a selector: the bar whose object is picked, or null), <code>selectOverlay</code> (picks a bar and, for the stage, the picture where it starts), and <code>select</code> (pictures) un-picks a bar. No second flag to keep in step.</li>
+    <li><strong>Overlay actions</strong> in <code>src/studio/overlayEditing.ts</code>, the same wherever they're offered: <code>addOverlay</code>, <code>deleteOverlay</code>, <code>duplicateOverlayById</code> (<code>duplicateOverlay</code> in core: the copy starts where the original ends) and <code>pickOverlay</code>. Each shows the change straight away and saves it as one step. The timeline's toolbar picks between them and the picture commands by what's selected.</li>
+    <li><strong>The overlay track</strong>, <code>src/studio/timeline/OverlayTrack.tsx</code>, under the pictures in <code>Timeline</code>. <code>src/studio/overlayEditing.ts</code>: showing and saving overlay changes, shared by the track and the Objects tab. The timeline is a little taller for it.</li>
+    <li><strong>The Objects tab</strong>, <code>src/features/objects/</code>:
+      <ul>
+        <li><code>ObjectTile</code> drops on the picture or on the track (<code>Place</code>);</li>
+        <li><code>objectEditing</code> knows the two places an object lives (<code>Placed</code>: on the picture, or an overlay) and shows and saves a change to either. <code>ObjectEditor</code> and <code>ObjectsPanel</code> use it, so the box editing and settings don't care where an object lives;</li>
+        <li><code>TextSettings</code> and <code>ShapeSettings</code>, with <code>BubbleSettings</code>, now share <code>controls.tsx</code>: colour swatches (with "None"), the outline picker and the text group.</li>
+      </ul>
+    </li>
+    <li><code>Studio.tsx</code> passes both saves to the Objects tab and its stage layer, and the overlay save to the timeline. <code>useStudioCommands</code> gains <code>setOverlays</code>.</li>
+  </ul>
+
+  <div class="note"><strong>Tidied after the step:</strong>
+    <ul>
+      <li>Deleting an animation now forgets everything remembered about it, its stage zoom included, which it used to leave behind. <code>forgetAnimation</code> in <code>remembered.ts</code> clears every per-animation entry it finds there, so one added later can't be missed. 1 end-to-end test in <code>projects.spec</code>.</li>
+      <li>One way to write a time: <code>formatTicks</code> in <code>core/model/timing.ts</code> (1 test), used by the length bubble, the overlay bars and the Objects tab.</li>
+      <li><code>objectFrame.ts</code> became <code>objectEditing.ts</code>, mirroring <code>studio/overlayEditing.ts</code>. Adding and removing an object have one function each, <code>addToPicture</code> and <code>removePlaced</code>, used by the tab and the stage's Delete key, like <code>addOverlay</code> and <code>deleteOverlay</code> on the track. Its helpers nothing else needs aren't exported any more.</li>
+      <li>What each kind looks like is written once: <code>objectText</code> in core (1 test) and <code>ObjectIcon</code> (<code>src/studio/</code>, so the timeline can use it too), for the tiles and the overlay bars.</li>
+    </ul>
+  </div>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>Drop on the track to put an object in time.</strong> It's the same drag and drop as putting an object on a picture, aimed at a different place, so no extra switch or mode is needed.</li>
+    <li><strong>Overlays live on the project record</strong>, not in a new table as the roadmap first said. They're a short list, saved and watched with the project like its speed or order, so there's no migration and no second watch. Projects from before read as having none.</li>
+    <li><strong>One command, the whole list</strong>, like a picture's objects. Adding, moving, resizing, restyling and deleting are each one undo step, and undoing a picture's delete never touches overlays.</li>
+    <li><strong>One Shape kind, its form a setting</strong> (your call), instead of separate rectangle, ellipse and arrow kinds: a rectangle can become an arrow without starting again.</li>
+    <li><strong>Anchored to time.</strong> <code>start</code> and <code>length</code> are ticks, like a picture's <code>hold</code>. Pictures moving don't move overlays, and changing the speed keeps them over the same pictures.</li>
+    <li><strong>One timeline selection.</strong> Pictures or one bar: what the toolbar acts on is never in doubt. The picture under a picked bar stays chosen for the stage, shown as on the stage (<code>aria-current</code>), not selected (<code>aria-selected</code>).</li>
+    <li><strong>Rows only for drawing.</strong> Overlapping overlays are drawn in rows (<code>overlayLanes</code>) but are still one track; on the stage they stack by start time, the later on top. More tracks are a <code>track</code> number away.</li>
+    <li><strong>The stage edits what shows at the picture on the stage</strong>, at the time it starts. Picking a bar takes the stage there.</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Grips:</strong> the overlay track is its own row, with its own 8 px ends to grab, so they don't get in the way of the pictures' resize grips.</li>
+    <li><strong>Past the last picture:</strong> a bar can run past the end of the pictures, and the track shows it. Playback still stops at the last picture. Export (step 25) should run to the later of the two.</li>
+    <li><strong>See-through and thumbnails leave overlays out.</strong> A ghost or a thumbnail is one picture, and an overlay doesn't belong to a picture. Drawing overlays there would show them twice on the stage.</li>
+    <li><strong>A picture looked at on its own shows every overlay that overlaps it.</strong> At first the stage drew a picture at the moment it starts, so a bar starting partway through wasn't there to see or edit. Now the stage (not playing) uses <code>renderPicture</code>, which draws every overlay showing at any moment of the picture (<code>overlaysDuring</code>). Playback and export (<code>renderAt</code>) still show an overlay only from the moment it starts. Found with long pictures; the specs had used one-tick pictures.</li>
+    <li><strong>The picked object's settings stay in the Objects tab</strong> whatever picture the stage shows, even when it isn't on that picture (it then says so: "Not on this picture: it shows from … to …"). <code>useStageObjects</code> gives the picked object wherever it lives.</li>
+    <li><strong>Strict test queries:</strong> the new Shape tile is named "Shape", like the bubble's Shape dropdown, so the specs ask for the dropdown by role (combobox).</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li>Drop a Text on the track at 0 s and type a title. It shows over the first 2 seconds of pictures. Change the speed: it still covers the same pictures.</li>
+    <li>Drag pictures around and delete one: the title stays at 0–2 s.</li>
+    <li>Drag the bar's end to make it longer; undo; drag the bar later; Delete it; undo.</li>
+    <li>Add a Shape, make it an arrow and turn it on the stage; set its colour to None.</li>
+  </ul>
+  <div class="note">Checked while building:
+    <ul>
+      <li>310 unit tests and 27 pixel tests pass; typecheck and lint are clean.</li>
+      <li>End-to-end, against the dev server: the new overlays spec (4) and the objects (7), timeline, resize, reorder, frames, stage, playback and picture specs pass. The other specs and the full suite weren't run.</li>
+      <li>A screenshot with a title and an arrow in time, overlapping in two rows on the track.</li>
+    </ul>
+  </div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/model/overlay.ts</code>, <code>overlay.test.ts</code>, <code>objectKinds.ts</code>, <code>objectKinds.test.ts</code>, <code>element.ts</code>, <code>element.test.ts</code>, <code>types.ts</code>, <code>repository.ts</code>, <code>index.ts</code>; <code>src/core/commands/projectCommands.ts</code>; <code>src/core/render/shape.ts</code>, <code>lettering.ts</code>, <code>bubble.ts</code>, <code>elements.ts</code>, <code>renderer.ts</code>, <code>renderer.browser.test.ts</code>, <code>index.ts</code>; <code>src/adapters/storage/frameCommands.test.ts</code>; <code>src/store/editorStore.ts</code>, <code>editorStore.test.ts</code>, <code>useEditor.ts</code>; <code>src/features/objects/</code> (<code>ObjectsPanel.tsx</code>, <code>ObjectTile.tsx</code>, <code>ObjectEditor.tsx</code>, <code>objectEditing.ts</code>, <code>controls.tsx</code>, <code>BubbleSettings.tsx</code>, <code>TextSettings.tsx</code>, <code>ShapeSettings.tsx</code>, <code>_objects.scss</code>); <code>src/studio/overlayEditing.ts</code>, <code>Studio.tsx</code>, <code>StagePicture.tsx</code>, <code>useStudioCommands.ts</code>, <code>timeline/OverlayTrack.tsx</code>, <code>timeline/Timeline.tsx</code>, <code>timeline/_timeline.scss</code>; <code>src/styles/globals.scss</code>; <code>e2e/overlays.spec.ts</code>, <code>objects.spec.ts</code>; <code>CLAUDE.md</code> (the spec map), <code>PLAN.md</code>; <code>public/steps/24-overlays.html</code>, <code>23-speech-bubbles.html</code> (next link), <code>index.html</code>; <code>ROADMAP.md</code>.</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit (310 in total):
+      <ul>
+        <li>3 for the timeline selection in the store: picking a bar, pictures un-picking it while a picture's own object stays picked, a missing bar;</li>
+        <li>1 for <code>duplicateOverlay</code>;</li>
+        <li>1 for <code>overlaysDuring</code>;</li>
+        <li>7 for overlays: whole ticks, reading old projects, what shows when, moving, resizing from either end, rows, replacing and copying;</li>
+        <li>6 for the new kinds: text and shape defaults and settings, which have text, and their names;</li>
+        <li>3 for <code>setOverlays</code> against storage: add, move, delete and undo; nothing changed; deleting pictures before it doesn't move it;</li>
+        <li>1 for the store's overlay preview.</li>
+      </ul>
+    </li>
+    <li>Pixel, 6: a rectangle, an ellipse, an arrow, a shape with no fill, text with and without a background, <code>renderAt</code> drawing only the overlays showing at that time, and <code>renderPicture</code> drawing those overlapping the picture.</li>
+    <li>End-to-end, 4 in the new <code>overlays.spec.ts</code>: dropped on the track, it shows over the pictures in its time only; its bar moves and resizes it, each one undo, and Delete removes it; it keeps its time when pictures are deleted and after a reload; picked on the track, it's edited on the stage and stays in time; a picked bar is the only selection, Duplicate and Delete act on it, a picture click switches back, and it's remembered after a reload; one starting partway through a picture is on it; a picked one keeps its working settings when it isn't on the picture shown. 1 in <code>objects.spec.ts</code>: text and shapes added and set in the tab.</li>
+  </ul>
+  <p><strong>Tests changed:</strong> two overlays checks now expect the picture under a picked bar to be on the stage (<code>aria-current</code>), not selected, on purpose; the bubble tests import from the model's index, since the kinds moved to <code>objectKinds.ts</code>; the objects spec asks for its dropdowns by role, now that a tile is called "Shape".</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>overlays stay at their time when pictures are moved, resized or deleted, and over the same pictures when the speed changes</li>
+    <li>every overlay change is one undo step; undoing a picture's delete doesn't touch overlays</li>
+    <li>the renderer draws only the overlays showing at a time, above the picture and its objects</li>
+    <li>a drop on the track makes an object in time, a drop on the picture an object on that picture</li>
+    <li>text and shapes read older or broken stored values with defaults</li>
+    <li><code>npm test</code>, <code>npm run test:browser</code>, <code>npm run lint</code>, <code>npm run typecheck</code> and the relevant specs pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="23-speech-bubbles.html">Previous: 23 · Objects on pictures</a>
+    <span>Next: 25 · GIF export</span>
+  </nav>
+</main>
+</body>
+</html>

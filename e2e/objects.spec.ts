@@ -128,7 +128,7 @@ test("a bubble stays with its picture when the picture moves, and a copy gets on
 
 test("shape, tail, outline, text size, font and colours are set in the tab, each one undo step", async ({ page }) => {
   await addBubble(page);
-  await page.getByLabel("Shape").selectOption("spiked");
+  await page.getByRole("combobox", { name: "Shape" }).selectOption("spiked");
   await expect(undo(page)).toHaveAttribute("title", "Undo: Change bubble shape");
   await expect(page.locator(".handles .tail")).toHaveCount(1);
   await page.getByRole("checkbox", { name: "Tail" }).uncheck();
@@ -140,9 +140,9 @@ test("shape, tail, outline, text size, font and colours are set in the tab, each
   await expect(undo(page)).toHaveAttribute("title", "Undo: Change outline colour");
   await page.getByRole("combobox", { name: "Outline", exact: true }).selectOption("none");
   await expect(page.getByRole("group", { name: "Outline colour" })).toHaveCount(0);   // nothing to colour
-  await page.getByLabel("Text size").selectOption("huge");
+  await page.getByRole("combobox", { name: "Text size" }).selectOption("huge");
   await expect(undo(page)).toHaveAttribute("title", "Undo: Change text size");
-  await page.getByLabel("Font").selectOption("comic");
+  await page.getByRole("combobox", { name: "Font" }).selectOption("comic");
   await expect(undo(page)).toHaveAttribute("title", "Undo: Change font");
   await page.getByRole("group", { name: "Text colour" }).getByRole("button", { name: "Red" }).click();
   await expect(undo(page)).toHaveAttribute("title", "Undo: Change text colour");
@@ -153,8 +153,30 @@ test("shape, tail, outline, text size, font and colours are set in the tab, each
   await expect.poll(() => stageColour(page, 0.5, 0.2)).toEqual([31, 36, 51]);   // the bubble, now black
   await undo(page).click();
   await expect.poll(() => stageColour(page, 0.5, 0.2)).toEqual([255, 255, 255]);
-  await expect(page.getByLabel("Shape")).toHaveValue("spiked");   // only the colour was undone
+  await expect(page.getByRole("combobox", { name: "Shape" })).toHaveValue("spiked");   // only the colour was undone
 
   await page.getByRole("button", { name: "Delete spiked bubble" }).click();
   await expect(badge(page, 2)).toHaveCount(0);
+});
+
+test("text and shapes: added from their icons, set in the tab, each one undo step", async ({ page }) => {
+  await page.getByRole("button", { name: "Text", exact: true }).click();
+  await expect(text(page)).toBeFocused();   // typing straight away
+  await page.keyboard.type("THE END");
+  await text(page).blur();
+  await expect(undo(page)).toHaveAttribute("title", "Undo: Change text");
+  await page.getByRole("group", { name: "Background colour" }).getByRole("button", { name: "Black" }).click();
+  await expect(undo(page)).toHaveAttribute("title", "Undo: Change background");
+  await expect.poll(() => stageColour(page, 0.22, 0.45)).toEqual([31, 36, 51]);   // the text's black background
+
+  await page.getByRole("button", { name: "Shape", exact: true }).click();
+  await expect(undo(page)).toHaveAttribute("title", "Undo: Add rectangle");
+  await expect(page.getByRole("region", { name: "rectangle settings" })).toBeVisible();
+  await page.getByRole("combobox", { name: "Shape" }).selectOption("arrow");
+  await expect(undo(page)).toHaveAttribute("title", "Undo: Change shape");
+  await expect(page.getByRole("region", { name: "arrow settings" })).toBeVisible();
+  await page.getByRole("group", { name: "Colour", exact: true }).getByRole("button", { name: "None" }).click();
+  await expect(undo(page)).toHaveAttribute("title", "Undo: Change shape colour");
+  await page.getByRole("button", { name: "Delete arrow" }).click();
+  await expect(page.getByRole("region", { name: "arrow settings" })).toHaveCount(0);
 });

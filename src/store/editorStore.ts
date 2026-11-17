@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { clampAdjust, clampHold, clampSafeMargin, cloneElements, safeMargin, sameAdjust, sameElements, sameTransform, type Frame, type Project } from "@/core/model";
+import { clampAdjust, clampHold, clampSafeMargin, cloneElements, cloneOverlays, frameIndexAt, overlaysOf, safeMargin, sameAdjust, sameElements, sameOverlays, sameTransform, type Frame, type Overlay, type Project } from "@/core/model";
 import { clampView, FIT_VIEW, type StageView } from "@/core/render";
 
 // Live editor state (PLAN.md §1): what the studio is showing and doing right now.
@@ -20,10 +20,17 @@ export type ProjectSlice = {
   unloadProject: () => void;
 };
 
+// What's selected on the timeline is one of two things, never both (step 24):
+//   pictures    `selection`: one or more (Shift- and Ctrl-click)
+//   an overlay  a bar on the overlay track: the picked object (`selectedElement`) is an overlay's.
+//               `selection` then holds the picture where it starts, so the stage shows it; the
+//               timeline doesn't show that picture as selected (selectedOverlayId says which it is).
+// Selecting pictures un-picks a bar; selectOverlay picks one.
 export type SelectionSlice = {
   selection: readonly string[];              // selected frame ids
   select: (ids: readonly string[]) => void;
   clearSelection: () => void;
+  selectOverlay: (overlayId: string) => void;
 };
 
 export type PlaybackSlice = {
@@ -57,8 +64,14 @@ export type UiSlice = {
   elementsPreview: Preview<"elements">;
   previewElements: (elements: Preview<"elements">) => void;
   clearElementsPreview: (ids?: readonly string[]) => void;
-  // Objects (step 23): the one picked on the stage (its id, on the picture shown); the Objects tab
-  // shows its settings.
+  // The overlays (step 24) as they should look while one is dragged on the timeline or edited on
+  // the stage: the whole list, or null when nothing is in progress. It goes once the saved project
+  // has that list (syncProject), or is cleared.
+  overlaysPreview: readonly Overlay[] | null;
+  previewOverlays: (overlays: readonly Overlay[]) => void;
+  clearOverlaysPreview: () => void;
+  // Objects (step 23): the one picked on the stage or on the overlay track (its element's id); the
+  // Objects tab shows its settings.
   selectedElement: string | null;
   selectElement: (id: string | null) => void;
   // See-through: the picture(s) before the next shot drawn faintly over the live camera.
@@ -108,7 +121,7 @@ export const MAX_TIMELINE_ZOOM = 640;
 export const DEFAULT_TIMELINE_ZOOM = 160;   // a tick at the default 8 fps is 20 px wide
 export const DEFAULT_ONION_SKIN: OnionSkin = { on: true, opacity: 0.4, count: 1, outline: false, difference: false };
 
-const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0, holdPreview: {}, transformPreview: {}, adjustPreview: {}, elementsPreview: {}, selectedElement: null, stageView: FIT_VIEW } as const;
+const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0, holdPreview: {}, transformPreview: {}, adjustPreview: {}, elementsPreview: {}, overlaysPreview: null, selectedElement: null, stageView: FIT_VIEW } as const;
 
 // A factory, so every test (and, if ever needed, a second studio) gets its own store.
 export function createEditorStore() {
@@ -132,17 +145,27 @@ export function createEditorStore() {
       const adjustPreview = unsaved("adjust", state.adjustPreview, next);
       const elementsPreview = unsaved("elements", state.elementsPreview, next);
       const safeMarginPreview = state.safeMarginPreview !== null && safeMargin(project) !== state.safeMarginPreview ? state.safeMarginPreview : null;
-      set({ project, frames: next, selection: state.selection.filter((id) => id in next), holdPreview, transformPreview, adjustPreview, elementsPreview, safeMarginPreview });
+      const overlaysPreview = state.overlaysPreview && !sameOverlays(overlaysOf(project), state.overlaysPreview) ? state.overlaysPreview : null;
+      set({ project, frames: next, selection: state.selection.filter((id) => id in next), holdPreview, transformPreview, adjustPreview, elementsPreview, safeMarginPreview, overlaysPreview });
     },
 
     unloadProject: () => set(EMPTY),
 
     select: (ids) => {
-      const { frames } = get();
-      set({ selection: [...new Set(ids)].filter((id) => id in frames) });
+      const state = get();
+      set({ selection: [...new Set(ids)].filter((id) => id in state.frames), selectedElement: selectedOverlayId(state) ? null : state.selectedElement });
     },
 
-    clearSelection: () => set({ selection: [] }),
+    clearSelection: () => set({ selection: [], selectedElement: selectedOverlayId(get()) ? null : get().selectedElement }),
+
+    selectOverlay: (overlayId) => {
+      const state = get();
+      const overlay = shownOverlays(state).find((item) => item.id === overlayId);
+      if (!overlay) return;
+      const frames = orderedFrames(state);
+      const frame = frames[frameIndexAt(frames, overlay.start)];
+      set({ selection: frame ? [frame.id] : [], selectedElement: overlay.element.id });
+    },
 
     play: () => { if (get().project?.frameIds.length) set({ isPlaying: true }); },
 
@@ -178,11 +201,25 @@ export function createEditorStore() {
     clearAdjustPreview: (ids) => set({ adjustPreview: without(get().adjustPreview, ids) }),
     previewElements: (elements) => set({ elementsPreview: added("elements", get().elementsPreview, get().frames, elements) }),
     clearElementsPreview: (ids) => set({ elementsPreview: without(get().elementsPreview, ids) }),
+    previewOverlays: (overlays) => set({ overlaysPreview: cloneOverlays(overlays) }),
+    clearOverlaysPreview: () => set({ overlaysPreview: null }),
     selectElement: (id) => set({ selectedElement: id }),
   }));
 }
 
 export type EditorStore = ReturnType<typeof createEditorStore>;
+
+// The overlays as shown right now: with a change in progress, if there is one.
+export function shownOverlays(state: Pick<EditorState, "project" | "overlaysPreview">): readonly Overlay[] {
+  return state.overlaysPreview ?? overlaysOf(state.project);
+}
+
+// The overlay selected on the timeline (its id), or null when the selection is pictures (see
+// SelectionSlice). A selector: a string, so components re-render only when it changes.
+export function selectedOverlayId(state: Pick<EditorState, "project" | "overlaysPreview" | "selectedElement">): string | null {
+  if (!state.selectedElement) return null;
+  return shownOverlays(state).find((overlay) => overlay.element.id === state.selectedElement)?.id ?? null;
+}
 
 // The frames in animation order. Ids without a frame are skipped, the same way loading repairs
 // drift between frameIds and the frames table (step 07).

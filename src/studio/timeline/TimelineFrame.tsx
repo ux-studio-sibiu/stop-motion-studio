@@ -1,7 +1,7 @@
 "use client";
 
 import type { MouseEvent, PointerEvent, ReactNode } from "react";
-import { ticksToSeconds, type Frame } from "@/core/model";
+import type { Frame } from "@/core/model";
 import { Thumb } from "./Thumb";
 import type { Drag } from "./useReorder";
 import { optionId } from "./useTimelineSelection";
@@ -19,6 +19,7 @@ type TimelineFrameProps = {
   number: number;
   width: number;
   selected: boolean;
+  onStage?: boolean;   // the picture the stage shows while an overlay is the selection (step 24)
   insertAfter: boolean;
   dragging: boolean;
   onPick: (id: string, event: MouseEvent) => void;
@@ -26,10 +27,10 @@ type TimelineFrameProps = {
   children?: ReactNode;
 };
 
-export function TimelineFrame({ frame, number, width, selected, insertAfter, dragging, onPick, onPress, children }: TimelineFrameProps) {
-  const className = `frame${selected ? " is-selected" : ""}${insertAfter ? " is-insert-point" : ""}${dragging ? " is-dragging" : ""}`;
+export function TimelineFrame({ frame, number, width, selected, onStage = false, insertAfter, dragging, onPick, onPress, children }: TimelineFrameProps) {
+  const className = `frame${selected ? " is-selected" : ""}${onStage ? " is-on-stage" : ""}${insertAfter ? " is-insert-point" : ""}${dragging ? " is-dragging" : ""}`;
   return (
-    <li id={optionId(frame.id)} role="option" aria-selected={selected} aria-label={`Picture ${number}`} className={className} style={{ width }} onClick={(event) => onPick(frame.id, event)} onPointerDown={(event) => onPress(frame.id, event)}>
+    <li id={optionId(frame.id)} role="option" aria-selected={selected} aria-current={onStage || undefined} aria-label={`Picture ${number}`} className={className} style={{ width }} onClick={(event) => onPick(frame.id, event)} onPointerDown={(event) => onPress(frame.id, event)}>
       <span className="picture">
         <Thumb frame={frame} />
         {width >= LABEL_MIN_WIDTH && <span className="frame-number">{number}</span>}
@@ -52,7 +53,3 @@ export function DragGhost({ drag, frames }: { drag: Drag; frames: readonly Frame
   );
 }
 
-// A picture's length for the resize bubble: "1.5 s", "0.13 s", "2 s".
-export function formatHold(hold: number, fps: number): string {
-  return `${Number(ticksToSeconds(hold, fps).toFixed(2))} s`;
-}
