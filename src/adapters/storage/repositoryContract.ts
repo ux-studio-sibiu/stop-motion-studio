@@ -269,6 +269,45 @@ export function describeRepositoryContract(name: string, setup: () => Promise<Re
       expect(await repository.getImage(theirs.frame.imageId)).toBeDefined();
     });
 
+    describe("importProject (step 27)", () => {
+      const animation = () => {
+        const restored = createProject({ name: "Restored", now: 0 });
+        const a = picture(restored.id);
+        const b = picture(restored.id);
+        const copy = createFrame(restored.id, a.frame.imageId);
+        restored.frameIds = [b.frame.id, a.frame.id, copy.id];
+        return { project: restored, frames: [a.frame, b.frame, copy], images: [a.image, b.image], thumbs: [a.thumb, b.thumb] };
+      };
+
+      it("saves the whole animation: the project, its frames in order, pictures and thumbnails", async () => {
+        const restored = animation();
+        await repository.importProject(restored);
+        const loaded = await repository.loadProject(restored.project.id);
+        expect(loaded?.project.frameIds).toEqual(restored.project.frameIds);
+        expect(loaded?.frames.map((frame) => frame.id).sort()).toEqual(restored.frames.map((frame) => frame.id).sort());
+        expect(await repository.getImage(restored.images[0].id)).toBeDefined();
+        expect(await repository.listThumbs(restored.project.id)).toHaveLength(2);
+        expect((await repository.listProjects()).map((p) => p.id)).toContain(restored.project.id);
+      });
+
+      it("saves nothing when a frame's picture is missing, or the project exists already", async () => {
+        const broken = animation();
+        broken.images = [broken.images[0]];   // the second picture isn't there
+        await expect(repository.importProject(broken)).rejects.toThrow();
+        expect(await repository.getProject(broken.project.id)).toBeUndefined();
+        expect(await repository.getImage(broken.images[0].id)).toBeUndefined();
+
+        const again = animation();
+        again.project = { ...again.project, id: project.id };   // the one made in beforeEach
+        again.frames = again.frames.map((frame) => ({ ...frame, projectId: project.id }));
+        again.images = again.images.map((image) => ({ ...image, projectId: project.id }));
+        again.thumbs = again.thumbs.map((thumb) => ({ ...thumb, projectId: project.id }));
+        await expect(repository.importProject(again)).rejects.toThrow();
+        expect((await repository.getProject(project.id))?.name).toBe("Dino walk");   // untouched
+        expect(await repository.getImage(again.images[0].id)).toBeUndefined();
+      });
+    });
+
     describe("removeUnusedImages (step 21)", () => {
       it("deletes the pictures and thumbnails no frame uses, and keeps the rest", async () => {
         const kept = await capture(project.id);

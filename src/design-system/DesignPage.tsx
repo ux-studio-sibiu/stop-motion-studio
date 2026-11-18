@@ -367,6 +367,7 @@ export function DesignPage() {
                 <p className="meta">24 pictures · <span className="size">3.1 MB</span> · 17 Nov</p>
               </div>
               <div className="actions">
+                <button type="button" className="icon-button" aria-label="Back up"><Download size={20} /></button>
                 <button type="button" className="icon-button" aria-label="Rename"><Pencil size={20} /></button>
                 <button type="button" className="icon-button" aria-label="Delete"><Trash2 size={20} /></button>
               </div>

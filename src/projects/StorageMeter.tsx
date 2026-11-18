@@ -27,7 +27,7 @@ export function StorageMeter({ version }: { version: unknown }) {
       </p>
       <meter min={0} max={1} high={ALMOST_FULL} optimum={0} value={estimate.ratio} aria-label="Storage used" />
       {estimate.ratio >= ALMOST_FULL && <p className="warning" role="status"><strong>Almost full.</strong> Delete animations you don&apos;t need to make room for more pictures: each card says how much space it takes.</p>}
-      <p className="note">{persistent ? "The browser has promised to keep your animations." : "The browser may clear your animations if the device runs out of space. Save a copy of the ones you love (coming soon)."}</p>
+      <p className="note">{persistent ? "The browser has promised to keep your animations." : "The browser may clear your animations if the device runs out of space. Back up the ones you love with the download button on their card."}</p>
     </section>
   );
 }

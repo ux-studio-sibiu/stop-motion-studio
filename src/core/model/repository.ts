@@ -25,6 +25,10 @@ export interface ProjectRepository {
   updateProject(id: string, changes: ProjectChanges): Promise<Project>;
   // The project with all its frames, pictures and thumbnails.
   deleteProject(id: string): Promise<void>;
+  // A whole animation at once (restoring a backup, step 27): the project, its frames, pictures and
+  // thumbnails, all saved or, if anything is wrong, none. Fails if the project exists already, or a
+  // frame belongs to another project or shows a picture that isn't given.
+  importProject(animation: ImportedProject): Promise<void>;
 
   // New frames at `at` in the order (default: the end), with any new pictures they bring.
   // Duplicates share an existing picture, so `images` / `thumbs` may be empty.
@@ -55,6 +59,8 @@ export interface ProjectRepository {
 }
 
 export type LoadedProject = { project: Project; frames: Frame[] };
+
+export type ImportedProject = { project: Project; frames: Frame[]; images: StoredImage[]; thumbs: StoredThumb[] };
 
 export type ProjectChanges = Partial<Pick<Project, "name" | "fps" | "frameIds" | "safeMargin" | "overlays">>;
 

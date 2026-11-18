@@ -65,6 +65,16 @@ export function createDexieRepository(db: StudioDb, now: () => number = Date.now
       ]);
     }),
 
+    importProject: ({ project, frames, images, thumbs }) => db.transaction("rw", all, async () => {
+      const pictures = new Set(images.map((image) => image.id));
+      if (frames.some((frame) => frame.projectId !== project.id || !pictures.has(frame.imageId))) throw new Error("A frame belongs to another project, or its picture is missing.");
+      if ([...images, ...thumbs].some((item) => item.projectId !== project.id)) throw new Error("A picture belongs to another project.");
+      await db.projects.add(project);   // fails if it exists: a restore never overwrites
+      await db.images.bulkAdd(images);
+      await db.thumbs.bulkAdd(thumbs);
+      await db.frames.bulkAdd(frames);
+    }),
+
     insertFrames: (projectId, { frames, images = [], thumbs = [], at, after }: FrameInsert) => db.transaction("rw", all, async () => {
       const project = await requireProject(projectId);
       if (frames.some((frame) => frame.projectId !== projectId)) throw new Error("A frame belongs to another project.");

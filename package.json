@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "dexie": "^4.4.7",
+    "fflate": "0.8.3",
     "gifenc": "^1.0.3",
     "lucide-react": "^1.72.0",
     "mediabunny": "1.65.1",

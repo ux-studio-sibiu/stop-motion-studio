@@ -709,7 +709,7 @@ feature folder of its own.
 - [x] D4 Design system: keeping tweaks, Copy changes
 - [x] 25 GIF export ([page](public/steps/25-gif-export.html))
 - [x] 26 Video export ([page](public/steps/26-video-export.html))
-- [ ] 27 Project archive
+- [x] 27 Project archive ([page](public/steps/27-project-archive.html))
 - [ ] 28 Import photos
 - [ ] 29 Kid-friendly capture
 - [ ] 30 Accessibility and keyboard map

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>27 Project archive · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 27 · Part 9 Export and import</p>
+  <h1>Project archive: backup and restore</h1>
+  <p class="intro">Each animation on the projects page has a <strong>Back up</strong> button that downloads it as a <code>.zip</code>. <strong>Restore a backup</strong>, under New animation, brings one back, on this device or another.</p>
+  <ul>
+    <li>A backup holds <strong>everything</strong>: the photos as taken, the order, how long each picture lasts, its position and look, its objects and drawing, the overlay track, the speed and the safe zone.</li>
+    <li>Restoring makes a <strong>new animation</strong>, with new ids. It never overwrites one, and restoring twice gives two. Its thumbnails are made anew.</li>
+    <li>A file that isn't a backup, one from a newer studio, or one missing pictures is <strong>refused with a note saying why</strong>, and nothing is saved.</li>
+    <li>The storage note on the projects page now points to the Back up button, instead of "coming soon".</li>
+  </ul>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><strong>The archive format</strong>, <code>src/core/archive/archive.ts</code>: the stable, public format (version 1). Storage (Dexie) can change behind it.
+      <ul>
+        <li><code>archiveManifest</code>: <code>project.json</code>, the frames in order, each with its picture, and each picture once;</li>
+        <li><code>readManifest</code>: reads one back, trusting nothing (see Watch out), with new ids;</li>
+        <li><code>ArchiveError</code> and its messages; <code>ARCHIVE_LIMITS</code>.</li>
+      </ul>
+    </li>
+    <li><strong>Storage</strong>: <code>importProject</code> in <code>ProjectRepository</code> and the Dexie repository. It saves the project, frames, pictures and thumbnails in one transaction, and fails, saving nothing, if a picture is missing or the project exists. It's in the repository contract (<code>repositoryContract.ts</code>), so every storage is held to it.</li>
+    <li><strong>The zip</strong>, <code>src/adapters/archive/projectArchive.ts</code>, with <code>fflate</code>: <code>exportArchive</code> stores the photos as they are (JPEG doesn't shrink further) and compresses the JSON. <code>importArchive</code> unpacks only what a backup holds, opens every picture, and only then saves it all.</li>
+    <li><strong>Thumbnails</strong> for restored pictures: <code>decodePicture</code>, <code>src/adapters/images/thumbnail.ts</code>, the same size as capture's.</li>
+    <li><strong>The projects page</strong>: the Back up button on each card (<code>ProjectCard</code>), and Restore a backup with a note about what happened (<code>ProjectsPage</code>). The card's buttons now have a row of their own, so the name keeps the card's width. <code>download</code> is shared with the export buttons (<code>useExport.ts</code>).</li>
+    <li>New dependency: <code>fflate</code> 0.8.3 (MIT), pinned exactly.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>Always new ids</strong>, not only when the animation exists already. That's simpler and safer: the pictures' ids would collide too, and a restore can then never overwrite anything.</li>
+    <li><strong>All or nothing.</strong> Everything is checked and every picture opened before anything is saved, then it's saved in one transaction.</li>
+    <li><strong>The photos as stored</strong>, not re-encoded, so a backup loses nothing. Thumbnails aren't in the archive; they're made again on restore.</li>
+    <li><strong>Unknown kinds of object are left out</strong>, as the renderer already skips them. A backup from a newer studio is refused outright (its <code>version</code> is higher), rather than read partly.</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Nothing in a backup is trusted.</strong> Every value is checked and kept in range: sizes, speed, lengths, positions, looks, safe zone, boxes, and each kind's settings through its own reader. There are caps: 5000 pictures, 200 objects on a picture, 500 overlays, 2000 lines in a drawing, 25 MB a photo, 1.5 GB unpacked.</li>
+    <li><strong>Zip bombs:</strong> sizes are checked before anything is unpacked. Only <code>project.json</code> and <code>images/*.jpg</code> are unpacked; anything else in the zip is ignored.</li>
+    <li><strong>Big animations:</strong> a backup is made in memory, so a few hundred pictures is a few hundred MB for a moment. That's fine on a computer, tighter on an old tablet.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li>Make an animation with a held picture, a moved and brightened one, a bubble, a drawing and a title on the overlay track. Back it up, delete it, restore it: everything is back. Open it.</li>
+    <li>Restore it again: there are two.</li>
+    <li>Restore any other <code>.zip</code>: the note says it isn't a backup.</li>
+  </ul>
+  <div class="note">Checked while building:
+    <ul>
+      <li>373 unit tests and 41 browser tests pass; lint and typecheck are clean; the production build works.</li>
+      <li>End-to-end: the projects spec (10) against the dev server and the production build; the storage and design specs on dev. The other specs weren't run; neither was WebKit.</li>
+      <li>Screenshots of the projects page and a card.</li>
+    </ul>
+  </div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/archive/</code> (<code>archive.ts</code>, <code>archive.test.ts</code>, <code>index.ts</code>); <code>src/core/model/repository.ts</code>; <code>src/adapters/storage/dexieRepository.ts</code>, <code>repositoryContract.ts</code>; <code>src/adapters/archive/</code> (<code>projectArchive.ts</code>, <code>projectArchive.test.ts</code>); <code>src/adapters/images/</code> (<code>thumbnail.ts</code>, <code>thumbnail.browser.test.ts</code>); <code>src/projects/</code> (<code>ProjectsPage.tsx</code>, <code>ProjectCard.tsx</code>, <code>StorageMeter.tsx</code>, <code>projects.scss</code>); <code>src/design-system/DesignPage.tsx</code> (the card's Back up button); <code>e2e/projects.spec.ts</code>; <code>package.json</code>, <code>package-lock.json</code>; <code>CLAUDE.md</code> (the spec map), <code>ROADMAP.md</code>; <code>public/steps/27-project-archive.html</code>, <code>26-video-export.html</code> (next link), <code>index.html</code>.</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit, 6 in <code>archive.test.ts</code>:
+      <ul>
+        <li>the manifest lists frames in order and each picture once;</li>
+        <li>everything comes back;</li>
+        <li>new ids;</li>
+        <li>what isn't a backup, a newer one, one missing a picture and one too big are refused;</li>
+        <li>values kept in range, unknown kinds dropped;</li>
+        <li>drawings, objects and overlays capped.</li>
+      </ul>
+    </li>
+    <li>Contract, 2 in <code>repositoryContract.ts</code>: <code>importProject</code> saves the whole animation; it saves nothing with a picture missing or an existing project.</li>
+    <li>Unit, 3 in <code>projectArchive.test.ts</code>, against real storage: a backup restored with everything in place, the photos byte for byte and thumbnails made anew; restoring twice makes two; a file that isn't a backup, or a broken picture, saves nothing.</li>
+    <li>Browser, 2 in <code>thumbnail.browser.test.ts</code>: a picture's size and thumbnail; a file that isn't a picture is refused.</li>
+    <li>End-to-end, 2 in <code>projects.spec.ts</code>:
+      <ul>
+        <li>back up, delete and restore: three pictures with the same lengths in the same order, and a cover;</li>
+        <li>a file that isn't a backup says so and adds nothing.</li>
+      </ul>
+    </li>
+  </ul>
+  <p><strong>Tests changed:</strong> none.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>a backup brings everything back, as a new animation, never overwriting</li>
+    <li>a bad file is refused with a reason, and nothing is saved</li>
+    <li>nothing in a backup is trusted: values kept in range, kinds known, sizes capped, nothing unpacked beyond the limits</li>
+    <li>the format is plain code in <code>core</code>; storage's <code>importProject</code> is in the contract</li>
+    <li><code>npm test</code>, <code>npm run test:browser</code>, <code>npm run lint</code>, <code>npm run typecheck</code>, the build and <code>projects.spec</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="26-video-export.html">Previous: 26 · Video export</a>
+    <span>Next: 28 · Import photos</span>
+  </nav>
+</main>
+</body>
+</html>
