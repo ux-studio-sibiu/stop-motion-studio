@@ -1,4 +1,5 @@
 @use "@/styles/breakpoints" as *;
+@use "@/styles/scrollbar" as *;
 
 // The side panel beside the stage: its tab ears and panels. Each tab's own controls are styled in
 // its feature folder (src/features/*/_*.scss).
@@ -14,7 +15,7 @@
     min-height: 0;
     margin-left: var(--ear-width);
     background: var(--color-surface);
-    border: var(--line-width) solid var(--color-line);
+    border: var(--line-width) solid var(--color-border);
     border-radius: var(--radius);
 
     @include respond-to-max("tablet") { display: none; }
@@ -48,15 +49,15 @@
       padding: 0;
       border: none;
       border-radius: var(--radius-small) 0 0 var(--radius-small);
-      --edge: var(--color-line);   // its outline; hover lightens it with the background, as one shape
+      --edge: var(--color-border);   // its outline; hover lightens it with the background, as one shape
 
-      background: var(--color-line);   // the border colour, like the edges of the shapes it sits behind
+      background: var(--color-line);   // the light line colour: pushed back, behind the panel
       box-shadow: inset var(--line-width) 0 0 var(--edge), inset 0 var(--line-width) 0 var(--edge), inset 0 calc(-1 * var(--line-width)) 0 var(--edge);
       color: var(--color-ink);
       cursor: pointer;
 
       &:hover {
-        --edge: color-mix(in srgb, var(--color-line) 60%, var(--color-surface));
+        --edge: color-mix(in srgb, var(--color-border) 60%, var(--color-surface));
         background: var(--edge);
       }
 
@@ -68,17 +69,26 @@
         margin-right: 0;
         clip-path: none;
         background: var(--color-surface);
-        --edge: var(--color-line);   // hovering the open tab changes nothing
+        --edge: var(--color-border);   // hovering the open tab changes nothing
       }
     }
 
+    // A tab's content, scrolling when it's long. The scrolling area is set in from the panel's
+    // right edge and from its top and bottom (--scroll-inset), so the scrollbar stays inside the
+    // rounded corners instead of running into them; the padding is less by as much, so the
+    // content stays where it was (the tabs line up with it, above).
     .panel {
+      --scroll-inset-x: 0.3125rem;
+      --scroll-inset-y: 0.75rem;
+
       display: flex;
       flex-direction: column;
       gap: var(--space-3);
       min-height: 0;
-      padding: var(--space-3);
+      margin: var(--scroll-inset-y) var(--scroll-inset-x) var(--scroll-inset-y) 0;
+      padding: calc(var(--space-3) - var(--scroll-inset-y)) calc(var(--space-3) - var(--scroll-inset-x)) calc(var(--space-3) - var(--scroll-inset-y)) var(--space-3);
       overflow: auto;
+      @include soft-scrollbar;
 
       &[hidden] { display: none; }
     }
@@ -113,7 +123,7 @@
     select {
       min-height: var(--hit);
       padding: 0 var(--space-2);
-      border: var(--line-width) solid var(--color-line);
+      border: var(--line-width) solid var(--color-border);
       border-radius: var(--radius-small);
       background: var(--color-surface);
       color: var(--color-ink);
@@ -145,7 +155,7 @@
     textarea {
       box-sizing: border-box;
       width: 100%;
-      border: var(--line-width) solid var(--color-line);
+      border: var(--line-width) solid var(--color-border);
       border-radius: var(--radius-small);
       background: var(--color-surface);
       color: var(--color-ink);
@@ -172,7 +182,7 @@
     width: 100%;
     aspect-ratio: 1;
     padding: 0;
-    border: var(--line-width) solid var(--color-line);
+    border: var(--line-width) solid var(--color-border);
     border-radius: 50%;
     cursor: pointer;
 

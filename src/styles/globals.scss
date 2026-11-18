@@ -10,7 +10,8 @@
   --color-surface: #ffffff;
   --color-ink: #1f2433;
   --color-muted: #6a7184;
-  --color-line: #e6e0d5;
+  --color-line: #e6e0d5;     // light rules and fills: dividers, the ruler, pushed-back tabs
+  --color-border: #b5ab9b;   // the outlines of panels, controls and cards: dark enough to hold them apart on the graph paper
   --color-faint: #f3ede3;
   --color-accent: #f2544a;     // capture: the one loud colour
   --color-accent-ink: #ffffff;
@@ -43,6 +44,7 @@
     --color-ink: #eef0f5;
     --color-muted: #9aa1b2;
     --color-line: #2c303b;
+    --color-border: #4a5162;
     --color-faint: #232733;
     --color-accent: #ff6559;
     --color-go: #33b97f;

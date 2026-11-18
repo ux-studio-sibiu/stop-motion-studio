@@ -1,4 +1,5 @@
 @use "@/styles/breakpoints" as *;
+@use "@/styles/scrollbar" as *;
 
 // The timeline: tools, ruler, playhead, the track, dragging and the next-picture slot.
 .nsc-studio {
@@ -13,7 +14,7 @@
     margin-bottom: calc(-1 * var(--space-3));
     padding: var(--space-2) var(--space-3) 0;
     background: var(--color-surface);
-    border: var(--line-width) solid var(--color-line);
+    border: var(--line-width) solid var(--color-border);
     border-bottom: none;
     border-radius: var(--radius) var(--radius) 0 0;
   }
@@ -54,7 +55,7 @@
       z-index: 1;
       padding: var(--space-2) var(--space-3) var(--space-1);
       background: var(--color-surface);
-      border: var(--line-width) solid var(--color-line);
+      border: var(--line-width) solid var(--color-border);
       border-bottom: none;
       border-radius: var(--radius) var(--radius) 0 0;
 
@@ -72,7 +73,7 @@
         left: 100%;
         width: var(--r);
         height: var(--r);
-        background: radial-gradient(circle at 100% 0, transparent calc(var(--r) - var(--line-width) - 0.5px), var(--color-line) calc(var(--r) - var(--line-width)), var(--color-line) var(--r), var(--color-surface) calc(var(--r) + 0.5px));
+        background: radial-gradient(circle at 100% 0, transparent calc(var(--r) - var(--line-width) - 0.5px), var(--color-border) calc(var(--r) - var(--line-width)), var(--color-border) var(--r), var(--color-surface) calc(var(--r) + 0.5px));
         pointer-events: none;
       }
     }
@@ -90,7 +91,7 @@
     overflow-x: scroll;
     overflow-y: hidden;
     overscroll-behavior-x: contain;
-    scrollbar-color: var(--color-line) transparent;
+    @include soft-scrollbar;   // the same as the side panel's
   }
 
   // The playhead: a line over ruler and track, with a knob on the ruler.
@@ -296,7 +297,7 @@
     flex: none;
     width: 5rem;
     margin-left: var(--space-2);
-    border: 2px dashed var(--color-line);
+    border: 2px dashed var(--color-border);
     border-radius: var(--radius-small);
     color: var(--color-muted);
 
