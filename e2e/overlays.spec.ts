@@ -81,7 +81,7 @@ test("it keeps its time when pictures are deleted, and after a reload", async ({
 test("picked on the track, it's edited on the stage like any object, and stays in time", async ({ studio, page }) => {
   await dropShape(page, studio, 1);
   await studio.picture(4).click();
-  await page.getByRole("tab", { name: "Camera" }).click();
+  await page.getByRole("tab", { name: "Draw" }).click();
   await bar(page).click();   // picks it: the Objects tab, at the picture where it starts
   await expect(page.getByRole("tab", { name: "Objects" })).toHaveAttribute("aria-selected", "true");
   await expect(studio.picture(2)).toHaveAttribute("aria-current", "true");
@@ -127,7 +127,7 @@ test("a picked bar is the timeline's only selection: Duplicate and Delete act on
 test("an overlay that shows at any moment of a picture is on it: one starting partway through is drawn and editable", async ({ studio, page }) => {
   await studio.dragGrip(1, 7 * TICK);   // picture 1 lasts 8 ticks
   await dropShape(page, studio, 3);             // starts in the middle of picture 1
-  await page.getByRole("tab", { name: "Camera" }).click();
+  await page.getByRole("tab", { name: "Draw" }).click();
   await studio.picture(4).click();
   await bar(page).click();
   await expect(studio.picture(1)).toHaveAttribute("aria-current", "true");

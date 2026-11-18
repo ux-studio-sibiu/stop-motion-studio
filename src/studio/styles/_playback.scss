@@ -1,6 +1,7 @@
 @use "@/styles/breakpoints" as *;
 
-// The bar under the stage: Play and See-through, each with its options dropdown.
+// The bar under the stage: Play and See-through, each with its options dropdown (the dropdown
+// itself: _option-menu.scss).
 .nsc-studio {
   .playback-bar {
     grid-area: playback;
@@ -35,69 +36,5 @@
 
       input { flex: 1; min-width: 0; }
     }
-  }
-
-  // A main button joined to an arrow that opens its options above the bar (playback, see-through).
-  .option-menu {
-    position: relative;
-    display: flex;
-
-    .toggle { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-    .more { min-width: 2.5rem; padding-inline: var(--space-1); margin-left: calc(-1 * var(--line-width)); border-top-left-radius: 0; border-bottom-left-radius: 0; }
-    .more svg { width: 1.5rem; height: 1.5rem; stroke-width: 2.75; }   // the caret: larger and bolder than an icon's 20 px, 2 px
-    // Filled halves (green or red): a clear, nearly white line between them, or it would vanish.
-    // Drawn on its own, inside the top and bottom borders, not as a border: a border would meet
-    // them on a diagonal at the corners and blend into them.
-    .toggle.is-go + .more.is-go,
-    .toggle.is-primary + .more.is-primary {
-      position: relative;
-
-      &::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: calc(-1 * var(--line-width) - 1px);   // centred on the seam between the halves
-        width: 3px;
-        background: color-mix(in srgb, var(--color-on-strong) 80%, transparent);
-        pointer-events: none;
-      }
-    }
-
-    .options {
-      position: absolute;
-      bottom: calc(100% + var(--space-2));
-      right: 0;
-      display: grid;
-      min-width: 17rem;
-      padding: var(--space-2) var(--space-4);
-      background: var(--color-surface);
-      border: var(--line-width) solid var(--color-border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-floating);
-      z-index: 20;
-    }
-
-    // One setting per row, label above its control, rows split by a thin line.
-    .option {
-      display: grid;
-      gap: var(--space-2);
-      padding-block: var(--space-3);
-      font-weight: 700;
-      font-size: var(--text-hint);
-
-      & + .option { border-top: 1px solid var(--color-line); }
-
-      input[type="range"] { width: 100%; margin: 0; accent-color: var(--color-go); }
-    }
-
-    .option.is-check {
-      display: flex;
-      align-items: center;
-      gap: var(--space-3);
-
-      input { margin: 0; }
-    }
-
   }
 }

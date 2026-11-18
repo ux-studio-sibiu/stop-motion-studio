@@ -5,7 +5,7 @@ import { captureFrame } from "@/adapters/camera/capture";
 import { addFrames, type Command } from "@/core/commands";
 import { createFrame, inOrder, newId } from "@/core/model";
 import { editorStore } from "@/store/useEditor";
-import { ownsKey } from "./keyboard";
+import { isTextEntry, ownsKey } from "./keyboard";
 import { thumbs } from "./media";
 import { checkStorage } from "./useStorageWatch";
 
@@ -14,7 +14,10 @@ import { checkStorage } from "./useStorageWatch";
 // The timeline updates from storage (useProject), so a capture shows up the same way whether
 // it was taken here or in another tab.
 // Space does the same, unless the child is typing or a button has focus (Space already
-// presses that button).
+// presses that button). So does Tab while the camera is on: a wireless presenter's "hyperlink"
+// button sends Tab, so a child can take pictures from a distance. That gives up Tab moving the
+// focus while the camera is on (on purpose: the user's call); Shift+Tab still moves it back, and
+// Tab in a text field is left alone.
 export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: boolean, run: (command: Command) => Promise<unknown>) {
   const [capturing, setCapturing] = useState(false);
   const busy = useRef(false);
@@ -59,13 +62,15 @@ export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: b
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.code !== "Space" || event.repeat || ownsKey(event.target)) return;
-      event.preventDefault();   // don't scroll the page
-      void capture();
+      const space = event.code === "Space" && !ownsKey(event.target);
+      const tab = event.key === "Tab" && enabled && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && !isTextEntry(event.target);
+      if (!(space || tab)) return;
+      event.preventDefault();   // don't scroll the page, or move the focus
+      if (!event.repeat) void capture();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [capture]);
+  }, [capture, enabled]);
 
   return { capture, capturing };
 }

@@ -47,6 +47,23 @@ export async function listCameras(): Promise<MediaDeviceInfo[]> {
   return devices.filter((device) => device.kind === "videoinput" && device.deviceId !== "");
 }
 
+// A laptop's own camera, by its name (the only hint browsers give): "Integrated Camera",
+// "FaceTime HD Camera", "Built-in", a phone's front camera. Anything else counts as plugged in.
+const BUILT_IN = /integrated|built-?in|facetime|internal|front|user[- ]facing/i;
+export function isBuiltInCamera(label: string): boolean {
+  return BUILT_IN.test(label);
+}
+
+// The plugged-in camera to switch to, if any: when the one in use (`currentId`; null or unknown
+// when the browser picked it) is built in, or not known, and a camera that isn't built in is
+// there. Null when the one in use is already a plugged-in camera, or there's no other.
+// Without labels (before permission) nothing can be told apart: null.
+export function preferredCamera(devices: readonly { deviceId: string; label: string }[], currentId: string | null): string | null {
+  const current = devices.find((device) => device.deviceId === currentId);
+  if (current && !isBuiltInCamera(current.label)) return null;
+  return devices.find((device) => device.deviceId !== currentId && device.label !== "" && !isBuiltInCamera(device.label))?.deviceId ?? null;
+}
+
 // True when the browser already remembers a "yes" for this site, so the camera can start
 // without a prompt. Unknown (no Permissions API, or "camera" not queryable) counts as no.
 export async function cameraPermissionGranted(): Promise<boolean> {

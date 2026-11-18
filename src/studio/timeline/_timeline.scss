@@ -124,10 +124,10 @@
     min-width: 100%;
     cursor: col-resize;   // drag along it to scrub
     touch-action: none;
-    background-image: linear-gradient(to right, #999 1px, transparent 1px);   // the second marks
+    background-image: linear-gradient(to right, var(--color-ruler) 1px, transparent 1px);   // the second marks
     background-repeat: repeat-x;
     background-position: left bottom;
-    border-bottom: 1px solid #999;
+    border-bottom: 1px solid var(--color-ruler);
   }
 
   .ruler-label {

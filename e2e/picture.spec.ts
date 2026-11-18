@@ -107,7 +107,7 @@ test("with two pictures selected, they move together", async ({ studio, page }) 
 test("the stage's editing tools are there only while the Picture tab is open", async ({ page }) => {
   const editor = page.getByRole("application", { name: /^Move the picture/ });
   await expect(editor).toBeVisible();
-  await page.getByRole("tab", { name: "Camera" }).click();
+  await page.getByRole("tab", { name: "Draw" }).click();
   await expect(editor).toHaveCount(0);   // no outline, no handle, nothing to drag
   await expect(page.locator(".stage-picture")).toBeVisible();   // the picture is still shown
   await page.getByRole("tab", { name: "Picture" }).click();
@@ -167,7 +167,7 @@ test("Ctrl + wheel zooms the stage without changing the picture; Space-drag look
   await studio.picture(1).click();
   await expect(view).toHaveClass(/is-zoomed/);
 
-  await page.getByRole("tab", { name: "Camera" }).click();   // only while the Picture tab is open
+  await page.getByRole("tab", { name: "Draw" }).click();   // only while the Picture tab is open
   await expect(view).not.toHaveClass(/is-zoomed/);
 });
 

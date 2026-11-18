@@ -23,5 +23,26 @@
       align-items: center;
       gap: var(--space-2);
     }
+
+    // The cameras, above the switch, centred on it: one button each, the one in use on.
+    .nsc-camera-switch .options {
+      left: 50%;
+      right: auto;
+      gap: var(--space-1);
+      width: max-content;
+      min-width: 14rem;
+      max-width: 20rem;
+      padding: var(--space-2);
+      transform: translateX(-50%);
+    }
+
+    .camera-option {
+      justify-content: flex-start;
+      width: 100%;
+      overflow: hidden;
+      text-align: left;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 }

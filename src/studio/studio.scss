@@ -3,6 +3,7 @@
 @use "./styles/fields";
 @use "./styles/stage";
 @use "./styles/playback";
+@use "./styles/option-menu";
 @use "./timeline/timeline";
 @use "./timeline/frame";
 
@@ -24,7 +25,7 @@
   // on a layer of its own behind everything (isolation keeps it from going behind the page).
   position: relative;
   isolation: isolate;
-  background-color: color-mix(in srgb, var(--color-surface) 10%, transparent);   // a faint wash of the surface colour
+  background-color: var(--color-studio);
 
   &::before {
     content: "";

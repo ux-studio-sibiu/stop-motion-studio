@@ -1,15 +1,17 @@
 "use client";
 
-import { Camera, Check, ChevronDown, ChevronLeft, Clapperboard, CopyPlus, Download, Eraser, HardDrive, Image as ImageIcon, Layers, Pause, Pencil, Play, Power, Redo2, RotateCcw, Shapes, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Camera, Check, ChevronDown, ChevronLeft, Clapperboard, CopyPlus, Download, Eraser, HardDrive, Image as ImageIcon, Layers, Pause, Pencil, Play, Redo2, RotateCcw, Shapes, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { bubbleProps, createBubble, createShape, createText, SHAPE, shapeProps, SPEECH_BUBBLE, TEXT, textProps, withProps } from "@/core/model";
 import { BubbleSettings } from "@/features/objects/BubbleSettings";
 import { SettingsHeader } from "@/features/objects/ObjectSettings";
+import { CameraPanel } from "@/features/camera/CameraPanel";
 import { ObjectTile } from "@/features/objects/ObjectTile";
 import { ShapeSettings } from "@/features/objects/ShapeSettings";
 import { TextSettings } from "@/features/objects/TextSettings";
 import { ObjectIcon } from "@/studio/ObjectIcon";
 import { PanelTab, SidePanel } from "@/studio/SidePanel";
+import type { Camera as CameraState } from "@/studio/useCamera";
 import { FILLS, INKS, Swatches } from "@/studio/Swatches";
 import { Section, Specimen, TokenSpecimen } from "./Specimen";
 import { TokenPanel } from "./TokenPanel";
@@ -33,6 +35,11 @@ import "./_design.scss";
 // adding a specimen is moving or adding a line.
 
 const nothing = () => {};
+// A live camera with a choice of two, for the Camera tab specimen (no real camera on this page).
+const TWO_CAMERAS: CameraState = {
+  status: "live", settled: true, stream: null, deviceId: "usb", start: nothing, stop: nothing, selectDevice: nothing,
+  devices: [{ deviceId: "laptop", label: "Integrated Camera" }, { deviceId: "usb", label: "HD Pro Webcam C920" }].map((device) => ({ ...device, kind: "videoinput", groupId: "", toJSON: () => device }) as MediaDeviceInfo),
+};
 
 // Stand-ins for photos: plain colours, so nothing needs a picture.
 const PHOTOS = ["#b4553c", "#c09a3a", "#5f9a3c", "#3c8f9a", "#3c4f9a"];
@@ -342,12 +349,8 @@ export function DesignPage() {
             <div className="nsc-storage-notice is-full ds-inline" role="status"><HardDrive size={22} /><p><strong>There&apos;s no room left on this device.</strong> That wasn&apos;t saved.</p><button type="button" className="icon-button is-small" aria-label="Close message"><X size={18} /></button></div>
           </div>
         </Specimen>
-        <Specimen label="Camera panel controls" studio>
-          <div className="camera-controls ds-capture">
-            <div className="camera-settings">
-              <button type="button" className="icon-button"><Power size={24} />Turn camera off</button>
-            </div>
-          </div>
+        <Specimen label="Camera tab" note="the real CameraPanel, with two cameras: on/off, and the arrow lists them" studio>
+          <div className="nsc-side-panel ds-loose ds-camera-tab"><CameraPanel camera={TWO_CAMERAS} canCapture onCapture={nothing} capturing={false} /></div>
         </Specimen>
       </Section>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { cameraPermissionGranted, cameraStatusFromError, cameraSupported, isMissingDevice, listCameras, openCamera, stopStream, unavailableStatus, type CameraStatus } from "@/adapters/camera/camera";
+import { cameraPermissionGranted, cameraStatusFromError, cameraSupported, isMissingDevice, listCameras, openCamera, preferredCamera, stopStream, unavailableStatus, type CameraStatus } from "@/adapters/camera/camera";
 import { remembered } from "./remembered";
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from "@/core/model";
 
@@ -30,7 +30,16 @@ function saveDevice(deviceId: string | null): void {
 // a stop or an unmount happens first, the late stream is stopped instead of shown. That's
 // what keeps React Strict Mode's double mount (and fast camera switching) from leaving a
 // second stream running with the camera light on.
-export function useCamera(): Camera {
+// A plugged-in camera wins over a laptop's own (preferredCamera): the first time, when no camera
+// is remembered, and whenever one is plugged in while the camera is on. One the child picked is
+// remembered and kept after that.
+//
+// The camera belongs to the Camera tab (`inUse`: that tab is open). Opening the tab turns it on;
+// leaving it pauses it (off, light out, but not "turned off": that's only the child's own button,
+// remembered so a reload keeps it off). On load it starts by itself only in the Camera tab, when
+// the browser already allows it and the child didn't turn it off. From a blocked or missing camera
+// opening the tab asks nothing: Try again does.
+export function useCamera(inUse: boolean): Camera {
   const [status, setStatus] = useState<CameraStatus>("idle");
   const [checked, setChecked] = useState(false);   // knows whether to start by itself
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -41,6 +50,10 @@ export function useCamera(): Camera {
   const current = useRef<MediaStream | null>(null);
   const wanted = useRef(false);           // the child turned the camera on (resume after the tab is hidden)
   const chosen = useRef<string | null>(null);
+  const reopen = useRef<(id: string) => void>(() => {});   // open, for a switch decided inside it
+  const inUseNow = useRef(inUse);
+  const statusNow = useRef(status);
+  useEffect(() => { statusNow.current = status; }, [status]);
 
   const release = useCallback(() => {
     request.current++;
@@ -77,12 +90,17 @@ export function useCamera(): Camera {
       setStream(next);
       setDeviceId(actual);
       setStatus("live");
-      setDevices(await listCameras());   // labels are only filled in after permission
+      const list = await listCameras();   // labels are only filled in after permission
+      if (mine !== request.current) return;
+      setDevices(list);
+      const better = id ? null : preferredCamera(list, actual);   // nothing remembered: the browser picked
+      if (better) reopen.current(better);
     } catch (error) {
       if (mine !== request.current) return;
       setStatus(cameraStatusFromError(error));
     }
   }, [release]);
+  useEffect(() => { reopen.current = (id) => void open(id); }, [open]);
 
   // Turning the camera on or off is remembered on this device, so a reload keeps it that way.
   const start = useCallback(() => { wanted.current = true; remembered.cameraOff.save(null); void open(chosen.current); }, [open]);
@@ -91,20 +109,48 @@ export function useCamera(): Camera {
 
   const selectDevice = useCallback((id: string) => { wanted.current = true; void open(id); }, [open]);
 
+  // Leaving the Camera tab: off, but not remembered as turned off.
+  const pause = useCallback(() => {
+    if (!current.current && statusNow.current !== "asking") return;
+    wanted.current = false;
+    release();
+    setStatus("idle");
+  }, [release]);
+
+  // The tab changed: on for the Camera tab (from off only), paused for any other.
+  useEffect(() => {
+    if (inUseNow.current === inUse) return;
+    inUseNow.current = inUse;
+    if (!inUse) pause();
+    else if (statusNow.current === "idle") start();
+  }, [inUse, pause, start]);
+
   useEffect(() => {
     chosen.current = readDevice();
     let active = true;
 
-    const refreshDevices = () => { void listCameras().then((list) => { if (active) setDevices(list); }); };
+    // A camera plugged in while the camera is on takes over, if it's better (preferredCamera).
+    let known: Set<string> | null = null;
+    const refreshDevices = () => {
+      void listCameras().then((list) => {
+        if (!active) return;
+        const added = known ? list.filter((device) => !known!.has(device.deviceId)) : [];
+        known = new Set(list.map((device) => device.deviceId));
+        setDevices(list);
+        const better = current.current ? preferredCamera(list, chosen.current) : null;
+        if (better && added.some((device) => device.deviceId === better)) void open(better);
+      });
+    };
     refreshDevices();
 
-    // Start straight away only when the browser already allowed the camera and the child didn't
-    // turn it off last time; otherwise wait for the button, so a permission prompt follows a tap.
+    // Start straight away only in the Camera tab, when the browser already allowed the camera and
+    // the child didn't turn it off last time; otherwise wait for the button (or the tab), so a
+    // permission prompt follows a tap.
     const turnedOff = remembered.cameraOff.read() === true;
     void cameraPermissionGranted().then((granted) => {
       if (!active) return;
       setChecked(true);
-      if (granted && !turnedOff) start();   // "asking" in the same render, so not settled yet
+      if (granted && !turnedOff && inUseNow.current) start();   // "asking" in the same render, so not settled yet
     });
 
     // Turn the camera (and its light) off while the tab is hidden, back on when it returns.

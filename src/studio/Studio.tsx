@@ -45,7 +45,7 @@ export function Studio() {
   const isPlaying = useEditor((state) => state.isPlaying);
   const panelTab = useEditor((state) => state.panelTab);
   const stageTool = panelTab ?? "camera";   // the open tab (the first, Camera, when none was chosen)
-  const camera = useCamera();
+  const camera = useCamera(stageTool === "camera");   // on in the Camera tab only
   const video = useRef<HTMLVideoElement | null>(null);
   const [videoReady, setVideoReady] = useState(false);
   const onVideo = useCallback((element: HTMLVideoElement | null) => { video.current = element; setVideoReady(element !== null); }, []);

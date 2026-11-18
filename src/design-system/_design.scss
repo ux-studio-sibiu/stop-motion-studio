@@ -190,6 +190,7 @@
   .ds-menu-room { display: grid; align-content: end; min-height: 17rem; }   // the menus open upwards
   .ds-inline { position: static; width: auto; translate: none; }
   .ds-capture { display: grid; justify-items: center; }
+  .ds-camera-tab { display: grid; width: 20rem; height: 22rem; padding: var(--space-3); }   // tall enough for the list of cameras over the capture button
   .ds-flat { padding-top: 0; border-top: 0; }
 }
 

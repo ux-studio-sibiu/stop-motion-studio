@@ -96,3 +96,86 @@ test("the camera stays as it was left after a reload: off stays off, on comes ba
   await page.reload();
   await expect(page.getByRole("button", { name: "Turn camera off" })).toBeVisible();   // started by itself
 });
+
+test("Tab takes a picture while the camera is on (a wireless presenter's button); Shift+Tab doesn't", async ({ studio, page }) => {
+  await studio.open();
+  await studio.cameraOn();
+  await studio.captureButton().focus();
+  await expect(studio.captureButton()).toBeEnabled();
+  await page.keyboard.press("Tab");
+  await expect(studio.pictures()).toHaveCount(1);
+  await expect(studio.captureButton()).toBeFocused();   // the focus didn't move on
+  await page.keyboard.press("Tab");
+  await expect(studio.pictures()).toHaveCount(2);
+  await page.keyboard.press("Shift+Tab");               // still moves the focus, takes nothing
+  await expect(studio.captureButton()).not.toBeFocused();
+  await expect(studio.pictures()).toHaveCount(2);
+});
+
+test("with a laptop camera and a plugged-in one, the plugged-in one is used; the arrow picks another", async ({ studio, page }) => {
+  const canStream = await page.evaluate(() => "captureStream" in HTMLCanvasElement.prototype);
+  test.skip(!canStream, "This browser build has no media streams (Playwright's WebKit on Windows).");
+  await page.addInitScript(() => {
+    // Two cameras; each stream says which one it is, like a real track's settings.
+    const asked: (string | null)[] = [];
+    (window as unknown as { asked: typeof asked }).asked = asked;
+    const getUserMedia = async (constraints: MediaStreamConstraints) => {
+      const wanted = ((constraints.video as MediaTrackConstraints).deviceId as { exact?: string } | undefined)?.exact ?? null;
+      asked.push(wanted);
+      const canvas = document.createElement("canvas");
+      canvas.width = 320;
+      canvas.height = 240;
+      const context = canvas.getContext("2d")!;
+      setInterval(() => { context.fillStyle = "#2e8b57"; context.fillRect(0, 0, 320, 240); }, 33);
+      const stream = canvas.captureStream(30);
+      const track = stream.getVideoTracks()[0];
+      const deviceId = wanted ?? "laptop";   // the browser's own pick: the laptop's camera
+      track.getSettings = () => ({ deviceId });
+      return stream;
+    };
+    const devices = [{ kind: "videoinput", deviceId: "laptop", label: "Integrated Camera", groupId: "" }, { kind: "videoinput", deviceId: "usb", label: "HD Pro Webcam C920", groupId: "" }];
+    Object.defineProperty(navigator, "mediaDevices", { value: { getUserMedia, enumerateDevices: async () => devices, addEventListener: () => {}, removeEventListener: () => {} }, configurable: true });
+  });
+  await studio.withoutCamera();
+  await studio.open();
+  await page.getByRole("button", { name: "Turn camera on" }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { asked: unknown[] }).asked)).toEqual([null, "usb"]);   // switched to the plugged-in one
+
+  await page.getByRole("button", { name: "Choose a camera" }).click();
+  const cameras = page.getByRole("group", { name: "Cameras" });
+  await expect(cameras.getByRole("button", { name: "HD Pro Webcam C920" })).toHaveAttribute("aria-pressed", "true");
+  await cameras.getByRole("button", { name: "Integrated Camera" }).click();
+  await expect(cameras).toHaveCount(0);   // picking closes the list
+  await expect.poll(() => page.evaluate(() => (window as unknown as { asked: unknown[] }).asked)).toEqual([null, "usb", "laptop"]);
+  await page.getByRole("button", { name: "Choose a camera" }).click();
+  await expect(cameras.getByRole("button", { name: "Integrated Camera" })).toHaveAttribute("aria-pressed", "true");   // the child's pick stays
+});
+
+test("the camera is on in the Camera tab only: going to it turns it on, leaving it turns it off @real-camera", async ({ studio, page }) => {
+  await studio.withoutCamera();
+  await studio.open();
+  await expect(page.getByRole("button", { name: "Turn camera on" })).toBeVisible();   // off after loading, as it was left
+  await page.getByRole("tab", { name: "Picture" }).click();
+  await page.getByRole("tab", { name: "Camera" }).click();
+  await expect(page.getByRole("button", { name: "Turn camera off" })).toBeVisible({ timeout: 15_000 });
+  await expect(studio.captureButton()).toBeEnabled({ timeout: 15_000 });
+
+  const track = await studio.video().evaluateHandle((video: HTMLVideoElement) => (video.srcObject as MediaStream).getVideoTracks()[0]);
+  await page.getByRole("tab", { name: "Draw" }).click();
+  await expect(studio.video()).toHaveCount(0);
+  await expect.poll(() => track.evaluate((t) => t.readyState)).toBe("ended");   // really off: the camera light goes out
+  await page.getByRole("tab", { name: "Camera" }).click();
+  await expect(studio.video()).toBeVisible({ timeout: 15_000 });
+});
+
+test("a reload in another tab leaves the camera off, even when it was on and allowed @real-camera", async ({ studio, page }) => {
+  await studio.open();
+  await studio.cameraOn();
+  await page.getByRole("tab", { name: "Draw" }).click();   // remembered: the reload comes back here
+  await expect(studio.video()).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("tab", { name: "Draw" })).toHaveAttribute("aria-selected", "true");
+  await expect(studio.video()).toHaveCount(0);
+  await page.getByRole("tab", { name: "Camera" }).click();
+  await expect(studio.video()).toBeVisible({ timeout: 15_000 });
+});
