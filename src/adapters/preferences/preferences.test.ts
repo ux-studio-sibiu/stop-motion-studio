@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { asBoolean, asNumber, asObject, asString, asStringList, asTimelineView, definePreference, definePreferenceFamily, PREFIX, type PreferenceStorage } from "@/adapters/preferences/preferences";
+import { asBoolean, asNumber, asObject, asOneOf, asString, asStringList, asTimelineView, definePreference, definePreferenceFamily, PREFIX, type PreferenceStorage } from "@/adapters/preferences/preferences";
 
 function memoryStorage(): PreferenceStorage & { data: Map<string, string> } {
   const data = new Map<string, string>();
@@ -67,6 +67,8 @@ describe("parsers", () => {
     expect([asBoolean(true), asBoolean(0), asBoolean("1"), asBoolean("yes")]).toEqual([true, false, true, undefined]);
     expect([asNumber(2.5), asNumber("2"), asNumber(Number.POSITIVE_INFINITY)]).toEqual([2.5, undefined, undefined]);
     expect([asStringList(["a"]), asStringList(["a", 1]), asStringList("a")]).toEqual([["a"], undefined, undefined]);
+    const size = asOneOf(["small", "medium"] as const);
+    expect([size("small"), size("huge"), size(1), size(null)]).toEqual(["small", undefined, undefined, undefined]);
     expect([asObject({ a: 1 }), asObject([1]), asObject(null)]).toEqual([{ a: 1 }, undefined, undefined]);
   });
 

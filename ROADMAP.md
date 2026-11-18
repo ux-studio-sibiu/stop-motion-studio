@@ -558,9 +558,11 @@ styles. Removing the folder and its route removes the page, and nothing else cha
 
 **All exports (GIF and video) crop to the safe zone:** `exportRect(project, safeMargin(project))` in
 `core/render/safeZone.ts` (each animation's own margin, 0-60 project px, 20 by default, set from the
-see-through options; even width and height). The stage shows that band veiled with a dotted
-line (added after step 18), so what's inside the line is exactly what the file contains. Test it: a
-pixel test that the exported frame's corners come from 20 px in.
+playback options; even width and height). The margin comes off the short sides and as large a
+share off the long ones, so the file keeps the picture's shape (1208 × 680 of 1280 × 720, step 25).
+The stage shows that band veiled with a dotted line (added after step 18), so what's inside the line
+is exactly what the file contains. Test it: a pixel test that the exported frame's corners come from
+inside the band.
 
 ### 25 · GIF export
 - **Builds:** `features/gif-export`: renders each tick range with the shared `renderAt` onto an
@@ -705,7 +707,7 @@ feature folder of its own.
 - [x] D2 Design system: one list of tokens
 - [x] D3 Design system: the floating tweak panel
 - [x] D4 Design system: keeping tweaks, Copy changes
-- [ ] 25 GIF export
+- [x] 25 GIF export ([page](public/steps/25-gif-export.html))
 - [ ] 26 Video export
 - [ ] 27 Project archive
 - [ ] 28 Import photos

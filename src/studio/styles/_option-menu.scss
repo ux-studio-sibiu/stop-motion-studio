@@ -62,5 +62,8 @@
 
       input { margin: 0; }
     }
+
+    // In the toolbar (Save as GIF): the options open below instead.
+    &.opens-below .options { top: calc(100% + var(--space-2)); bottom: auto; }
   }
 }

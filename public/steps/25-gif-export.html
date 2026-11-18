@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>25 GIF export · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 25 · Part 9 Export and import</p>
+  <h1>GIF export</h1>
+  <p class="intro"><strong>Save as GIF</strong> in the toolbar makes a GIF of the animation and downloads it. The arrow beside it picks the size: <strong>Small</strong> (320 px wide) or <strong>Medium</strong> (640 px wide, the default).</p>
+  <ul>
+    <li>The GIF is <strong>what's inside the dotted line</strong> on the stage (the safe zone). It has every picture for as long as it's held, with its objects and drawing, and the overlays showing at the time. It loops forever.</li>
+    <li>While it's made, the button shows <strong>how far it got</strong> (a percentage and a green bar), and a <strong>cross stops it</strong>. The studio stays usable meanwhile.</li>
+    <li>Afterwards a short note says it was saved. Above 20 MB it says the file is big, and that Small makes a lighter one; the file is saved anyway.</li>
+    <li>The size is <strong>remembered</strong> after a reload. The button is off until there's a picture.</li>
+  </ul>
+
+  <div class="note"><strong>Added after the step: the picture's shape, and Full size.</strong>
+    <ul>
+      <li><strong>The safe zone keeps the picture's shape.</strong> It used to take 20 px off every side, which made a 16:9 picture's exported part a little wider than 16:9 (1240 × 680), and so every GIF too (640 × 350). Now the margin is taken off the short sides (top and bottom of a wide picture) and as large a share off the long ones: about 36 px left and right. The exported part is 1208 × 680, still 16:9, and the GIFs are 320 × 180 and 640 × 360. <code>exportRect</code> changed; the dotted line on the stage follows, as it uses the same rectangle.</li>
+      <li>The safe zone slider keeps its 0-60 range and now sets the top and bottom margin. Saved animations need no change.</li>
+      <li><strong>Full size</strong> in the size list: the exported part as it is, never scaled up (1208 px wide for 1280 × 720). Each size shows its width for this animation. It's sharp, but several times the file: the 20 MB note is likelier.</li>
+      <li><strong>Quality</strong>, a slider of three steps in the same options (remembered; medium by default). <strong>High</strong>: every picture whole, 256 colours of its own (as before). <strong>Medium</strong>: after the first picture, only the pixels that changed are stored, and the viewer keeps the rest from before (see-through, "do not dispose"); a colour within 8 of 255 counts as unchanged, so camera noise doesn't. <strong>Low</strong>: the same with an allowance of 20, 128 colours in coarser steps. What counts as changed is measured against what the viewer shows by then, so small differences never drift. <code>GIF_ENCODING</code> in <code>core/export/gif.ts</code>; the writer (<code>gifWriter.ts</code>) does the work in the worker, which now gets the quality in a first "start" message.</li>
+      <li>Tidied: the size and quality are typed preferences (<code>asOneOf</code> in <code>preferences.ts</code>, 1 test), so the menu doesn't check them again; <code>projectExportRect</code> (<code>safeZone.ts</code>, 1 test) is an animation's exported part, used by the menu for its labels and the file; <code>exportGif</code> waits with <code>Promise.withResolvers</code>; one GIF reader for the tests, <code>src/adapters/export/gifReader.ts</code>, used by <code>gifWriter.test.ts</code> and <code>export.spec.ts</code> (nothing in the app imports it).</li>
+      <li>The arrow is now <strong>GIF options</strong> (size and quality), and picking a size leaves them open.</li>
+      <li>Tests: <code>gifWriter.test.ts</code> now decodes the file pixel by pixel (a small GIF decoder in the test): high stores every picture whole; medium and low store only what changed and still show each picture right (the toy where it is, the set where it was); lower quality makes a smaller file when the set stays put; an unchanged picture still shows, for its time. <code>export.spec.ts</code>: three copies of one picture make a medium GIF under 80% of the high one, and the quality is remembered.</li>
+      <li>Tests: <code>safeZone.test.ts</code> rewritten (the shape kept, a tall picture, even sizes inside the line, tiny pictures and no margin); <code>gif.test.ts</code> (the three sizes, 16:9 kept); <code>export.spec.ts</code> (640 × 360, 320 × 180, Full size 1208 × 680 and its label); <code>stage.spec.ts</code> (the slider moves the top edge; the side edge is at 36). On purpose: the behaviour changed.</li>
+    </ul>
+  </div>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><strong>The plan</strong>, plain maths in <code>src/core/export/gif.ts</code>:
+      <ul>
+        <li><code>gifFrames</code>: a new GIF frame only where the screen changes (a new picture, an overlay starting or ending), each with its delay in hundredths of a second, rounded so the delays add up to the real length;</li>
+        <li><code>gifSize</code>: the exported part (<code>exportRect</code>) scaled to the size's width, never up, even numbers;</li>
+        <li><code>gifFileName</code>: the animation's name, without characters a file can't have.</li>
+      </ul>
+    </li>
+    <li><strong>Drawing a picture of the file</strong>, <code>src/core/export/frame.ts</code>: <code>drawExportFrame</code> draws the moment through the shared <code>renderAt</code>, cuts out the exported part at full size, then scales it to the file. Video export (step 26) will use it too.</li>
+    <li><strong>Encoding</strong>, <code>src/adapters/export/</code>:
+      <ul>
+        <li><code>gifWriter.ts</code>: <code>gifenc</code>, 256 colours picked per picture, looping;</li>
+        <li><code>gif.worker.ts</code>: the worker that runs it;</li>
+        <li><code>gifExport.ts</code>: <code>exportGif</code>, which draws each frame on the page and sends its pixels to the worker, two at a time at most, with progress and stopping (an <code>AbortSignal</code>);</li>
+        <li><code>gifenc.d.ts</code>: types for <code>gifenc</code>, which ships none.</li>
+      </ul>
+    </li>
+    <li><strong>The button</strong>, <code>src/features/gif-export/</code>: <code>GifExportMenu.tsx</code> and <code>_gif-export.scss</code>. It's placed in the toolbar by <code>Studio.tsx</code>, instead of the disabled "Save as video" button. It's a split button like Play and See-through; <code>_option-menu.scss</code> gains <code>opens-below</code>, for options under it.</li>
+    <li><code>remembered.ts</code>: <code>gifSize</code>. New dependency: <code>gifenc</code> 1.0.3 (MIT).</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>The page draws, the worker encodes.</strong> The roadmap had drawing in the worker too. Drawing on the page means text uses the fonts the page already has, the same as on the stage, with no fonts to load in a worker. Drawing a picture takes a few milliseconds. The slow part, picking each picture's 256 colours and compressing it, runs in the worker, so the studio stays responsive.</li>
+    <li><strong>One GIF frame per change, not per tick.</strong> A picture held for 4 ticks is one GIF frame with a 4-tick delay, so files stay small.</li>
+    <li><strong>A palette per picture.</strong> Photos change too much between pictures to share 256 colours. There's no dithering: <code>gifenc</code> has none, and photos look fine at these sizes.</li>
+    <li><strong>Cut out, then scale.</strong> Scaling straight from the whole picture blended in a little of what's just outside the dotted line (a faint fringe along the edges). The pixel test caught it.</li>
+    <li><strong>No exporters list yet.</strong> PLAN.md §4 has an array of exporters. With one exporter, the button is placed directly. The list comes when video (26) and the archive (27) join and there are several alike.</li>
+    <li><strong>The Next.js dev indicator is off</strong> (<code>next.config.ts</code>). Its "N" badge sat over the toolbar's last button, the GIF size arrow, and caught its clicks. Next.js still shows errors without it.</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Long animations make big files:</strong> a 640 px GIF of photos is roughly 100-200 KB a picture. The 20 MB note is the only limit.</li>
+    <li><strong>The production build</strong> also copies <code>gif.worker.ts</code> as a plain file into <code>out/_next/static/media/</code>. It's unused (the browser loads Turbopack's bundled worker, checked), but it made the second build's typecheck fail, so <code>tsconfig.json</code> now leaves <code>out/</code> out.</li>
+    <li><strong>Brightness and contrast</strong> use the canvas filter, as on the stage. Where a browser has none, the adjusted copy is used, the same as the stage.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li>Take a few pictures, hold one longer, add a title on the overlay track, and Save as GIF. Open the file in another app: the timing matches playback, the title shows when it should, and the edges inside the dotted line are what's in the file.</li>
+    <li>Pick Small, reload: still Small; the file is 320 px wide.</li>
+    <li>Start a long one and press the cross: it stops, and nothing is downloaded.</li>
+  </ul>
+  <div class="note">Checked while building:
+    <ul>
+      <li>353 unit tests and 35 pixel tests pass; lint and typecheck are clean; the production build works.</li>
+      <li>End-to-end: the new export spec (2) against the dev server and against the production build. The other specs weren't run (nothing else changed); neither was WebKit.</li>
+      <li>On the production build, the browser was seen loading the bundled worker.</li>
+      <li>Screenshots of the button, its size list and the saved note.</li>
+    </ul>
+  </div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/export/</code> (<code>gif.ts</code>, <code>gif.test.ts</code>, <code>frame.ts</code>, <code>frame.browser.test.ts</code>, <code>index.ts</code>); <code>src/adapters/export/</code> (<code>gifWriter.ts</code>, <code>gifWriter.test.ts</code>, <code>gif.worker.ts</code>, <code>gifExport.ts</code>, <code>gifExport.browser.test.ts</code>, <code>gifenc.d.ts</code>); <code>src/features/gif-export/</code> (<code>GifExportMenu.tsx</code>, <code>_gif-export.scss</code>); <code>src/studio/Studio.tsx</code>, <code>remembered.ts</code>, <code>styles/_option-menu.scss</code>; <code>src/design-system/DesignPage.tsx</code> (the toolbar shows the real button); <code>e2e/export.spec.ts</code>; <code>package.json</code>, <code>package-lock.json</code>, <code>next.config.ts</code>, <code>tsconfig.json</code>; <code>CLAUDE.md</code> (the spec map), <code>ROADMAP.md</code>; <code>public/steps/25-gif-export.html</code>, <code>d4-design-keep.html</code> (next link), <code>index.html</code>.</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit, 8 in <code>gif.test.ts</code>: one GIF frame per picture as long as it's held; cuts where an overlay starts or ends; no cut where nothing changes; overlays past the end left out, and nothing is no GIF; delays add up without drifting; the file's size, never scaled up; the file's name.</li>
+    <li>Unit, 2 in <code>gifWriter.test.ts</code>, reading the file back block by block: a looping GIF of the pictures with their delays; a picture's colours kept.</li>
+    <li>Pixel, 2 in <code>frame.browser.test.ts</code>: only what's inside the safe zone, its corners from 20 px in; with no safe zone, the edge is in.</li>
+    <li>Browser, 2 in <code>gifExport.browser.test.ts</code> (the real worker): a GIF of every picture with progress up to done; stopping rejects and draws nothing more.</li>
+    <li>End-to-end, 2 in <code>export.spec.ts</code>: the download, 640 × 350 with delays 13, 12, 13 for three pictures at 8 per second; Small picked and remembered (320 × 176 after a reload).</li>
+  </ul>
+  <p><strong>Tests changed:</strong> none.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>the GIF is what's inside the dotted line, every picture as long as it's held, with objects and overlays</li>
+    <li>progress shows, the cross stops it, the studio stays responsive</li>
+    <li>the size is remembered; a big file gets its note</li>
+    <li>the plan is plain maths in <code>core</code>; encoding is an adapter, off the page's thread</li>
+    <li><code>npm test</code>, <code>npm run test:browser</code>, <code>npm run lint</code>, <code>npm run typecheck</code>, the build and <code>export.spec</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="d4-design-keep.html">Previous: D4 · Keeping tweaks</a>
+    <span>Next: 26 · Video export</span>
+  </nav>
+</main>
+</body>
+</html>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import { asBoolean, asNumber, asObject, asString, asStringList, asTimelineView, definePreference, definePreferenceFamily, type Preference } from "@/adapters/preferences/preferences";
+import { asBoolean, asNumber, asObject, asOneOf, asString, asStringList, asTimelineView, definePreference, definePreferenceFamily, type Preference } from "@/adapters/preferences/preferences";
+import { GIF_QUALITIES, GIF_SIZES } from "@/core/export";
 import type { StageView } from "@/core/render";
 import { selectedOverlayId, type EditorState, type OnionSkin } from "@/store/editorStore";
 import { editorStore } from "@/store/useEditor";
@@ -26,6 +27,8 @@ export const remembered = {
   drawColour: definePreference("draw-colour", asString),               //   the pencil colour
   drawWidth: definePreference("draw-width", asString),                 //   the pencil width
   stageView: definePreferenceFamily("stage-view", asObject),            // each animation's stage zoom and pan (the store checks)
+  gifSize: definePreference("gif-size", asOneOf(GIF_SIZES)),                     // Save as GIF: small, medium or full size (step 25)
+  gifQuality: definePreference("gif-quality", asOneOf(GIF_QUALITIES)),               //   and low, medium or high quality
 };
 
 // Forgets everything remembered about one animation, when it's deleted: every per-animation entry

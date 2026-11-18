@@ -6,6 +6,7 @@ import { bubbleProps, createBubble, createShape, createText, SHAPE, shapeProps, 
 import { BubbleSettings } from "@/features/objects/BubbleSettings";
 import { SettingsHeader } from "@/features/objects/ObjectSettings";
 import { CameraPanel } from "@/features/camera/CameraPanel";
+import { GifExportMenu } from "@/features/gif-export/GifExportMenu";
 import { ObjectTile } from "@/features/objects/ObjectTile";
 import { ShapeSettings } from "@/features/objects/ShapeSettings";
 import { TextSettings } from "@/features/objects/TextSettings";
@@ -97,7 +98,7 @@ export function DesignPage() {
         <Specimen label="Icon buttons" note="normal, on, disabled, primary, go, danger" studio>
           <div className="ds-row">
             <button type="button" className="icon-button"><Undo2 size={24} /></button>
-            <button type="button" className="icon-button"><Download size={24} /><span>Save as video</span></button>
+            <button type="button" className="icon-button"><Download size={24} /><span>Save as GIF</span></button>
             <button type="button" className="icon-button is-on"><Layers size={24} /><span>On</span></button>
             <button type="button" className="icon-button" disabled><Redo2 size={24} /></button>
             <button type="button" className="icon-button is-primary"><Camera size={24} />Turn on camera</button>
@@ -320,7 +321,7 @@ export function DesignPage() {
             <div className="toolbar-actions">
               <button type="button" className="icon-button" aria-label="Undo"><Undo2 size={24} /></button>
               <button type="button" className="icon-button" aria-label="Redo" disabled><Redo2 size={24} /></button>
-              <button type="button" className="icon-button" disabled><Download size={24} /><span className="desktop-only">Save as video</span></button>
+              <GifExportMenu />
             </div>
           </header>
         </Specimen>

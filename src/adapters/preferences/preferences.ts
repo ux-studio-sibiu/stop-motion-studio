@@ -55,6 +55,8 @@ export const asString = (raw: unknown): string | undefined => (typeof raw === "s
 export const asBoolean = (raw: unknown): boolean | undefined => (raw === true || raw === 1 || raw === "1" ? true : raw === false || raw === 0 || raw === "0" ? false : undefined);
 export const asNumber = (raw: unknown): number | undefined => (typeof raw === "number" && Number.isFinite(raw) ? raw : undefined);
 export const asStringList = (raw: unknown): string[] | undefined => (Array.isArray(raw) && raw.every((item) => typeof item === "string") ? raw : undefined);
+// One of a fixed set of names (a size, a quality): typed, so the caller needn't check it again.
+export const asOneOf = <T extends string>(options: readonly T[]) => (raw: unknown): T | undefined => (typeof raw === "string" && (options as readonly string[]).includes(raw) ? (raw as T) : undefined);
 export const asObject = (raw: unknown): Record<string, unknown> | undefined => (raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : undefined);
 
 // How one animation's timeline was last looked at: its zoom (px per second) and the time at the
