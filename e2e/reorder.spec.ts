@@ -86,6 +86,17 @@ test("Ctrl+arrows move the selected pictures one place", async ({ studio, page }
   await expect.poll(() => studio.order()).toEqual([a, c, d, b]);
 });
 
+test("quick Ctrl+arrow presses add up, even before the first move is saved", async ({ studio, page }) => {
+  const [a, b, c, d] = await studio.order();
+  await studio.picture(4).click();
+  await page.keyboard.press("ControlOrMeta+ArrowLeft");
+  await page.keyboard.press("ControlOrMeta+ArrowLeft");
+  await page.keyboard.press("ControlOrMeta+ArrowLeft");
+  await expect.poll(() => studio.order()).toEqual([d, a, b, c]);
+  await page.keyboard.press("ControlOrMeta+z");   // one press at a time
+  await expect.poll(() => studio.order()).toEqual([a, d, b, c]);
+});
+
 test("dragging near the timeline's edge scrolls it", async ({ studio, page }) => {
   for (let i = 0; i < 4; i++) await page.getByRole("button", { name: "Zoom in" }).click();   // 640 px/s: 80 px a picture
   await studio.seedPictures(12);   // 16 × 80 px: wider than the timeline

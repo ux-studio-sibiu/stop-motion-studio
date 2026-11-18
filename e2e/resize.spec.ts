@@ -19,7 +19,6 @@ test("dragging the grip makes a picture longer, the next ones slide along, and o
 
   await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(80, 0);
   expect(((await studio.picture(2).boundingBox())?.x ?? 0) - secondBefore).toBeCloseTo(60, 0);
-  await expect(page.locator(".timeline-tools .duration")).toHaveText("0.8 s");   // 6 ticks at 8 fps
   await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Change length");
 
   await page.reload();   // it was saved

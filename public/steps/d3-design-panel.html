@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>D3 Tweak panel · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step D3 · Part 8b Design system page</p>
+  <h1>The floating tweak panel</h1>
+  <p class="intro">On <a href="/design"><code>/design</code></a>, a panel floats over the gallery with every design token in its groups. Change one and everything on the page follows at once.</p>
+  <ul>
+    <li><strong>A control for each kind:</strong> colours get a picker and their hex (or a text field, for colours with transparency); lengths get a slider, a number and their unit; shadows and the font, a text field.</li>
+    <li><strong>Light / dark:</strong> which theme is shown and tuned, whatever the system's is. Each keeps its own tweaks.</li>
+    <li><strong>Filter</strong> by name or by what the token is for. Changed tokens are marked, with a count, and each has its <strong>reset</strong>.</li>
+    <li>Dragged by its bar; <strong>Shift+T</strong> (or the Tokens button) closes and opens it.</li>
+    <li><strong>Pick:</strong> click an element on the page (it's outlined under the pointer; Esc stops) and the list shows only the tokens it uses, with a "hover, focus" switch for its other looks. A click on an icon picks the button or element holding it. × shows all tokens again.</li>
+    <li><strong>Hovering a token</strong> in the list outlines every element on the page that uses it.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>Its own shadow root:</strong> the panel's styles are its own, and it never uses the app's tokens, so tuning them can't restyle it.</li>
+    <li><strong>On the page's root, while the page is open:</strong> the tokens are set as custom properties on the document, so the page background follows too; they're taken off when the page goes, so the studio never sees them. Nothing is written anywhere yet (D4 keeps them).</li>
+    <li><strong>The kits' look, written small:</strong> black and white, mono labels, a hard shadow, like the type and texture kits in the other repos. Not copied from their shell: that needs the kits' other stylesheets and a few hundred lines of icons, more than this page needs.</li>
+    <li>The gallery's token cards show the values from the panel's state, so they change as you tune.</li>
+    <li><strong>How Pick finds the tokens</strong> (<code>tokenScan.ts</code>): the browser only gives final values, so it reads the page's stylesheets. It takes every rule that applies to the element (its <code>::before</code> and <code>::after</code>, and with the switch its hover, focus and pressed looks), its inline style, and what it inherits from its parents (text colour, font, sizes), collects the <code>var(--…)</code> in them, and follows a component's own variables (the tabs' <code>--edge</code>) back to the tokens. Things drawn on a canvas use their own settings, not tokens, so they show none.</li>
+  </ul>
+
+  <h2>Files in this step</h2>
+  <p><code>src/design-system/TokenPanel.tsx</code>, <code>tokenScan.ts</code>, <code>panelStyles.ts</code>, <code>tweaks.ts</code>, <code>DesignPage.tsx</code>, <code>Specimen.tsx</code>; <code>e2e/design.spec.ts</code>; <code>ROADMAP.md</code>; <code>public/steps/d3-design-panel.html</code>, <code>d2-design-tokens.html</code> (next link), <code>index.html</code>.</p>
+  <p><strong>Tests added:</strong> 2 end-to-end: a token changed in the panel restyles the page and not the panel, and reset puts it back; picking an icon button lists only its tokens (the border, corner, surface and line width, not the stage colour).</p>
+
+  <nav class="pager">
+    <a href="d2-design-tokens.html">Previous: D2 · One list of tokens</a>
+    <a href="d4-design-keep.html">Next: D4 · Keeping tweaks, and Copy changes</a>
+  </nav>
+</main>
+</body>
+</html>

@@ -1,5 +1,4 @@
 @use "@/styles/breakpoints" as *;
-@use "@/styles/scrollbar" as *;
 
 // The side panel beside the stage: its tab ears and panels. Each tab's own controls are styled in
 // its feature folder (src/features/*/_*.scss).
@@ -49,17 +48,14 @@
       padding: 0;
       border: none;
       border-radius: var(--radius-small) 0 0 var(--radius-small);
-      --edge: var(--color-border);   // its outline; hover lightens it with the background, as one shape
+      --edge: var(--color-border);   // its outline
 
       background: var(--color-line);   // the light line colour: pushed back, behind the panel
       box-shadow: inset var(--line-width) 0 0 var(--edge), inset 0 var(--line-width) 0 var(--edge), inset 0 calc(-1 * var(--line-width)) 0 var(--edge);
       color: var(--color-ink);
       cursor: pointer;
 
-      &:hover {
-        --edge: color-mix(in srgb, var(--color-border) 60%, var(--color-surface));
-        background: var(--edge);
-      }
+      &:hover { background: color-mix(in srgb, var(--color-surface) 50%, var(--color-line)); }   // a little lighter, like the buttons; the outline stays
 
       // The open tab is part of the panel: the panel's colour, and nothing on its right, where it
       // covers the panel's own border so the two read as one shape.
@@ -88,7 +84,6 @@
       margin: var(--scroll-inset-y) var(--scroll-inset-x) var(--scroll-inset-y) 0;
       padding: calc(var(--space-3) - var(--scroll-inset-y)) calc(var(--space-3) - var(--scroll-inset-x)) calc(var(--space-3) - var(--scroll-inset-y)) var(--space-3);
       overflow: auto;
-      @include soft-scrollbar;
 
       &[hidden] { display: none; }
     }
@@ -97,20 +92,20 @@
   .panel-title {
     align-self: stretch;
     margin: 0;
-    font-size: 1.125rem;
+    font-size: var(--text-title);
     font-weight: 800;
   }
 
   .placeholder {
     margin: 0;
     color: var(--color-muted);
-    font-size: 0.9375rem;
+    font-size: var(--text-small);
   }
 
   .camera-problem {
     margin: 0;
     color: var(--color-muted);
-    font-size: 0.875rem;
+    font-size: var(--text-hint);
     text-align: center;
   }
 
@@ -122,10 +117,10 @@
 
     select {
       min-height: var(--hit);
-      padding: 0 var(--space-2);
+      padding: 0 2.375rem 0 var(--space-2);   // room on the right for the caret
       border: var(--line-width) solid var(--color-border);
       border-radius: var(--radius-small);
-      background: var(--color-surface);
+      background-color: var(--color-surface);
       color: var(--color-ink);
       font: inherit;
     }
@@ -137,58 +132,4 @@
     font-weight: 700;
   }
 
-}
-
-// Fields, colour swatches and hints the tabs share (Objects, Draw): a label over its control, a row
-// of colours to pick from (Swatches.tsx), and a line of help in muted text.
-.nsc-studio .nsc-side-panel {
-  .hint { margin: 0; color: var(--color-muted); font-size: 0.875rem; }
-
-  .field {
-    display: grid;
-    gap: var(--space-1);
-    min-width: 0;
-    font-size: 0.8125rem;
-    font-weight: 700;
-
-    select,
-    textarea {
-      box-sizing: border-box;
-      width: 100%;
-      border: var(--line-width) solid var(--color-border);
-      border-radius: var(--radius-small);
-      background: var(--color-surface);
-      color: var(--color-ink);
-      font: inherit;
-      font-size: 1rem;
-    }
-
-    select { min-height: var(--hit); padding: 0 var(--space-2); }
-
-    textarea {
-      padding: var(--space-2);
-      font-weight: 700;
-      line-height: 1.3;
-      resize: vertical;
-    }
-
-    select:focus-visible,
-    textarea:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 1px; }
-  }
-
-  .swatches { display: grid; grid-template-columns: repeat(7, minmax(0, 2rem)); gap: 0.3rem; }   // up to seven: "None" and six colours
-
-  .swatch {
-    width: 100%;
-    aspect-ratio: 1;
-    padding: 0;
-    border: var(--line-width) solid var(--color-border);
-    border-radius: 50%;
-    cursor: pointer;
-
-    &.is-on { box-shadow: 0 0 0 3px var(--color-surface), 0 0 0 5px var(--color-focus); }
-    // No colour: white with a red line through it.
-    &.is-none { background: linear-gradient(to top right, transparent calc(50% - 1.5px), var(--color-danger) calc(50% - 1.5px), var(--color-danger) calc(50% + 1.5px), transparent calc(50% + 1.5px)), var(--color-surface); }
-    &:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
-  }
 }

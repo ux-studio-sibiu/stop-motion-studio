@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { expect, test, type Studio } from "./fixtures";
 
 // Objects on pictures (step 23), in the Objects tab with the camera off: dragging a speech bubble
-// onto the picture (or clicking it), typing its text and choosing its settings in the tab, moving, sizing and deleting it on the
+// onto the picture (or clicking it), typing its text and choosing its settings in the panel by it, moving, sizing and deleting it on the
 // stage, and objects staying with their picture when it's moved or copied.
 
 test.beforeEach(async ({ studio, page }) => {
@@ -35,7 +35,7 @@ async function addBubble(page: Page, studio: Studio, typed?: string) {
   }
 }
 
-test("a new bubble's text is typed in the tab, drawn on the picture, and kept after a reload", async ({ studio, page }) => {
+test("a new bubble's text is typed in its settings, drawn on the picture, and kept after a reload", async ({ studio, page }) => {
   await addBubble(page, studio, "Hello!");
   await expect.poll(() => studio.stageColour(0.33, 0.2)).toEqual([255, 255, 255]);   // the white bubble, drawn on the picture
   await expect(objectsOn(page, 2)).toHaveCount(1);
@@ -124,7 +124,7 @@ test("a bubble stays with its picture when the picture moves, and a copy gets on
   await expect(objectsOn(page, 2)).toHaveCount(1);   // the copy, right after it
 });
 
-test("shape, tail, outline, text size, font and colours are set in the tab, each one undo step", async ({ studio, page }) => {
+test("shape, tail, outline, text size, font and colours are set in its settings, each one undo step", async ({ studio, page }) => {
   await addBubble(page, studio);
   await page.getByRole("combobox", { name: "Shape" }).selectOption("spiked");
   await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Change bubble shape");
@@ -132,11 +132,11 @@ test("shape, tail, outline, text size, font and colours are set in the tab, each
   await page.getByRole("checkbox", { name: "Tail" }).uncheck();
   await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Hide bubble tail");
   await expect(page.locator(".handles .tail")).toHaveCount(0);   // no tail, nothing to drag
-  await page.getByRole("combobox", { name: "Outline", exact: true }).selectOption("thick");
+  await page.getByRole("slider", { name: "Outline" }).fill("3");   // thick
   await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Change outline");
   await page.getByRole("group", { name: "Outline colour" }).getByRole("button", { name: "Blue" }).click();
   await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Change outline colour");
-  await page.getByRole("combobox", { name: "Outline", exact: true }).selectOption("none");
+  await page.getByRole("slider", { name: "Outline" }).fill("0");   // none
   await expect(page.getByRole("group", { name: "Outline colour" })).toHaveCount(0);   // nothing to colour
   await page.getByRole("combobox", { name: "Text size" }).selectOption("huge");
   await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Change text size");
@@ -153,11 +153,19 @@ test("shape, tail, outline, text size, font and colours are set in the tab, each
   await expect.poll(() => studio.stageColour(0.5, 0.2)).toEqual([255, 255, 255]);
   await expect(page.getByRole("combobox", { name: "Shape" })).toHaveValue("spiked");   // only the colour was undone
 
+  // Any other colour, from the colour picker at the end of the row: one undo step, shown on its swatch.
+  const other = page.getByRole("group", { name: "Bubble colour" }).getByLabel("Another colour");
+  await other.fill("#ff8800");
+  await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Change bubble colour");
+  await expect.poll(() => studio.stageColour(0.5, 0.2)).toEqual([255, 136, 0]);
+  await expect(page.locator(".swatch.is-custom.is-on")).toHaveCount(1);
+  await expect(black).toHaveAttribute("aria-pressed", "false");
+
   await page.getByRole("button", { name: "Delete spiked bubble" }).click();
   await expect(objectsOn(page, 2)).toHaveCount(0);
 });
 
-test("text and shapes: added from their icons, set in the tab, each one undo step", async ({ studio, page }) => {
+test("text and shapes: added from their icons, set in their settings, each one undo step", async ({ studio, page }) => {
   await page.getByRole("button", { name: "Text", exact: true }).click();
   await expect(text(page)).toBeFocused();   // typing straight away
   await page.keyboard.type("THE END");

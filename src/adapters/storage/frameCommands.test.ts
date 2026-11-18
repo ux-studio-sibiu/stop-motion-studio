@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { addFrames, createHistory, deleteFrames, duplicateFrames, reorderFrames, setAdjusts, setElements, setElementsOf, setFps, setHold, setOverlays, setSafeMargin, setTransforms, type History } from "@/core/commands";
+import { addFrames, createHistory, deleteFrames, duplicateFrames, nudgeFrames, reorderFrames, setAdjusts, setElements, setElementsOf, setFps, setHold, setOverlays, setSafeMargin, setTransforms, type History } from "@/core/commands";
 import { createBubble, createFrame, createOverlay, createProject, createText, moveIds, moveOverlay, overlaysOf, withProps, type Project, type ProjectRepository } from "@/core/model";
 import { openStudioDb, type StudioDb } from "@/adapters/storage/db";
 import { createDexieRepository } from "@/adapters/storage/dexieRepository";
@@ -139,6 +139,31 @@ describe("reorderFrames", () => {
   it("isn't recorded when the order stays the same", async () => {
     const ids = await takePictures(2);
     await expect(history.run(reorderFrames(project.id, ids, [...ids], [ids[0]]))).rejects.toThrow();
+    expect(history.state().undoLabel).toBe("Take picture");
+  });
+});
+
+describe("nudgeFrames", () => {
+  it("moves pictures one place from the saved order, so quick presses add up; undo goes back one press at a time", async () => {
+    const ids = await takePictures(4);
+    const first = history.run(nudgeFrames(project.id, [ids[3]], -1));   // pressed twice before the first is saved
+    const second = history.run(nudgeFrames(project.id, [ids[3]], -1));
+    expect(await first).toEqual({ select: [ids[3]] });
+    await second;
+    expect(await order()).toEqual([ids[0], ids[3], ids[1], ids[2]]);
+    expect(history.state().undoLabel).toBe("Move picture");
+    await history.undo();
+    expect(await order()).toEqual([ids[0], ids[1], ids[3], ids[2]]);
+    await history.undo();
+    expect(await order()).toEqual(ids);
+    await history.redo();
+    expect(await order()).toEqual([ids[0], ids[1], ids[3], ids[2]]);
+  });
+
+  it("isn't recorded at the end of the line", async () => {
+    const ids = await takePictures(2);
+    await expect(history.run(nudgeFrames(project.id, [ids[1]], 1))).rejects.toThrow();
+    await expect(history.run(nudgeFrames(project.id, [ids[0]], -1))).rejects.toThrow();
     expect(history.state().undoLabel).toBe("Take picture");
   });
 });

@@ -41,7 +41,6 @@ async function dragBy(page: Page, at: { x: number; y: number }, dx: number) {
 test("dropped on the track, an object shows over the pictures in its time and not the others", async ({ studio, page }) => {
   await dropShape(page, studio, 2);   // from picture 3
   await expect(bar(page)).toHaveAccessibleName("Rectangle, from 0.25 s to 2.25 s");
-  await expect(page.locator(".settings .where")).toHaveText(/^Shows from 0.25 s to 2.25 s/);
   await expect(studio.picture(3)).toHaveAttribute("aria-current", "true");   // the stage went to where it starts
   await expect.poll(() => studio.stageColour()).toEqual(YELLOW);
   await studio.picture(4).click();
@@ -144,7 +143,7 @@ test("a picked overlay keeps its settings in the tab when it isn't on the pictur
   await expect(studio.picture(1)).toHaveAttribute("aria-current", "true");   // the stage still shows picture 1
   await expect.poll(() => studio.stageColour()).not.toEqual(YELLOW);                  // where it isn't
 
-  await expect(page.locator(".settings .where")).toHaveText("Not on this picture: it shows from 1.25 s to 3.25 s");
+  await expect(page.getByRole("region", { name: "Rectangle settings" })).toBeVisible();   // still open, though not on this picture (when it shows is on its bar)
   await page.getByRole("combobox", { name: "Shape" }).selectOption("ellipse");
   await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Change shape");
   await expect(page.getByRole("button", { name: "Ellipse, from 1.25 s to 3.25 s" })).toBeVisible();

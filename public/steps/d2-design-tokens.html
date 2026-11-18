@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>D2 Token list · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step D2 · Part 8b Design system page</p>
+  <h1>One list of tokens</h1>
+  <p class="intro">Every design token is now in one list, <code>src/design-system/tokens.ts</code>, with its group, kind, light and dark values and what it's for. A test holds it to <code>globals.scss</code>, and the gallery's token section draws from it. Values that were written straight into the stylesheets became tokens first, so there's more to tune in D3.</p>
+
+  <h2>New tokens</h2>
+  <ul>
+    <li><strong>Text sizes</strong>, smallest first: <code>--text-tiny</code>, <code>-caption</code>, <code>-label</code>, <code>-hint</code>, <code>-small</code>, <code>-body</code>, <code>-title</code>, <code>-heading</code>. 33 literal sizes in the stylesheets now use them, with identical values; one-off page headings stay literal.</li>
+    <li><strong>Shadows:</strong> <code>--shadow-floating</code> (menus, notices), <code>--shadow-dragged</code>, <code>--shadow-press</code> and <code>--shadow-pressed</code> (a big button's depth). Nearly identical shadows were merged: the storage notice's is now the menus', the two drag ghosts share one.</li>
+    <li><strong>A scrim:</strong> <code>--color-scrim</code> and <code>--color-on-scrim</code>, behind and on labels over photos (the stage note, picture numbers).</li>
+    <li>Left literal on purpose: the camera flash's white, the safe zone's veil and the dialog backdrop (effects, not design), and the design page's own layout.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>Written by hand, tested:</strong> the list carries the groups and notes the panel needs, which the SCSS can't. <code>tokens.test.ts</code> reads <code>globals.scss</code> and compares the whole list, light and dark, so a token added, removed or changed in one place and not the other fails <code>npm test</code>.</li>
+    <li><strong>One test only</strong>, as agreed for this utility page.</li>
+  </ul>
+
+  <h2>Files in this step</h2>
+  <p><code>src/design-system/tokens.ts</code>, <code>tokens.test.ts</code>, <code>DesignPage.tsx</code>, <code>Specimen.tsx</code>, <code>_design.scss</code>; <code>src/styles/globals.scss</code>; the stylesheets that now use the text, shadow and scrim tokens (<code>_controls.scss</code>, <code>projects.scss</code>, <code>studio.scss</code>, <code>_stage.scss</code>, <code>_playback.scss</code>, <code>_side-panel.scss</code>, <code>_timeline.scss</code>, <code>_frame.scss</code>, and the feature folders'); <code>ROADMAP.md</code>; <code>public/steps/d2-design-tokens.html</code>, <code>d1-design-gallery.html</code> (next link), <code>index.html</code>.</p>
+  <p><strong>Tests added:</strong> 1 unit test, the list against <code>globals.scss</code>.</p>
+
+  <nav class="pager">
+    <a href="d1-design-gallery.html">Previous: D1 · The gallery page</a>
+    <a href="d3-design-panel.html">Next: D3 · The floating tweak panel</a>
+  </nav>
+</main>
+</body>
+</html>

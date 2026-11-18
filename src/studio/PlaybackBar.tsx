@@ -19,10 +19,12 @@ export function PlaybackBar({ onSpeed, onSafeMargin, children }: { onSpeed: (fro
   const speedIndex = nearestOption(fps);
   const { open, toggle, ref } = useDropdown();
 
+  // Green to play; red, the whole group, while playing (the stop look, with the pause icon).
+  const fill = isPlaying ? "is-primary" : "is-go";
   return (
     <footer className="playback-bar">
       <div ref={ref} className="nsc-playback-options option-menu">
-        <button type="button" className="icon-button toggle play" aria-label={isPlaying ? "Pause" : "Play"} title={`${isPlaying ? "Pause" : "Play"} (Enter)`} disabled={!hasPictures} onClick={togglePlay}>
+        <button type="button" className={`icon-button toggle play ${fill}`} aria-label={isPlaying ? "Pause" : "Play"} title={`${isPlaying ? "Pause" : "Play"} (Enter)`} disabled={!hasPictures} onClick={togglePlay}>
           {isPlaying ? <Pause size={24} /> : <Play size={24} />}
           {/* Both words in one spot, only one visible: the button keeps the width of the longer one. */}
           <span className="play-label" aria-hidden="true">
@@ -30,7 +32,7 @@ export function PlaybackBar({ onSpeed, onSafeMargin, children }: { onSpeed: (fro
             <span className={isPlaying ? undefined : "is-hidden"}>Pause</span>
           </span>
         </button>
-        <button type="button" className="icon-button more" aria-label="Playback options" aria-expanded={open} aria-haspopup="true" title={`${FPS_OPTIONS[speedIndex]} pictures per second${loop ? ", loops" : ""}`} onClick={toggle}><ChevronDown size={20} /></button>
+        <button type="button" className={`icon-button more ${fill}`} aria-label="Playback options" aria-expanded={open} aria-haspopup="true" title={`${FPS_OPTIONS[speedIndex]} pictures per second${loop ? ", loops" : ""}`} onClick={toggle}><ChevronDown size={20} /></button>
 
         {open && (
           <div className="options" role="group" aria-label="Playback options">

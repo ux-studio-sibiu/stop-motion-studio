@@ -16,7 +16,7 @@ export function useTimelineZoom(scroller: RefObject<HTMLDivElement | null>) {
   const zoomAround = (pxPerSecond: number, x: number) => {
     const element = scroller.current;
     if (!element) return;
-    anchor.current = { seconds: (element.scrollLeft + x) / editorStore.getState().timelineZoom, x };
+    anchor.current = { seconds: (element.scrollLeft + x - timelineInset(element)) / editorStore.getState().timelineZoom, x };
     editorStore.getState().setTimelineZoom(pxPerSecond);
   };
 
@@ -29,7 +29,7 @@ export function useTimelineZoom(scroller: RefObject<HTMLDivElement | null>) {
   useLayoutEffect(() => {
     const element = scroller.current;
     if (!element || !anchor.current) return;
-    element.scrollTo({ left: anchor.current.seconds * zoom - anchor.current.x });
+    element.scrollTo({ left: timelineInset(element) + anchor.current.seconds * zoom - anchor.current.x });
     anchor.current = null;
   }, [zoom, scroller]);
 
@@ -57,4 +57,10 @@ function anchorX(element: HTMLDivElement): number {
   const selected = element.querySelector<HTMLElement>(".frame.is-selected");
   if (selected) return selected.offsetLeft + selected.offsetWidth / 2 - element.scrollLeft;
   return element.clientWidth / 2;
+}
+
+// The gap before the first picture (the scroller's left padding, --timeline-inset): scroll
+// positions include it, times start after it.
+export function timelineInset(element: HTMLElement): number {
+  return parseFloat(getComputedStyle(element).paddingLeft) || 0;
 }

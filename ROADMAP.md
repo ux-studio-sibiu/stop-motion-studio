@@ -465,6 +465,95 @@ neighbours. Step 18 is moving; step 19 is lining up.
   as left.
 ---
 
+## Part 8b - Design system page *(added)*
+
+A page of its own, `/design`, showing every UI element the studio uses, in a gallery, with no
+behaviour: something to look at and tune. A floating panel changes the design tokens (colours,
+sizes, radii, lines, type) and every element on the page follows straight away. Tweaks stay in the
+browser until Reset; a **Copy changes** button gives them as a message to paste into the chat with
+Claude, which makes them permanent in the code.
+
+**Stand-alone, as far as it can be.** The page lives in a folder of its own,
+`src/design-system/`, with its own route, its own SCSS for the page and the panel, its own token
+list and its own storage key. It doesn't use the studio's store, `remembered.ts`, the undo history,
+IndexedDB or the camera, and the studio doesn't import anything from it. The only things it takes
+from the app are what it exists to show: `globals.scss` (the tokens) and the components and their
+styles. Removing the folder and its route removes the page, and nothing else changes.
+
+### D1 · The gallery page
+- **Builds:** a route `src/app/design/` that renders `src/design-system/DesignPage.tsx`: a long,
+  vertically scrolling page of sections, each a labelled specimen of the real thing:
+  - **Tokens:** every colour swatch with its name and value, light and dark; spacing, radii, line
+    widths, the hit size, the type sizes.
+  - **Controls:** `icon-button` (normal, hover, on, disabled, small, danger), the capture
+    `big-button`, selects, text fields, sliders, the checkbox, colour swatches with "None", the
+    width buttons, the Objects tiles.
+  - **The side panel:** tab ears (open and pushed back), a panel with its title, a settings card
+    with its groups, hints, the soft scrollbar.
+  - **The stage:** the stage frame, the safe zone, the object handles, the drawing ring, the
+    camera message.
+  - **The timeline:** pictures (selected, on the stage, a long one), the grip and its length
+    bubble, the ruler, the playhead, overlay bars in rows, the next-picture slot.
+  - **Bars and menus:** the playback bar, a dropdown open, the storage notice, a project card, the
+    delete dialog.
+- **Decisions:** specimens use the real components where they take their data as props, and the
+  same markup and class names where a component needs the studio's store, so every style is the
+  one the studio uses and nothing is copied into the page's CSS. Fixed demo data; nothing on the
+  page does anything. Placed by hand in JSX, one section after another (direct composition), so
+  moving or adding a specimen is moving or adding a line.
+- **Watch out:** many styles are scoped under `.nsc-studio`, a full-screen grid with
+  `overflow: hidden`. Specimens sit in an `.nsc-studio.is-specimen` wrapper that resets the grid,
+  height and overflow, and nothing else. Development only (the build leaves the page out).
+- **Check:** every section renders with no console errors; the page scrolls to the end; dark mode
+  shows the dark tokens. `e2e/design.spec.ts`.
+
+### D2 · One list of tokens
+- **Builds:** `src/design-system/tokens.ts`: every token with its group (colour, space, radius,
+  line, type, size), its kind (colour, length, number), its light and dark values, and a line on
+  what it's for. A unit test holds it to `globals.scss`: every token there is in the list and the
+  other way round, with the same values, so the list can't drift. Values still written straight
+  into feature SCSS that should be tokens (shadows, odd sizes, fixed colours) become tokens first.
+- **Decisions:** written by hand, not parsed at runtime: it carries the grouping and descriptions
+  the panel needs, and the test keeps it honest. The gallery's token tables (D1) read it.
+- **Check:** `npm test` fails if a token is added to `globals.scss` and not to the list.
+
+### D3 · The floating tweak panel
+- **Builds:** a panel floating over the gallery, dragged by its title bar, opened and closed with
+  Shift+T or a button: the tokens in their groups (from D2), each with a control for its kind (a
+  colour picker with its hex, a slider with a number and unit), a filter by name, light / dark
+  (which scheme is shown and edited), and reset for one token. A change sets the custom property
+  on the gallery's root at once, so every specimen follows.
+- **Decisions:** the look of the kits in the other repos (`effects-collection/randomize-studio/
+  type-kit/kit-shell.css`, the type and texture kits), copied into `src/design-system/`, never
+  linked out (workspace rule). The panel lives in a shadow root, so the tokens being tuned don't
+  restyle the panel itself. Only the gallery is changed, never the studio.
+- **Check:** changing `--color-border` restyles every border on the page and not the panel; its
+  reset brings it back.
+
+### D4 · Keeping tweaks, and handing them over
+- **Builds:**
+  - **Kept in the browser until Reset:** every tweak is saved as it's made (the page's own
+    `localStorage` key, not the studio's) and comes back after a reload, until **Reset all** is
+    pressed. Changed tokens are marked in the panel, with a count.
+  - **Copy changes:** copies a message ready to paste into the chat with Claude, for example:
+    ```
+    Design-system tweaks for stop-motion-studio: please make these permanent in
+    src/styles/globals.scss (light theme in :root, dark theme in the prefers-color-scheme block):
+    - --color-border (light): #b5ab9b -> #9d927f   (outlines of panels, controls and cards)
+    - --radius-small (light and dark): 0.625rem -> 0.5rem
+    - --color-focus (dark): #7d9bff -> #8fa8ff
+    ```
+    Each line names the token, which theme, the value it had and the new one, and what the token is
+    for (from D2), so the change can be made, and checked, from the message alone.
+- **Decisions:** the message is made by a pure function (tweaks to text), unit-tested, and lists
+  only what really changed (a token set back to its value is left out). Nothing is written to the
+  repo by the page: the permanent change is made in the code, from the message, and then the page's
+  Reset all clears the tweaks it no longer needs.
+- **Check:** change two tokens, reload: they're still there; Copy changes gives exactly those two,
+  each with its theme, old and new value; Reset all clears them and the copy is empty.
+
+---
+
 ## Part 9 - Export and import
 
 **All exports (GIF and video) crop to the safe zone:** `exportRect(project, safeMargin(project))` in
@@ -612,6 +701,10 @@ feature folder of its own.
 - [x] 23 Speech bubbles on pictures
 - [x] 24 Overlay layer: text and shapes in time
 - [x] 24b Free drawing on pictures
+- [x] D1 Design system: the gallery page
+- [x] D2 Design system: one list of tokens
+- [x] D3 Design system: the floating tweak panel
+- [x] D4 Design system: keeping tweaks, Copy changes
 - [ ] 25 GIF export
 - [ ] 26 Video export
 - [ ] 27 Project archive

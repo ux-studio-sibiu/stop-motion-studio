@@ -3,6 +3,7 @@
 import { useEffect, useRef, type PointerEvent, type RefObject } from "react";
 import { frameIndexAt, frameStarts, inOrder, totalTicks, type Frame } from "@/core/model";
 import { editorStore, useEditor } from "@/store/useEditor";
+import { timelineInset } from "./useTimelineZoom";
 
 // The playhead on the timeline: where playback is while playing; otherwise where Play will start
 // (the first selected picture). Dragging along the ruler scrubs: it stops playback and selects
@@ -40,7 +41,7 @@ export function useScrub(frames: readonly Frame[], selection: readonly string[],
   useEffect(() => {
     const element = scroller.current;
     if (!isPlaying || !element) return;
-    const x = playhead * tickWidth;
+    const x = timelineInset(element) + playhead * tickWidth;
     if (x < element.scrollLeft || x > element.scrollLeft + element.clientWidth - 48) element.scrollTo({ left: Math.max(0, x - 48) });
   }, [isPlaying, playhead, tickWidth, scroller]);
 

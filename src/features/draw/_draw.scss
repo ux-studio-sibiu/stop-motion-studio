@@ -19,7 +19,8 @@
       background: var(--color-surface);
       cursor: pointer;
 
-      &.is-on { border-color: var(--color-focus); box-shadow: inset 0 0 0 2px var(--color-focus); }
+      &.is-on { border-color: var(--color-go); background: color-mix(in srgb, var(--color-go) 14%, var(--color-surface)); box-shadow: inset 0 0 0 2px var(--color-go); }
+      &.is-on:hover { background: color-mix(in srgb, var(--color-on-strong) 30%, color-mix(in srgb, var(--color-go) 14%, var(--color-surface))); }   // lighter, like the on-buttons
       &:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
 
       .dot { display: block; border-radius: 50%; box-shadow: 0 0 0 1px var(--color-line); }

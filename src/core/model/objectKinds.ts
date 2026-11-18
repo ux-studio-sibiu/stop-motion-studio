@@ -22,12 +22,12 @@ export const SPEECH_BUBBLE = "speech-bubble";
 //   textColour, fill, outlineColour: #rrggbb
 export type BubbleVariant = "speech" | "thought" | "spiked";
 export type TextSize = "small" | "medium" | "large" | "huge";
-export type OutlineWidth = "none" | "thin" | "medium" | "thick";
+export type OutlineWidth = "none" | "thin" | "medium" | "thick" | "extra" | "super";   // extra and super: thicker still
 export type BubbleProps = { text: string; variant: BubbleVariant; tail: Point; showTail: boolean; textSize: TextSize; font: string; textColour: string; fill: string; outline: OutlineWidth; outlineColour: string };
 
 export const BUBBLE_VARIANTS: readonly BubbleVariant[] = ["speech", "thought", "spiked"];
 export const TEXT_SIZES: readonly TextSize[] = ["small", "medium", "large", "huge"];
-export const OUTLINE_WIDTHS: readonly OutlineWidth[] = ["none", "thin", "medium", "thick"];
+export const OUTLINE_WIDTHS: readonly OutlineWidth[] = ["none", "thin", "medium", "thick", "extra", "super"];
 
 // The fonts a bubble can use: `family` is a CSS font-family list, for the canvas and the panel.
 // Nunito is the app's own, self-hosted font; the others are fonts most computers already have,

@@ -16,7 +16,8 @@
   font-weight: 700;
   cursor: pointer;
 
-  &:hover:not(:disabled) { background: var(--color-faint); }
+  // Hovered: the same surface, a little darker (in both themes: the stage colour is dark in both).
+  &:hover:not(:disabled) { background: color-mix(in srgb, var(--color-stage) 7%, var(--color-surface)); }
   &:disabled { opacity: 0.45; cursor: not-allowed; }
 
   // Secondary tools (timeline zoom): smaller, but still a comfortable 40 px.
@@ -29,17 +30,26 @@
   &.is-primary {
     border-color: var(--color-accent);
     background: var(--color-accent);
-    color: var(--color-accent-ink);
+    color: var(--color-on-strong);
 
-    &:hover:not(:disabled) { background: var(--color-accent); filter: brightness(1.08); }
+    &:hover:not(:disabled) { background: color-mix(in srgb, var(--color-on-strong) 12%, var(--color-accent)); }   // lighter background only: borders (a split button's divider) stay
+  }
+
+  // Go: the play colour, filled (a Play button that stands out, like is-primary does for capture).
+  &.is-go {
+    border-color: var(--color-go);
+    background: var(--color-go);
+    color: var(--color-on-strong);
+
+    &:hover:not(:disabled) { background: color-mix(in srgb, var(--color-on-strong) 12%, var(--color-go)); }   // lighter background only: borders (a split button's divider) stay
   }
 
   &.is-danger {
     border-color: var(--color-danger);
     background: var(--color-danger);
-    color: var(--color-danger-ink);
+    color: var(--color-on-strong);
 
-    &:hover:not(:disabled) { background: var(--color-danger); filter: brightness(1.08); }
+    &:hover:not(:disabled) { background: color-mix(in srgb, var(--color-on-strong) 12%, var(--color-danger)); }   // lighter background only: borders (a split button's divider) stay
   }
 
   svg { flex: none; }
@@ -56,16 +66,113 @@
   border-radius: 50%;
   font: inherit;
   cursor: pointer;
-  box-shadow: 0 0.375rem 0 rgb(0 0 0 / 0.18);
+  box-shadow: var(--shadow-press);
 
-  &:active:not(:disabled) { transform: translateY(0.25rem); box-shadow: 0 0.125rem 0 rgb(0 0 0 / 0.18); }
+  &:active:not(:disabled) { transform: translateY(0.25rem); box-shadow: var(--shadow-pressed); }
   &:disabled { opacity: 0.45; cursor: not-allowed; }
 
-  &.is-capture { background: var(--color-accent); color: var(--color-accent-ink); }
+  &.is-capture { background: var(--color-accent); color: var(--color-on-strong); }
 }
 
-// A toggle or choice that's on (loop, flip, line up with...).
+// A toggle or choice that's on (loop, flip, line up with...). Hovered, it keeps its tint and
+// lightens a little, like the coloured buttons above (not the plain hover grey); only the
+// background changes, so a split button's divider doesn't.
 .icon-button.is-on {
-  border-color: var(--color-focus);
-  color: var(--color-focus);
+  border-color: var(--color-go);
+  background: color-mix(in srgb, var(--color-go) 14%, var(--color-surface));
+  color: var(--color-go);
+
+  &:hover:not(:disabled) { background: color-mix(in srgb, var(--color-on-strong) 30%, color-mix(in srgb, var(--color-go) 14%, var(--color-surface))); }   // the tint, lighter; borders stay
+}
+
+// Sliders (brightness, contrast, speed, the safe zone, see-through strength): a light track and a
+// round thumb in the selection green, the same in both themes. Drawn here rather than by the browser,
+// which picks a dark track for a mid-tone accent colour. Firefox also fills the part before the
+// thumb; Chrome and Safari can't in CSS, so there the thumb shows the value.
+input[type="range"] {
+  --track: 0.375rem;
+  --thumb: 1.25rem;
+
+  height: var(--thumb);
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+
+  &::-webkit-slider-runnable-track { height: var(--track); border-radius: 999px; background: var(--color-line); }
+  &::-moz-range-track { height: var(--track); border-radius: 999px; background: var(--color-line); }
+  &::-moz-range-progress { height: var(--track); border-radius: 999px; background: var(--color-go); }
+
+  &::-webkit-slider-thumb {
+    width: var(--thumb);
+    height: var(--thumb);
+    margin-top: calc((var(--track) - var(--thumb)) / 2);   // centred on the track
+    border: 3px solid var(--color-surface);
+    border-radius: 50%;
+    background: var(--color-go);
+    box-shadow: 0 0 0 1px var(--color-border);
+    appearance: none;
+  }
+  &::-moz-range-thumb {
+    width: var(--thumb);
+    height: var(--thumb);
+    box-sizing: border-box;
+    border: 3px solid var(--color-surface);
+    border-radius: 50%;
+    background: var(--color-go);
+    box-shadow: 0 0 0 1px var(--color-border);
+  }
+
+  &:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 4px; border-radius: 999px; }
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+}
+
+// Dropdowns: the browser's own arrow can't be sized or placed, so it's hidden and the split buttons'
+// caret is drawn instead (24 px, a 2.75 px line), centred, 6 px in from the right. In the ink
+// colour of each theme (a background image can't use currentColor, so the two are spelled out).
+// The selects give themselves room for it on the right (padding) and set only background-color.
+select:not([multiple]) {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f2433' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 0.375rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5rem;
+
+  @media (prefers-color-scheme: dark) { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23eef0f5' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
+}
+
+// Checkboxes and radios: the same border as the other inputs (--line-width, --color-border) on the
+// surface colour; on, they fill with the selection green: a white tick in a checkbox, a white dot
+// in a radio. Drawn here, not by the browser, so they match the fields beside them.
+input[type="checkbox"],
+input[type="radio"] {
+  flex: none;
+  display: inline-grid;
+  place-content: center;
+  box-sizing: border-box;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  border: var(--line-width) solid var(--color-border);
+  border-radius: 0.3125rem;
+  background: var(--color-surface);
+  cursor: pointer;
+  appearance: none;
+
+  &:checked { background-color: var(--color-go); }
+  &:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+}
+
+input[type="checkbox"]:checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 0.875rem;
+}
+
+input[type="radio"] {
+  border-radius: 50%;
+
+  &:checked { box-shadow: inset 0 0 0 0.25rem var(--color-surface); }   // a dot, ringed in white
 }

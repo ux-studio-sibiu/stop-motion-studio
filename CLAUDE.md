@@ -26,7 +26,7 @@ fast, logic is never "trust the edit".
   - `timeline.spec`, `frames.spec`, `resize.spec`, `reorder.spec`: the timeline, delete and duplicate,
     lengths, reordering;
   - `history.spec`: undo and redo; `playback.spec`: playing; `persistence.spec`: reloads and the
-    load gate; `projects.spec`: the projects page; `storage.spec`: clean-up, full storage, the 80% warning; `objects.spec`: the Objects tab, speech bubbles, text and shapes; `overlays.spec`: the overlay track, objects in time; `draw.spec`: the Draw tab, free drawing.
+    load gate; `projects.spec`: the projects page; `storage.spec`: clean-up, full storage, the 80% warning; `objects.spec`: the Objects tab, speech bubbles, text and shapes; `overlays.spec`: the overlay track, objects in time; `draw.spec`: the Draw tab, free drawing; `design.spec`: the design system page (one smoke test; a utility page, kept light on purpose).
   Shared code (`Studio.tsx`, `useProject`, `e2e/fixtures.ts`, storage) means the specs of the flows
   it really changes, not all of them. **The full suite** (`npm run test:e2e`, production build, about
   40 s) and **WebKit** (`npm run test:e2e:all`) run only when the user asks. Say in the summary which

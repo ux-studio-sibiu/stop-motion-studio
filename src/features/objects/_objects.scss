@@ -28,58 +28,99 @@
       &:disabled { opacity: 0.45; cursor: not-allowed; }
       &.is-dragging { opacity: 0.5; cursor: grabbing; }
     }
+  }
 
+  // The picked object's settings (ObjectSettings) in a panel floating by it (ObjectFloat): fixed
+  // to the window, placed by script (transform). Compact: a header bar (name, Delete, Close), then
+  // the kind's groups side by side, with no labels but the colour rows' (the dropdowns say what
+  // they are) and smaller controls; it scrolls when the window is short.
+  .nsc-object-float {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 30;
+    display: grid;
+    width: max-content;
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+    overflow: auto;
+    border: var(--line-width) solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-floating);
+    color: var(--color-ink);
 
-    // The picked object's settings: a card of its own, apart from the icons.
     .settings {
       display: grid;
-      gap: var(--space-3);
-      margin-top: var(--space-2);
-      padding: var(--space-3);
-      border: var(--line-width) solid var(--color-border);
-      border-radius: var(--radius);
-      background: var(--color-faint);
+      gap: var(--space-2);
+      padding: 0 var(--space-3) var(--space-3);
     }
 
-    .settings-title { margin: 0; font-size: 1rem; font-weight: 800; }
+    // The header: drag it to move the panel.
+    .settings-head {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      margin: 0 calc(-1 * var(--space-3));
+      padding: var(--space-1) var(--space-2);
+      border-bottom: var(--line-width) solid var(--color-border);
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
 
-    .where { margin: calc(-1 * var(--space-2)) 0 0; color: var(--color-muted); font-size: 0.8125rem; }
+      &:active { cursor: grabbing; }
 
-    .kind-settings { display: grid; gap: var(--space-3); }
+      .icon-button { min-width: 2.25rem; min-height: 2.25rem; padding: 0; }   // a little smaller than is-small
+    }
+
+    .settings-title { flex: 1; min-width: 0; margin: 0 var(--space-2) 0 var(--space-1); overflow: hidden; font-size: var(--text-title); font-weight: 800; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+
+    .kind-settings { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(10.5rem, max-content); gap: var(--space-4); }
 
     .group {
       display: grid;
-      gap: var(--space-3);
+      align-content: start;   // rows at the top, not stretched to the tallest column
+      gap: var(--space-2);
       min-width: 0;
       margin: 0;
-      padding: var(--space-3) 0 0;
+      padding: var(--space-1) 0 0;
       border: 0;
-      border-top: 1px solid var(--color-line);
 
       legend {
-        float: left;   // so the legend sits inside the grid, under the line, like a heading
+        float: left;   // so the legend sits inside the grid, like a heading
         width: 100%;
         padding: 0;
         color: var(--color-muted);
-        font-size: 0.75rem;
+        font-size: var(--text-caption);
         font-weight: 800;
         letter-spacing: 0.06em;
         text-transform: uppercase;
       }
     }
 
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); align-items: end; }
+    .settings .field {
+      gap: 0.125rem;
+      font-size: var(--text-caption);
 
-    .check {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      min-height: var(--hit);
-      font-weight: 700;
-      cursor: pointer;
-
-      input { width: 1.25rem; height: 1.25rem; margin: 0; accent-color: var(--color-focus); }
+      select { min-height: 2.25rem; font-size: var(--text-label); }
+      textarea { height: 3.25rem; padding: var(--space-1) var(--space-2); font-size: var(--text-label); }
     }
+
+    .outline-width { gap: 0; font-weight: 700; }
+    .check { min-height: 2.25rem; font-size: var(--text-caption); }
+    .settings .swatches { grid-template-columns: repeat(8, 1.5rem); gap: 0.5rem; }
+
+    // The colour rows, each with its small name over it, spaced apart.
+    .colours {
+      gap: var(--space-3);
+
+      .field { gap: var(--space-1); }
+    }
+  }
+
+  // On a phone the groups stack: there's no room for two side by side.
+  @media (max-width: 34rem) {
+    .nsc-object-float .kind-settings { grid-auto-flow: row; grid-auto-columns: auto; }
   }
 
   // The stage layer: the same box as the stage picture.
@@ -102,16 +143,16 @@
       stroke: transparent;
       cursor: move;
 
-      &.is-selected { stroke: var(--color-focus); stroke-width: 2; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; }
+      &.is-selected { stroke: var(--color-border); stroke-width: 2; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; }
     }
 
     .handles {
-      circle { fill: var(--color-surface); stroke: var(--color-focus); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
+      circle { fill: var(--color-surface); stroke: var(--color-border); stroke-width: 2.5; vector-effect: non-scaling-stroke; }
       .corner.is-nw, .corner.is-se { cursor: nwse-resize; }
       .corner.is-ne, .corner.is-sw { cursor: nesw-resize; }
       .turn { cursor: grab; }
-      .tail { cursor: crosshair; fill: var(--color-focus); }
-      .stem { stroke: var(--color-focus); stroke-width: 2; vector-effect: non-scaling-stroke; }
+      .tail { cursor: crosshair; fill: var(--color-border); }
+      .stem { stroke: var(--color-border); stroke-width: 2; vector-effect: non-scaling-stroke; }
     }
   }
 }
@@ -129,7 +170,7 @@
   border-radius: var(--radius-small);
   background: var(--color-surface);
   color: var(--color-ink);
-  box-shadow: 0 6px 18px rgb(0 0 0 / 25%);
+  box-shadow: var(--shadow-dragged);
   transform: translate(-50%, -50%);
   pointer-events: none;
 }

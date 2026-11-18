@@ -92,8 +92,8 @@
     justify-content: center;
     padding: var(--space-2);
     border-radius: var(--radius-small);
-    background: rgb(0 0 0 / 0.55);
-    color: #fff;
+    background: var(--color-scrim);
+    color: var(--color-on-strong);
 
     .camera-message {
       display: flex;
@@ -102,7 +102,7 @@
       max-width: none;
 
       > svg { display: none; }
-      p { font-size: 0.9375rem; }
+      p { font-size: var(--text-small); }
     }
 
     &:empty { display: none; }
@@ -115,7 +115,7 @@
     max-width: 28rem;
     padding: var(--space-3);   // the stage frame has none (see .stage-frame)
 
-    p { margin: 0; font-size: 1.125rem; }
+    p { margin: 0; font-size: var(--text-title); }
   }
 
   // A short white flash on the stage when a picture is taken.

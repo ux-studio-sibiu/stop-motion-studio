@@ -8,6 +8,7 @@ import { CameraPanel } from "@/features/camera/CameraPanel";
 import { DrawLayer } from "@/features/draw/DrawLayer";
 import { DrawPanel } from "@/features/draw/DrawPanel";
 import { ObjectEditor } from "@/features/objects/ObjectEditor";
+import { ObjectFloat } from "@/features/objects/ObjectFloat";
 import { ObjectsPanel } from "@/features/objects/ObjectsPanel";
 import { OnionSkin } from "@/features/onion-skin/OnionSkin";
 import { SeeThroughMenu } from "@/features/onion-skin/SeeThroughMenu";
@@ -124,6 +125,9 @@ export function Studio() {
         </div>
       </main>
 
+      {/* The picked object's settings, floating by it (outside the stage, so its clipping and zoom don't touch them). */}
+      {stageMode === "frame" && stageTool === "objects" && <ObjectFloat saves={objectSaves} />}
+
       <SidePanel active={panelTab} onChange={editorStore.getState().setPanelTab}>
         <PanelTab id="camera" label="Camera" icon={<Camera size={31} />}>
           <CameraPanel camera={camera} canCapture={canCapture} onCapture={capture} capturing={capturing} />
@@ -140,7 +144,7 @@ export function Studio() {
         </PanelTab>
       </SidePanel>
 
-      <Timeline onOverlays={commands.setOverlays} onDelete={commands.deletePictures} onDuplicate={commands.duplicatePictures} onResize={commands.resizePictures} onReorder={commands.reorderPictures} />
+      <Timeline onOverlays={commands.setOverlays} onDelete={commands.deletePictures} onDuplicate={commands.duplicatePictures} onResize={commands.resizePictures} onReorder={commands.reorderPictures} onNudge={commands.nudgePictures} />
 
       <PlaybackBar onSpeed={commands.setSpeed} onSafeMargin={commands.setSafeMargin}>
         <SeeThroughMenu />

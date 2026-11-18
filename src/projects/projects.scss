@@ -43,14 +43,14 @@
     border: 0;
     border-radius: 999px;
     background: var(--color-accent);
-    color: var(--color-accent-ink);
+    color: var(--color-on-strong);
     font: inherit;
-    font-size: 1.5rem;
+    font-size: var(--text-heading);
     font-weight: 800;
-    box-shadow: 0 0.375rem 0 rgb(0 0 0 / 0.18);
+    box-shadow: var(--shadow-press);
     cursor: pointer;
 
-    &:active:not(:disabled) { transform: translateY(0.25rem); box-shadow: 0 0.125rem 0 rgb(0 0 0 / 0.18); }
+    &:active:not(:disabled) { transform: translateY(0.25rem); box-shadow: var(--shadow-pressed); }
     &:disabled { opacity: 0.6; cursor: progress; }
   }
 
@@ -69,7 +69,7 @@
     border: 2px dashed var(--color-border);
     border-radius: var(--radius);
 
-    p { margin: 0; font-size: 1.125rem; }
+    p { margin: 0; font-size: var(--text-title); }
   }
 
   .section-title {
@@ -126,7 +126,7 @@
   .name {
     display: block;
     overflow: hidden;
-    font-size: 1.125rem;
+    font-size: var(--text-title);
     font-weight: 800;
     text-decoration: none;
     text-overflow: ellipsis;
@@ -142,14 +142,14 @@
     background: var(--color-bg);
     color: var(--color-ink);
     font: inherit;
-    font-size: 1.125rem;
+    font-size: var(--text-title);
     font-weight: 800;
   }
 
   .meta {
     margin: var(--space-1) 0 0;
     color: var(--color-muted);
-    font-size: 0.875rem;
+    font-size: var(--text-hint);
   }
 
   .actions {
@@ -169,8 +169,8 @@
   color: var(--color-muted);
 
   p { margin: 0; }
-  .note { font-size: 0.875rem; }
-  .warning { margin: 0; color: var(--color-ink); font-size: 0.9375rem; }
+  .note { font-size: var(--text-hint); }
+  .warning { margin: 0; color: var(--color-ink); font-size: var(--text-small); }
 
   meter { width: 100%; height: 0.75rem; }
 }

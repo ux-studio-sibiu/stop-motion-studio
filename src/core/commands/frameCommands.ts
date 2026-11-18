@@ -1,4 +1,4 @@
-import { clampAdjust, clampHold, cloneElements, cloneFrame, sameAdjust, sameElements, sameOrder, sameTransform, type Adjust, type Element, type Frame, type Transform, type FrameInsert, type ProjectRepository, type RemovedFrame } from "../model";
+import { clampAdjust, clampHold, cloneElements, cloneFrame, inOrder, moveIds, nudgeGap, sameAdjust, sameElements, sameOrder, sameTransform, type Adjust, type Element, type Frame, type Transform, type FrameInsert, type ProjectRepository, type RemovedFrame } from "../model";
 import type { Command } from "./command";
 
 // Takes pictures out of the animation. Undo puts them back exactly where they were (and
@@ -81,6 +81,34 @@ export function reorderFrames(projectId: string, before: readonly string[], afte
     return { select: moved };
   };
   return { label: moved.length === 1 ? "Move picture" : `Move ${moved.length} pictures`, do: write(after), undo: write(before) };
+}
+
+// The keyboard move (Ctrl+arrow): pictures one place left or right of where they are when it
+// runs, read from the saved order, not from what the screen showed when the key was pressed. So
+// presses quicker than the saves add up (history runs them one after another). Undo and redo put
+// back the exact orders it saw. At the end of the line it fails, so nothing is recorded.
+export function nudgeFrames(projectId: string, moved: readonly string[], direction: -1 | 1): Command {
+  let before: string[] | undefined;
+  let after: string[] = [];
+  const write = (frameIds: readonly string[]) => async (repository: ProjectRepository) => {
+    await repository.updateProject(projectId, { frameIds: [...frameIds] });
+    return { select: [...moved] };
+  };
+  return {
+    label: moved.length === 1 ? "Move picture" : `Move ${moved.length} pictures`,
+    async do(repository) {
+      if (!before) {
+        const order = (await repository.getProject(projectId))?.frameIds ?? [];
+        const ids = inOrder(order, moved);
+        const next = moveIds(order, ids, nudgeGap(order, ids, direction));
+        if (ids.length === 0 || sameOrder(order, next)) throw new Error("The order didn't change.");
+        before = [...order];
+        after = next;
+      }
+      return write(after)(repository);
+    },
+    undo: (repository) => write(before ?? [])(repository),
+  };
 }
 
 // Moves, sizes, turns or flips pictures: one command for a whole drag, wheel gesture or burst of

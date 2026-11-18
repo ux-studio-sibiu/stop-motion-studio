@@ -226,6 +226,8 @@ describe("speech bubbles (step 23)", () => {
   it("draws the outline in its colour and thickness, or none", () => {
     const edge = (props: Record<string, unknown>) => { const ctx = onRed(); drawElements(ctx, { width: W, height: H }, [bubble({ showTail: false, ...props })]); return ctx; };
     expectColour(edge({ outline: "thick", outlineColour: "#0000ff" }), 80, 72, [0, 0, 255]);   // just under the bottom edge
+    expectColour(edge({ outline: "thick" }), 80, 75, RED);                                     // the thicker two reach further out
+    expectColour(edge({ outline: "super", outlineColour: "#0000ff" }), 80, 75, [0, 0, 255]);
     expectColour(edge({ outline: "none" }), 80, 71, RED);
     expectColour(edge({ outline: "none" }), 80, 68, WHITE);
   });

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>D4 Keeping tweaks · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step D4 · Part 8b Design system page</p>
+  <h1>Keeping tweaks, and handing them over</h1>
+  <p class="intro">Tweaks made in the token panel on <a href="/design"><code>/design</code></a> now stay in the browser, through reloads, until <strong>Reset all</strong>. <strong>Copy changes</strong> puts them on the clipboard as a message to paste into the chat with Claude, which makes them permanent in the code.</p>
+
+  <h2>What it does</h2>
+  <ul>
+    <li><strong>Kept until Reset all:</strong> every tweak is saved as it's made and comes back after a reload. The count at the top covers both themes; the Tokens button shows it while the panel is closed. Reset all (asks first) clears them in both themes.</li>
+    <li><strong>Copy changes</strong> copies, for example:
+<pre>Design-system tweaks for stop-motion-studio: please make these permanent in
+src/styles/globals.scss (light theme in :root, dark theme in the prefers-color-scheme block),
+and in src/design-system/tokens.ts, so the token test keeps passing:
+- --color-border (light): #b5ab9b -> #9d927f   (outlines of panels, controls and cards)
+- --radius-small (light and dark): 0.625rem -> 0.5rem   (buttons, fields, tabs)</pre>
+      Each line: the token, which theme, its value and the new one, and what it's for. Only real changes: a tweak set back to the token's value is left out.</li>
+    <li><strong>Which theme a line is for</strong> follows how <code>globals.scss</code> works: a token the dark theme doesn't override has one value for both, so tweaking it in light changes both ("light and dark"); tweaking it in dark adds a dark override ("dark, a new dark override").</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>The page's own storage key</strong> (<code>stop-motion-studio:design-system-tweaks</code>), read through a small store, not the studio's <code>remembered.ts</code>: the page stays stand-alone. Anything odd in storage is ignored.</li>
+    <li><strong>Nothing is written to the code by the page.</strong> The permanent change is made from the message, in the chat; then Reset all clears the tweaks that are no longer needed.</li>
+    <li><strong>The message is a pure function</strong> (<code>changes.ts</code>), the one thing here with a unit test.</li>
+  </ul>
+
+  <h2>Files in this step</h2>
+  <p><code>src/design-system/changes.ts</code>, <code>changes.test.ts</code>, <code>tweaks.ts</code>, <code>TokenPanel.tsx</code>, <code>panelStyles.ts</code>; <code>e2e/design.spec.ts</code>; <code>ROADMAP.md</code>; <code>public/steps/d4-design-keep.html</code>, <code>d3-design-panel.html</code> (next link), <code>index.html</code>.</p>
+  <p><strong>Tests added:</strong> 2 unit tests (the message: every kind of change, and nothing for no change); 1 end-to-end (kept after a reload, Copy changes gives the message, Reset all clears it).</p>
+
+  <nav class="pager">
+    <a href="d3-design-panel.html">Previous: D3 · The floating tweak panel</a>
+    <span>Next: 25 · GIF export</span>
+  </nav>
+</main>
+</body>
+</html>

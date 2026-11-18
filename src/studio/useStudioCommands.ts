@@ -1,6 +1,6 @@
 "use client";
 
-import { deleteFrames, duplicateFrames, reorderFrames, setAdjusts, setElements, setElementsOf, setFps, setHold, setOverlays, setSafeMargin, setTransforms, type Command } from "@/core/commands";
+import { deleteFrames, duplicateFrames, nudgeFrames, reorderFrames, setAdjusts, setElements, setElementsOf, setFps, setHold, setOverlays, setSafeMargin, setTransforms, type Command } from "@/core/commands";
 import type { Adjust, Element, Overlay, Transform } from "@/core/model";
 import { editorStore } from "@/store/useEditor";
 import type { HoldChange } from "./timeline/useResize";
@@ -25,6 +25,7 @@ export function useStudioCommands(projectId: string | null, run: (command: Comma
     },
     resizePictures: (changes: HoldChange[]) => on((id) => setHold(id, changes)),
     reorderPictures: (before: string[], after: string[], moved: string[]) => on((id) => reorderFrames(id, before, after, moved)),
+    nudgePictures: (moved: string[], direction: -1 | 1) => on((id) => nudgeFrames(id, moved, direction)),
     transformPictures: (changes: TransformChange[], label: string) => on((id) => setTransforms(id, changes, label)),
     adjustPictures: (changes: AdjustChange[], label: string) => on((id) => setAdjusts(id, changes, label)),
     setObjects: (frameId: string, from: readonly Element[], to: readonly Element[], label: string) => on((id) => setElements(id, frameId, from, to, label)),

@@ -31,9 +31,9 @@ describe("shapes", () => {
   });
 
   it("keep their settings, and replace values that make no sense", () => {
-    const set = { form: "ellipse", fill: NO_FILL, outline: "thick", outlineColour: "#1d4ed8" };
+    const set = { form: "ellipse", fill: NO_FILL, outline: "super", outlineColour: "#1d4ed8" };
     expect(shapeProps({ props: set })).toEqual(set);
-    expect(shapeProps({ props: { form: "star", fill: 3, outline: "huge", outlineColour: "#12" } })).toEqual(SHAPE_DEFAULTS);
+    expect(shapeProps({ props: { form: "star", fill: 3, outline: "giant", outlineColour: "#12" } })).toEqual(SHAPE_DEFAULTS);
   });
 });
 

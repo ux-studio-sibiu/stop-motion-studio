@@ -19,7 +19,7 @@ export function fontRange(frameHeight: number, size: TextSize = "medium"): { max
 }
 
 // An outline's thickness in px for a frame this tall: medium is 0.4% of its height (at least 2 px).
-const OUTLINE: Readonly<Record<OutlineWidth, number>> = { none: 0, thin: 0.5, medium: 1, thick: 2 };
+const OUTLINE: Readonly<Record<OutlineWidth, number>> = { none: 0, thin: 0.5, medium: 1, thick: 2, extra: 3.5, super: 5 };
 export function outlineWidth(outline: OutlineWidth, frameHeight: number): number {
   return Math.max(2, frameHeight * 0.004) * OUTLINE[outline];
 }

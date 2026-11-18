@@ -1,0 +1,213 @@
+// The design system page (Part 8b): its own layout only. The specimens are styled by the studio's
+// stylesheets; nothing here changes how a specimen looks, except to give it room.
+.nsc-design {
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-3) 6rem;
+
+  .ds-masthead { margin-bottom: var(--space-4); }
+  .ds-eyebrow { margin: 0; color: var(--color-muted); font-size: 0.875rem; font-weight: 700; }
+  h1 { margin: 0.25rem 0 0.5rem; font-size: 2.25rem; font-weight: 900; }
+  .ds-lede { max-width: 40rem; margin: 0 0 var(--space-3); color: var(--color-muted); }
+
+  .ds-contents {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-2) 0;
+    background: var(--color-bg);
+
+    a {
+      padding: 0.25rem 0.75rem;
+      border: var(--line-width) solid var(--color-border);
+      border-radius: 999px;
+      color: var(--color-ink);
+      font-size: 0.875rem;
+      font-weight: 700;
+      text-decoration: none;
+
+      &:hover { border-color: var(--color-focus); }
+    }
+  }
+
+  .ds-section {
+    padding-top: var(--space-4);
+    scroll-margin-top: 3.5rem;   // clear of the sticky contents
+  }
+
+  .ds-section-title { margin: 0 0 0.25rem; font-size: 1.5rem; font-weight: 900; }
+  .ds-intro { margin: 0 0 var(--space-3); color: var(--color-muted); }
+
+  .ds-specimens {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+    gap: var(--space-3);
+  }
+
+  .ds-specimen {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius);
+    background: var(--color-faint);
+
+    &.is-wide { grid-column: 1 / -1; }
+
+    figcaption {
+      display: grid;
+      gap: 0.125rem;
+      padding: var(--space-2) var(--space-3);
+      border-top: 1px solid var(--color-line);
+      background: var(--color-surface);
+    }
+  }
+
+  .ds-stage {
+    display: grid;
+    align-content: center;
+    gap: var(--space-3);
+    min-width: 0;
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .ds-label { font-size: 0.9375rem; font-weight: 800; }
+  .ds-note { color: var(--color-muted); font-size: 0.8125rem; }
+
+  .ds-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+  .ds-stack { display: grid; gap: var(--space-3); }
+
+  .ds-swatch {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+  }
+
+  .ds-length {
+    display: block;
+    height: 1rem;
+    background: var(--color-focus);
+    border-radius: 2px;
+
+    &.is-corner { width: 2.5rem; height: 2.5rem; background: none; border-top: 3px solid var(--color-focus); border-left: 3px solid var(--color-focus); }
+    &.is-line { width: 2.5rem; }
+  }
+
+  .ds-name { font-size: 0.8125rem; font-weight: 700; }
+  .ds-value { color: var(--color-muted); font-size: 0.75rem; }
+  .ds-sample { display: grid; place-items: center; width: 2.5rem; font-weight: 800; line-height: 1; }
+  .ds-shadow { width: 2.5rem; height: 2.5rem; border-radius: var(--radius-small); background: var(--color-surface); }
+
+  .ds-type p { margin: 0 0 0.25rem; }
+
+  // The token board: the groups flow into columns; each token a row of its look and its name.
+  .ds-specimen.is-board { overflow: visible; }   // tooltips may reach past the card
+  .ds-specimen.is-board figcaption { border-radius: 0 0 var(--radius) var(--radius); }
+
+  .ds-token-board { columns: 14rem; column-gap: var(--space-4); }
+
+  .ds-token-group {
+    break-inside: avoid;
+    margin-bottom: var(--space-4);
+
+    h3 { margin: 0 0 var(--space-2); color: var(--color-muted); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+
+    .ds-token {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      min-height: 2.75rem;
+      padding: 0.25rem;
+      border-radius: var(--radius-small);
+      outline: none;
+
+      > :first-child { flex: none; }
+
+      &:hover,
+      &:focus-visible { background: var(--color-surface); }
+      &:focus-visible { box-shadow: 0 0 0 2px var(--color-focus); }
+    }
+  }
+
+  // The tooltip box: the value and what the token is for.
+  .ds-tip {
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    z-index: 20;
+    display: none;
+    width: max-content;
+    max-width: 18rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-floating);
+    color: var(--color-ink);
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    pointer-events: none;
+
+    .ds-value { display: block; margin-bottom: 0.125rem; color: var(--color-ink); font-size: 0.8125rem; font-weight: 700; }
+    .ds-tip-note { display: block; color: var(--color-muted); }
+  }
+
+  .ds-token:hover .ds-tip,
+  .ds-token:focus-visible .ds-tip { display: block; }
+}
+
+// A specimen in the studio's scope: .nsc-studio, so the studio's styles apply, but not its
+// full-screen grid, height, padding, background texture or fade-in.
+.nsc-design .nsc-studio.is-specimen {
+  display: block;
+  height: auto;
+  padding: 0;
+  overflow: visible;
+  background: none;
+  opacity: 1;
+
+  &::before { display: none; }
+
+  // Room for things the studio lays out with its grid.
+  // The side panel's scope (its field and swatch styles) without its frame.
+  .ds-loose { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
+  .ds-in-place { position: relative; max-width: 100%; }   // the floating panel, not fixed to the window
+  .ds-stage-box { height: 22rem; }
+  .ds-stage-box.is-small { height: 14rem; }
+  .ds-picture { position: absolute; inset: 0; }
+  .ds-panel-frame { display: grid; grid-template-columns: 22rem; justify-content: center; height: 26rem; }
+  .ds-scroller { display: grid; height: 14rem; margin-left: 0; }
+  .ds-timeline { height: var(--timeline-height); margin: 3.5rem 0 0;   // room for its tool tab, which sticks up
+    border-bottom: var(--line-width) solid var(--color-border);
+    border-radius: 0 var(--radius) var(--radius) var(--radius);   // square top-left, where the tab sits, as in the studio
+  }
+  .ds-menu-room { display: grid; align-content: end; min-height: 17rem; }   // the menus open upwards
+  .ds-inline { position: static; width: auto; translate: none; }
+  .ds-capture { display: grid; justify-items: center; }
+  .ds-flat { padding-top: 0; border-top: 0; }
+}
+
+.nsc-design .ds-cards { margin: 0; padding: 0; list-style: none; }
+
+// The Words section's do's and don'ts: a tick or a cross, then the rule.
+.ds-rules {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 26rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+  line-height: 1.4;
+
+  li { display: grid; grid-template-columns: 1rem 1fr; gap: var(--space-2); align-items: start; }
+  svg { margin-top: 0.15rem; }
+  &.is-do svg { color: var(--color-go); }
+  &.is-dont svg { color: var(--color-danger); }
+}

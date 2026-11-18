@@ -15,7 +15,6 @@ test("each picture is as wide as it lasts, and the ruler counts seconds", async 
   // Labels sit one second (160 px) apart.
   const [zero, one] = await Promise.all([0, 1].map((i) => page.locator(".ruler-label").nth(i).boundingBox()));
   expect((one?.x ?? 0) - (zero?.x ?? 0)).toBeCloseTo(160, 0);
-  await expect(page.locator(".timeline-tools .duration")).toContainText("0.4 s");   // 3 ticks at 8 fps
 });
 
 test("clicking selects a picture; arrow keys, Home and End move the selection", async ({ studio, page }) => {
@@ -68,7 +67,6 @@ test("zooming changes how wide a second is, not how long pictures last", async (
   await page.getByRole("button", { name: "Zoom out" }).click();
   await page.getByRole("button", { name: "Zoom out" }).click();
   await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(13.3, 0);   // 160 / 1.5 / 8
-  await expect(page.locator(".timeline-tools .duration")).toContainText("0.4 s");      // still 3 ticks long
 });
 
 test("each animation remembers its own zoom and scroll position after a reload", async ({ studio, page }) => {

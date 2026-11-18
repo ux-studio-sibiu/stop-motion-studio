@@ -16,7 +16,7 @@ type Gesture = { kind: Kind; corner?: Corner; pointerId: number; start: Point; b
 // drawn in project pixels (the SVG's viewBox). The same for every kind of object, wherever it
 // lives: click one to pick it, drag it to move it, the corners to size it, the round handle to turn
 // it; Delete removes it, arrows nudge it. A speech bubble also has a dot for its tail, and Enter or
-// a double-click goes to the text in the Objects tab.
+// a double-click goes to the text in the floating settings.
 // Like moving a picture (step 18), a gesture is a preview in the store until it ends, then one
 // command saves it, so each is one undo step.
 export function ObjectEditor({ saves }: { saves: ObjectSaves }) {

@@ -1,5 +1,6 @@
 @use "@/styles/breakpoints" as *;
 @use "./styles/side-panel";
+@use "./styles/fields";
 @use "./styles/stage";
 @use "./styles/playback";
 @use "./timeline/timeline";
@@ -86,7 +87,7 @@
     min-width: 0;
     margin: 0;
     overflow: hidden;
-    font-size: 1.5rem;
+    font-size: var(--text-heading);
     font-weight: 800;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -113,11 +114,11 @@
   border: var(--line-width) solid var(--color-border);
   border-radius: var(--radius);
   background: var(--color-surface);
-  box-shadow: 0 6px 20px rgb(0 0 0 / 0.15);
+  box-shadow: var(--shadow-floating);
   color: var(--color-ink);
 
   > svg { flex: none; color: var(--color-muted); }
-  p { flex: 1; margin: 0; font-size: 0.9375rem; }
+  p { flex: 1; margin: 0; font-size: var(--text-small); }
 
   &.is-full {
     border-color: var(--color-accent);

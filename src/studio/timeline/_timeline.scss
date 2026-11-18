@@ -1,5 +1,4 @@
 @use "@/styles/breakpoints" as *;
-@use "@/styles/scrollbar" as *;
 
 // The timeline: tools, ruler, playhead, the track, dragging and the next-picture slot.
 .nsc-studio {
@@ -12,7 +11,7 @@
     gap: var(--space-1);
     min-width: 0;
     margin-bottom: calc(-1 * var(--space-3));
-    padding: var(--space-2) var(--space-3) 0;
+    padding: var(--space-2) 0 0;   // no side padding: the pictures scroll right up to the borders
     background: var(--color-surface);
     border: var(--line-width) solid var(--color-border);
     border-bottom: none;
@@ -21,18 +20,11 @@
 
   .timeline-tools {
     display: flex;
+    padding: 0 var(--space-3);   // on phones, a row inside the timeline (the tab sets its own)
     align-items: center;
     gap: var(--space-1);
 
     .tools-gap { width: var(--space-2); }
-
-    .duration {
-      margin-left: auto;
-      color: var(--color-muted);
-      font-size: 0.875rem;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-    }
   }
 
   // From tablet width on, the tools are a tab on the timeline's top-left edge, as wide as its
@@ -59,8 +51,6 @@
       border-bottom: none;
       border-radius: var(--radius) var(--radius) 0 0;
 
-      .duration { margin-left: var(--space-3); }
-
       // The inside corner where the tab's right side meets the timeline's top edge: a small
       // square just outside the tab, filled with the panel colour except for a quarter circle
       // (centred on its top-right corner), with a 1 px ring in the border colour along the curve.
@@ -80,8 +70,14 @@
   }
 
   // Ruler and track scroll together; both are as wide as their content.
+  // A gap before the first picture and after the last; scrolled, the pictures still pass under
+  // the borders. The playhead (positioned from the padding edge) adds it, and so do the scroll
+  // sums that turn a scroll position into a time (timelineInset).
   .timeline-scroll {
+    --timeline-inset: var(--space-3);
+
     position: relative;   // for the playhead
+    padding: 0 var(--timeline-inset);
     display: grid;
     grid-template-rows: 1.25rem minmax(0, 1fr) auto;   // ruler, pictures, objects in time
     align-content: stretch;
@@ -91,7 +87,6 @@
     overflow-x: scroll;
     overflow-y: hidden;
     overscroll-behavior-x: contain;
-    @include soft-scrollbar;   // the same as the side panel's
   }
 
   // The playhead: a line over ruler and track, with a knob on the ruler.
@@ -117,7 +112,9 @@
       transform: translateX(-50%);
     }
 
-    &:not(.is-playing) { opacity: 0.6; }
+    // Stopped, it stands in the gap before the picture Play starts from (centred in the 5 px gap
+    // at the end of the picture before), not on that picture's edge.
+    &:not(.is-playing) { transform: translateX(-2.5px); }
   }
 
   // One faint line per mark (every second, finer when zoomed in), drawn as a repeating
@@ -127,10 +124,10 @@
     min-width: 100%;
     cursor: col-resize;   // drag along it to scrub
     touch-action: none;
-    background-image: linear-gradient(to right, var(--color-line) 1px, transparent 1px);
+    background-image: linear-gradient(to right, #999 1px, transparent 1px);   // the second marks
     background-repeat: repeat-x;
     background-position: left bottom;
-    border-bottom: 1px solid var(--color-line);
+    border-bottom: 1px solid #999;
   }
 
   .ruler-label {
@@ -138,7 +135,7 @@
     top: 0;
     padding-left: 0.25rem;
     color: var(--color-muted);
-    font-size: 0.6875rem;
+    font-size: var(--text-tiny);
     font-weight: 700;
     line-height: 1;
     opacity: 0.8;
@@ -185,7 +182,7 @@
     display: inline-block;
     padding: 0 var(--space-2);
     color: var(--color-muted);
-    font-size: 0.75rem;
+    font-size: var(--text-caption);
     font-weight: 700;
     line-height: var(--lane-height);
     pointer-events: none;
@@ -199,15 +196,15 @@
     min-width: 6px;
     padding: 0 0.5rem;
     overflow: hidden;
-    border: 2px solid color-mix(in srgb, var(--color-focus) 55%, transparent);
+    border: 2px solid var(--color-border);   // plain, like the controls; selected, it turns green
     border-radius: 6px;
-    background: color-mix(in srgb, var(--color-focus) 22%, var(--color-surface));
+    background: var(--color-surface);
     color: var(--color-ink);
     cursor: grab;
     touch-action: none;   // a finger drag moves the bar instead of scrolling the timeline
 
     &:active { cursor: grabbing; }
-    &.is-selected { border-color: var(--color-focus); background: color-mix(in srgb, var(--color-focus) 38%, var(--color-surface)); }
+    &.is-selected { border-color: var(--color-go); background: color-mix(in srgb, var(--color-go) 38%, var(--color-surface)); }
     &:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 1px; }
 
     .bar-label {
@@ -215,7 +212,7 @@
       align-items: center;
       gap: 0.25rem;
       height: 100%;
-      font-size: 0.75rem;
+      font-size: var(--text-caption);
       font-weight: 700;
       white-space: nowrap;
       pointer-events: none;
@@ -235,7 +232,7 @@
 
       &.is-start { left: 0; }
       &.is-end { right: 0; }
-      &:hover { background: color-mix(in srgb, var(--color-focus) 45%, transparent); }
+      &:hover { background: color-mix(in srgb, var(--color-border) 25%, transparent); }
     }
   }
 
@@ -258,7 +255,7 @@
     width: 4.5rem;
     aspect-ratio: 16 / 9;
     border-radius: 6px;
-    box-shadow: 0 6px 18px rgb(0 0 0 / 0.3), 0 0 0 2px var(--color-focus);
+    box-shadow: var(--shadow-dragged), 0 0 0 2px var(--color-focus);
     transform: translate(-50%, -70%) rotate(-3deg);
     pointer-events: none;
     z-index: 50;
@@ -282,7 +279,7 @@
       border-radius: 999px;
       background: var(--color-focus);
       color: var(--color-surface);
-      font-size: 0.8125rem;
+      font-size: var(--text-label);
       font-weight: 800;
       line-height: 1.5rem;
       text-align: center;
@@ -305,6 +302,6 @@
     &:only-child { width: auto; margin-left: 0; padding: 0 var(--space-4); }
   }
 
-  .next-hint { font-size: 0.875rem; font-weight: 700; }
+  .next-hint { font-size: var(--text-hint); font-weight: 700; }
 
 }

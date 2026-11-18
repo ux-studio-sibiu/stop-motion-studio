@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>D1 Design gallery · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step D1 · Part 8b Design system page</p>
+  <h1>The design gallery page</h1>
+  <p class="intro">A new page, <a href="/design"><code>/design</code></a>, in development only: every part of the studio's interface, as it looks in the studio, in one long scrolling gallery, with nothing that does anything. It's the start of the design system: the next steps add the token list (D2), the floating panel to tweak them (D3), and keeping tweaks and copying them into the chat (D4).</p>
+
+  <h2>What's on it</h2>
+  <ul>
+    <li><strong>Tokens:</strong> every colour with its value (light or dark, whichever shows), spacing, corners and lines, sizes, type.</li>
+    <li><strong>Controls:</strong> icon buttons in each state, small ones, the capture button, fields, colour swatches, the pencil's tools and widths.</li>
+    <li><strong>Side panel:</strong> the real <code>SidePanel</code> with its tabs, and its scrollbar (the browser's own, inside the panel's rounded corners).</li>
+    <li><strong>Objects:</strong> the tiles, and the real settings of a speech bubble, a text and a shape.</li>
+    <li><strong>Stage:</strong> the stage with the safe zone and a picked object's handles; the camera message.</li>
+    <li><strong>Timeline:</strong> tools, ruler, pictures (selected, on the stage, long), the grip and its bubble, objects in time in two rows.</li>
+    <li><strong>Bars and menus:</strong> the toolbar, the playback bar with its menu open, the storage notices, the camera panel's button. <strong>Projects:</strong> a project card.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>Stand-alone:</strong> everything is in <code>src/design-system/</code> (<code>DesignPage</code>, <code>Specimen</code>, <code>_design.scss</code>) plus the route <code>src/app/design/</code>. It uses no store, storage or camera, and nothing in the studio imports it; deleting the folder and the route removes the page.</li>
+    <li><strong>The studio's own styles:</strong> the real components where they take only props (the side panel, swatches, tiles, the settings of each kind), the same markup and class names otherwise. The page's own stylesheet only lays it out. A specimen sits in <code>.nsc-studio.is-specimen</code>, which keeps the studio's scope but drops its full-screen grid, texture and fade-in.</li>
+    <li><strong>Development only:</strong> the build has <code>/design</code> as a 404 (checked: no gallery in <code>out/design.html</code>).</li>
+    <li><strong>Light testing, on purpose</strong> (your call: a utility page, fast changes): one smoke test, <code>e2e/design.spec.ts</code>: every section shows, with no errors. The rest is checked by eye.</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li>Specimens that repeat a component's markup must be updated by hand when the component's markup changes. D2's token list will be held to the SCSS by a test; the markup isn't.</li>
+    <li>Token values are read once and again when the light/dark scheme changes; D3 will refresh them as they're tweaked.</li>
+  </ul>
+
+  <h2>Files in this step</h2>
+  <p><code>src/app/design/page.tsx</code>; <code>src/design-system/DesignPage.tsx</code>, <code>Specimen.tsx</code>, <code>_design.scss</code>; <code>e2e/design.spec.ts</code>; <code>CLAUDE.md</code> (the spec map); <code>ROADMAP.md</code>; <code>public/steps/d1-design-gallery.html</code>, <code>index.html</code>.</p>
+  <p><strong>Tests added:</strong> 1 end-to-end smoke test. No unit tests: nothing here is logic.</p>
+
+  <nav class="pager">
+    <a href="24b-drawing.html">Previous: 24b · Free drawing</a>
+    <a href="d2-design-tokens.html">Next: D2 · One list of tokens</a>
+  </nav>
+</main>
+</body>
+</html>

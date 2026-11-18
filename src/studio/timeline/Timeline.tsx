@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
 import { Camera, ChevronLeft, ChevronRight, CopyPlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
-import { formatSeconds, formatTicks, inOrder, moveIds, objectLabel, neighbourAfterDelete, nudgeGap, pxPerTick, rulerScale, sameOrder, ticksToSeconds, totalTicks } from "@/core/model";
+import { formatSeconds, formatTicks, inOrder, objectLabel, neighbourAfterDelete, pxPerTick, rulerScale, ticksToSeconds, totalTicks } from "@/core/model";
 import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, selectedOverlayId, withPreview } from "@/store/editorStore";
 import { editorStore, useEditor, useShownFrames, useShownOverlays } from "@/store/useEditor";
 import { deleteOverlay, duplicateOverlayById, type SaveOverlays } from "../overlayEditing";
@@ -20,6 +20,7 @@ type TimelineProps = {
   onDuplicate: (frameIds: readonly string[]) => void;
   onResize: (changes: HoldChange[]) => Promise<boolean>;
   onReorder: (before: string[], after: string[], moved: string[]) => void;
+  onNudge: (moved: string[], direction: -1 | 1) => void;   // Ctrl+arrow: one place along, from the saved order
   onOverlays: SaveOverlays;   // the overlay track's changes (step 24)
 };
 
@@ -32,7 +33,7 @@ type TimelineProps = {
 //   useReorder            dragging pictures to a new place
 //   useScrub              the playhead, scrubbing along the ruler
 //   OverlayTrack          the objects that live in time, under the pictures (step 24)
-export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onOverlays }: TimelineProps) {
+export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, onOverlays }: TimelineProps) {
   const shown = useShownFrames();   // with any move, brightness or object change not saved yet, for the thumbnails
   const holdPreview = useEditor((state) => state.holdPreview);
   const frames = useMemo(() => withPreview(shown, "hold", holdPreview), [shown, holdPreview]);   // and any resize in progress
@@ -104,13 +105,9 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onOverlay
   const duplicateSelected = () => (overlay ? duplicateOverlayById(overlay.id, onOverlays) : duplicateSelection());
   const deleteSelected = () => (overlay ? deleteOverlay(overlay.id, onOverlays) : deleteSelection());
 
-  // Ctrl/Cmd + arrow: the selected pictures one place along.
-  const moveSelection = (direction: -1 | 1) => {
-    if (selection.length === 0) return;
-    const moved = inOrder(order, selection);
-    const after = moveIds(order, moved, nudgeGap(order, moved, direction));
-    if (!sameOrder(order, after)) onReorder(order, after, moved);
-  };
+  // Ctrl/Cmd + arrow: the selected pictures one place along. The command works out the place
+  // from the saved order when it runs, so quick presses add up even before the screen catches up.
+  const moveSelection = (direction: -1 | 1) => { if (selection.length > 0) onNudge(inOrder(order, selection), direction); };
 
   const step = (direction: -1 | 1) => { editorStore.getState().pause(); select.moveFocus(direction, { wrap: true }); };
 
@@ -157,11 +154,10 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onOverlay
         <button type="button" className="icon-button is-small" aria-label={`Delete ${pictures}`} title={`Delete ${pictures} (Delete key)`} disabled={count === 0} onClick={deleteSelected}><Trash2 size={20} /></button>
         <button type="button" className="icon-button is-small" aria-label="Previous picture" title="Previous picture (←)" disabled={order.length === 0} onClick={() => step(-1)}><ChevronLeft size={20} /></button>
         <button type="button" className="icon-button is-small" aria-label="Next picture" title="Next picture (→)" disabled={order.length === 0} onClick={() => step(1)}><ChevronRight size={20} /></button>
-        <span className="duration" aria-label="Length of the animation">{seconds < 10 ? `${seconds.toFixed(1)} s` : formatSeconds(seconds)}</span>
       </div>
 
       <div ref={scroller} className="timeline-scroll">
-        {scrub.playFrom !== undefined && <div className={`playhead${scrub.isPlaying ? " is-playing" : ""}`} aria-hidden="true" style={{ left: scrub.playFrom * tickWidth }} />}
+        {scrub.playFrom !== undefined && <div className={`playhead${scrub.isPlaying ? " is-playing" : ""}`} aria-hidden="true" style={{ left: `calc(var(--timeline-inset) + ${scrub.playFrom * tickWidth}px)` }} />}
         <div className="ruler" aria-hidden="true" title="Drag along here to scrub through the animation" style={{ width: rulerSeconds * zoom, backgroundSize: `${markSeconds * zoom}px 100%` }} {...scrub.rulerHandlers}>
           {labels.map((at) => <span key={at} className="ruler-label" style={{ left: at * zoom }}>{formatSeconds(at)}</span>)}
         </div>

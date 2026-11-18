@@ -15,7 +15,6 @@
   // Play: a button like See-through, with a green play icon, joined to the arrow for its
   // options, which open above, from the left.
   .nsc-playback-options {
-    .play svg { color: var(--color-go); }
 
     // "Play" and "Pause" stacked in one grid cell, the other one invisible but still taking room.
     .play-label {
@@ -32,7 +31,7 @@
       gap: var(--space-3);
       color: var(--color-muted);
       font-weight: 600;
-      font-size: 0.8125rem;
+      font-size: var(--text-label);
 
       input { flex: 1; min-width: 0; }
     }
@@ -45,6 +44,25 @@
 
     .toggle { border-top-right-radius: 0; border-bottom-right-radius: 0; }
     .more { min-width: 2.5rem; padding-inline: var(--space-1); margin-left: calc(-1 * var(--line-width)); border-top-left-radius: 0; border-bottom-left-radius: 0; }
+    .more svg { width: 1.5rem; height: 1.5rem; stroke-width: 2.75; }   // the caret: larger and bolder than an icon's 20 px, 2 px
+    // Filled halves (green or red): a clear, nearly white line between them, or it would vanish.
+    // Drawn on its own, inside the top and bottom borders, not as a border: a border would meet
+    // them on a diagonal at the corners and blend into them.
+    .toggle.is-go + .more.is-go,
+    .toggle.is-primary + .more.is-primary {
+      position: relative;
+
+      &::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: calc(-1 * var(--line-width) - 1px);   // centred on the seam between the halves
+        width: 3px;
+        background: color-mix(in srgb, var(--color-on-strong) 80%, transparent);
+        pointer-events: none;
+      }
+    }
 
     .options {
       position: absolute;
@@ -56,7 +74,7 @@
       background: var(--color-surface);
       border: var(--line-width) solid var(--color-border);
       border-radius: var(--radius);
-      box-shadow: 0 8px 24px rgb(0 0 0 / 0.15);
+      box-shadow: var(--shadow-floating);
       z-index: 20;
     }
 
@@ -66,11 +84,11 @@
       gap: var(--space-2);
       padding-block: var(--space-3);
       font-weight: 700;
-      font-size: 0.875rem;
+      font-size: var(--text-hint);
 
       & + .option { border-top: 1px solid var(--color-line); }
 
-      input[type="range"] { width: 100%; margin: 0; accent-color: var(--color-focus); }
+      input[type="range"] { width: 100%; margin: 0; accent-color: var(--color-go); }
     }
 
     .option.is-check {
@@ -78,7 +96,7 @@
       align-items: center;
       gap: var(--space-3);
 
-      input { width: 1.25rem; height: 1.25rem; margin: 0; accent-color: var(--color-focus); }
+      input { margin: 0; }
     }
 
   }
