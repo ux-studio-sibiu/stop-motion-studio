@@ -73,3 +73,25 @@ test("the quality slider makes the file smaller when the pictures barely change,
   expect(medium.gif.delays).toEqual(high.gif.delays);   // the same pictures, as long
   expect(medium.bytes).toBeLessThan(high.bytes * 0.8);   // the copies stored as "nothing changed"
 });
+
+// Save as video (step 26): the file is read back with Mediabunny's own reader.
+test("Save as video downloads the animation: its full exported size, as long as it plays, a frame per change", async ({ studio, page }) => {
+  const { ALL_FORMATS, BufferSource, Input } = await import("mediabunny");
+  await expect(page.getByRole("button", { name: "Save as video" })).toBeDisabled();   // nothing to save yet
+  await studio.seedPictures(3);   // one tick each at 8 per second: 0.375 s
+  await studio.picture(2).click();
+  for (let i = 0; i < 3; i++) await page.keyboard.press("]");   // picture 2 held for 4 ticks: one frame, half a second
+
+  const downloading = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Save as video" }).click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toMatch(/\.(mp4|webm)$/);
+  await expect(page.getByRole("status").filter({ hasText: /^Saved .*\.(mp4|webm)$/ })).toBeVisible();
+
+  const bytes = await readFile((await download.path())!);
+  using input = new Input({ formats: ALL_FORMATS, source: new BufferSource(bytes) });
+  const track = (await input.getPrimaryVideoTrack())!;
+  expect([track.displayWidth, track.displayHeight]).toEqual([1208, 680]);   // inside the safe zone, 16:9
+  expect(await input.computeDuration()).toBeCloseTo(0.75, 2);              // 1 + 4 + 1 ticks at 8 per second
+  expect((await track.computePacketStats()).packetCount).toBe(3);
+});

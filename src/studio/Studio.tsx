@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Camera, ChevronLeft, Image as ImageIcon, Pencil, Redo2, Shapes, Undo2 } from "lucide-react";
 import { CameraPanel } from "@/features/camera/CameraPanel";
 import { GifExportMenu } from "@/features/gif-export/GifExportMenu";
+import { VideoExportButton } from "@/features/video-export/VideoExportButton";
 import { DrawLayer } from "@/features/draw/DrawLayer";
 import { DrawPanel } from "@/features/draw/DrawPanel";
 import { ObjectEditor } from "@/features/objects/ObjectEditor";
@@ -95,6 +96,7 @@ export function Studio() {
           <button type="button" className="icon-button" aria-label="Undo" title={history.undoLabel ? `Undo: ${history.undoLabel}` : "Nothing to undo"} disabled={!history.canUndo} onClick={history.undo}><Undo2 size={24} /></button>
           <button type="button" className="icon-button" aria-label="Redo" title={history.redoLabel ? `Redo: ${history.redoLabel}` : "Nothing to redo"} disabled={!history.canRedo} onClick={history.redo}><Redo2 size={24} /></button>
           <GifExportMenu />
+          <VideoExportButton />
         </div>
       </header>
 

@@ -1,37 +1,21 @@
-import { frameIndexAt, frameStarts, overlayEnd, totalTicks, activeOverlays, type Frame, type Overlay } from "../model";
+import type { Frame, Overlay } from "../model";
+import { exportFileName, exportSegments, type Segment } from "./segments";
 import type { Rect } from "../render/fit";
 
 // GIF export (step 25), the parts that are plain maths: which GIF frames the animation becomes,
 // how long each shows, and how big the file's pictures are. The encoding itself is an adapter
 // (adapters/export/gif).
 
-// One picture of the GIF: the animation as it is from `tick`, for `ticks` ticks, shown for
-// `delay` hundredths of a second (the unit GIF counts in).
-export type GifFrame = { tick: number; ticks: number; delay: number };
+// One picture of the GIF: the animation as it is from `tick`, for `ticks` ticks (an export segment),
+// shown for `delay` hundredths of a second (the unit GIF counts in).
+export type GifFrame = Segment & { delay: number };
 
-// A new GIF frame only where what's on screen changes: a new picture, or an overlay starting or
-// ending. A picture held for 4 ticks with nothing changing is one GIF frame, 4 ticks long, so the
-// file stays small. Delays are rounded so they add up to the animation's real length (rounding
-// each one alone would drift: 3 ticks at 8 fps are 37.5 cs, which 38 + 38 + 38... would stretch).
+// The GIF's pictures: one per export segment (exportSegments: only where the screen changes).
+// Delays are rounded so they add up to the animation's real length (rounding each one alone
+// would drift: 3 ticks at 8 fps are 37.5 cs, which 38 + 38 + 38... would stretch).
 export function gifFrames(frames: readonly Pick<Frame, "hold">[], overlays: readonly Pick<Overlay, "id" | "start" | "length">[], fps: number): GifFrame[] {
-  const total = totalTicks(frames);
-  if (total <= 0) return [];
-  const cuts = new Set<number>([0, ...frameStarts(frames)]);
-  for (const overlay of overlays) {
-    cuts.add(overlay.start);
-    cuts.add(overlayEnd(overlay));
-  }
-  const starts = [...cuts].filter((tick) => tick >= 0 && tick < total).sort((a, b) => a - b);
-
-  // What's on screen at a tick: its picture and the overlays showing then.
-  const shown = (tick: number) => `${frameIndexAt(frames, tick)}|${activeOverlays(overlays as Overlay[], tick).map((overlay) => overlay.id).join(",")}`;
-  const kept = starts.filter((tick, index) => index === 0 || shown(tick) !== shown(starts[index - 1]));
-
   const cs = (tick: number) => Math.round((tick * 100) / fps);
-  return kept.map((tick, index) => {
-    const end = kept[index + 1] ?? total;
-    return { tick, ticks: end - tick, delay: cs(end) - cs(tick) };
-  });
+  return exportSegments(frames, overlays).map(({ tick, ticks }) => ({ tick, ticks, delay: cs(tick + ticks) - cs(tick) }));
 }
 
 // Small and medium are a set width; full is the exported part as it is (1208 × 680 for 1280 × 720
@@ -67,8 +51,5 @@ export function gifSize(rect: Pick<Rect, "width" | "height">, size: GifSize): { 
   return { width: even(width), height: even(height) };
 }
 
-// The file's name: the animation's name, without characters file systems refuse.
-export function gifFileName(name: string): string {
-  const clean = name.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().replace(/[. ]+$/, "");
-  return `${clean || "animation"}.gif`;
-}
+// The GIF's file name: the animation's name (exportFileName).
+export const gifFileName = (name: string) => exportFileName(name, "gif");

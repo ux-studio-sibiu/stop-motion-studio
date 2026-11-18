@@ -7,6 +7,7 @@ import { BubbleSettings } from "@/features/objects/BubbleSettings";
 import { SettingsHeader } from "@/features/objects/ObjectSettings";
 import { CameraPanel } from "@/features/camera/CameraPanel";
 import { GifExportMenu } from "@/features/gif-export/GifExportMenu";
+import { VideoExportButton } from "@/features/video-export/VideoExportButton";
 import { ObjectTile } from "@/features/objects/ObjectTile";
 import { ShapeSettings } from "@/features/objects/ShapeSettings";
 import { TextSettings } from "@/features/objects/TextSettings";
@@ -322,6 +323,7 @@ export function DesignPage() {
               <button type="button" className="icon-button" aria-label="Undo"><Undo2 size={24} /></button>
               <button type="button" className="icon-button" aria-label="Redo" disabled><Redo2 size={24} /></button>
               <GifExportMenu />
+              <VideoExportButton />
             </div>
           </header>
         </Specimen>

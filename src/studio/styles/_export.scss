@@ -1,0 +1,41 @@
+// The export buttons in the toolbar (Save as GIF, Save as video: useExport): a green bar fills the
+// button while the file is made, and a short note under it says what happened.
+.nsc-studio {
+  .export-menu {
+    .toggle {
+      position: relative;
+      overflow: hidden;
+      font-variant-numeric: tabular-nums;
+    }
+
+    // How far it got: a green bar along the bottom of the button.
+    .progress {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      height: 0.25rem;
+      background: var(--color-go);
+      transition: width 0.2s linear;
+    }
+
+    // What happened: a small note under the button, for a few seconds.
+    .export-note {
+      position: absolute;
+      top: calc(100% + var(--space-2));
+      right: 0;
+      z-index: 20;
+      width: max-content;
+      max-width: 20rem;
+      margin: 0;
+      padding: var(--space-2) var(--space-3);
+      border: var(--line-width) solid var(--color-border);
+      border-radius: var(--radius-small);
+      background: var(--color-surface);
+      box-shadow: var(--shadow-floating);
+      font-size: var(--text-hint);
+      font-weight: 700;
+
+      &.is-problem { border-color: var(--color-danger); }
+    }
+  }
+}

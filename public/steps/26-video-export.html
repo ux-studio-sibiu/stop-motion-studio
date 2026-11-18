@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>26 Video export · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 26 · Part 9 Export and import</p>
+  <h1>Video export</h1>
+  <p class="intro"><strong>Save as video</strong> in the toolbar, beside Save as GIF, makes a video of the animation and downloads it. It's an <strong>MP4</strong> (H.264) where the browser can make one, otherwise a <strong>WebM</strong> (VP9).</p>
+  <ul>
+    <li>The video is <strong>what's inside the dotted line, at its full size</strong> (1208 × 680 for a 1280 × 720 animation, 16:9). It has every picture for as long as it's held, with its objects and the overlays showing at the time. There's no sound.</li>
+    <li>While it's made, the button shows <strong>how far it got</strong>, and a <strong>cross stops it</strong>, as for the GIF. Afterwards a note says it was saved.</li>
+    <li>Where the browser can make neither format, <strong>there's no button</strong>. The browser is asked (WebCodecs), not guessed from its name.</li>
+  </ul>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><strong>One plan for both exports</strong>, <code>src/core/export/segments.ts</code>: <code>exportSegments</code> cuts the animation where the screen changes (moved out of <code>gifFrames</code>, which now uses it), and <code>exportFileName</code>.</li>
+    <li><strong>The video's timing</strong>, <code>src/core/export/video.ts</code>: <code>videoFrames</code>, one video frame per segment with its start and length in seconds. They're worked out from ticks each time, so they don't drift.</li>
+    <li><strong>Encoding</strong>, <code>src/adapters/export/videoExport.ts</code>, with Mediabunny:
+      <ul>
+        <li><code>videoFormat</code> picks the first of <code>VIDEO_FORMATS</code> (MP4 then WebM) that the browser can encode at this size;</li>
+        <li><code>exportVideo</code> draws each frame through <code>drawExportFrame</code> onto a canvas that a <code>CanvasSource</code> reads, waiting while the encoder catches up. It reports progress, stops on an <code>AbortSignal</code> (and cancels the file), and returns the file.</li>
+      </ul>
+    </li>
+    <li><strong>The button</strong>, <code>src/features/video-export/VideoExportButton.tsx</code>, placed by <code>Studio.tsx</code> beside Save as GIF.</li>
+    <li><strong>Shared by both buttons</strong>, as planned in the step 25 review:
+      <ul>
+        <li><code>src/studio/useExport.ts</code>: one file at a time, progress, stopping, the note afterwards, stopping when the studio closes, and <code>download</code>. <code>GifExportMenu</code> now uses it.</li>
+        <li><code>src/studio/styles/_export.scss</code>: the progress bar and the note, for any <code>.export-menu</code>.</li>
+      </ul>
+    </li>
+    <li>The design page's toolbar shows both buttons. New dependency: <code>mediabunny</code> 1.65.1 (MPL-2.0), pinned exactly.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>A held picture is one frame with a long duration</strong>, not copies of it (the roadmap's plan). The file is smaller and quicker to make, and players handle it.</li>
+    <li><strong>MP4 first.</strong> MP4 with H.264 plays in every player and chat app. WebM with VP9 is the fallback, for browsers without an H.264 encoder.</li>
+    <li><strong>Full size only.</strong> A video compresses far better than a GIF, so there are no size or quality options yet. Mediabunny's "high" quality sets the bitrate.</li>
+    <li><strong>Drawn on the page, encoded by the browser.</strong> WebCodecs already encodes off the page's thread, so there's no worker of our own.</li>
+    <li><strong>Mediabunny 1.65.1, not the newest (1.66.0)</strong>, which was five days old. It's MPL-2.0: using it unchanged is fine; changes to its own files would have to be shared.</li>
+    <li><strong>No exporters list yet</strong> (PLAN.md §4). The two buttons share <code>useExport</code>; a list or a single "Save as…" menu can come with the archive (27).</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Browsers differ:</strong> Playwright's Chromium makes MP4s; Safari and Firefox support varies by version. The button only shows where a format can be encoded, and only WebKit was left untested (the full suite wasn't run).</li>
+    <li><strong>Very long holds:</strong> a frame many seconds long is valid. Players that jump to a time start from the last key frame, so the first jump into a long hold can take a moment to show.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li>Take a few pictures, hold one longer, add a title on the overlay track, and Save as video. Open it in the computer's own player: the timing matches playback, the title shows when it should, and the edges are what's inside the dotted line.</li>
+    <li>Start a long one and press the cross: it stops, and nothing is downloaded.</li>
+  </ul>
+  <div class="note">Checked while building:
+    <ul>
+      <li>362 unit tests and 39 browser tests pass; lint and typecheck are clean; the production build works.</li>
+      <li>End-to-end: the export spec (4, GIF and video) against the dev server and the production build, and the design spec. The other specs weren't run; neither was WebKit.</li>
+      <li>The video wasn't opened in an OS player: that's the check above.</li>
+      <li>A screenshot of the toolbar with both buttons.</li>
+    </ul>
+  </div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/export/</code> (<code>segments.ts</code>, <code>video.ts</code>, <code>video.test.ts</code>, <code>gif.ts</code>, <code>index.ts</code>); <code>src/adapters/export/</code> (<code>videoExport.ts</code>, <code>videoExport.browser.test.ts</code>); <code>src/features/video-export/VideoExportButton.tsx</code>; <code>src/features/gif-export/</code> (<code>GifExportMenu.tsx</code>, <code>_gif-export.scss</code>); <code>src/studio/useExport.ts</code>, <code>Studio.tsx</code>, <code>studio.scss</code>, <code>styles/_export.scss</code>; <code>src/design-system/DesignPage.tsx</code>; <code>e2e/export.spec.ts</code>; <code>package.json</code>, <code>package-lock.json</code>; <code>CLAUDE.md</code> (the spec map), <code>ROADMAP.md</code>; <code>public/steps/26-video-export.html</code>, <code>25-gif-export.html</code> (next link), <code>index.html</code>.</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit, 4 in <code>video.test.ts</code>: segments cut only where the screen changes; one video frame per stretch with its start and length; frames end exactly at the animation's length, each starting where the one before ends; the file name.</li>
+    <li>Browser, 4 in <code>videoExport.browser.test.ts</code>, read back with Mediabunny: a format is found, MP4 first; the video is as long as the animation, at the exported size, one frame per change; every format the browser can encode reads back; stopping rejects.</li>
+    <li>End-to-end, 1 in <code>export.spec.ts</code>: the button is off with no pictures; the download is an MP4 or WebM, 1208 × 680, 0.75 s, 3 frames for pictures held 1, 4 and 1 ticks.</li>
+  </ul>
+  <p><strong>Tests changed:</strong> none. The GIF's tests pass unchanged on the shared segments and <code>useExport</code>.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>the video is what's inside the dotted line, at full size, as long as playback</li>
+    <li>a held picture is one frame; MP4 where possible, WebM otherwise, no button when neither</li>
+    <li>progress and stopping work as for the GIF (one <code>useExport</code>)</li>
+    <li>the timing is plain maths in <code>core</code>, shared with the GIF</li>
+    <li><code>npm test</code>, <code>npm run test:browser</code>, <code>npm run lint</code>, <code>npm run typecheck</code>, the build and <code>export.spec</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="25-gif-export.html">Previous: 25 · GIF export</a>
+    <span>Next: 27 · Project archive</span>
+  </nav>
+</main>
+</body>
+</html>
