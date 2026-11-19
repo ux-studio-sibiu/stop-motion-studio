@@ -1,6 +1,5 @@
 import { createStore } from "zustand/vanilla";
 import { clampAdjust, clampHold, clampSafeMargin, cloneElements, cloneOverlays, copyOf, frameIndexAt, overlaysOf, safeMargin, sameAdjust, sameElements, sameOverlays, sameTransform, type Element, type Frame, type Overlay, type Project } from "@/core/model";
-import { clampView, FIT_VIEW, type StageView } from "@/core/render";
 
 // Live editor state (PLAN.md §1): what the studio is showing and doing right now.
 // Metadata only: never Blobs, MediaStreams or DOM nodes. Photos live in the image cache
@@ -90,10 +89,6 @@ export type UiSlice = {
   // tools (moving a picture for "picture") only work while it's open. null: the first tab.
   panelTab: string | null;
   setPanelTab: (id: string | null) => void;
-  // How closely the stage is looked at (step 19): only the view, never the picture. Back to fit
-  // when another animation opens (remembered.ts restores each animation's own).
-  stageView: StageView;
-  setStageView: (view: Partial<StageView>) => void;
   // Storage running out (step 21): a save failed for lack of space, or the device is past 80%.
   // The studio shows a message until it's closed (null).
   storageNotice: StorageNotice;
@@ -126,7 +121,7 @@ export const MAX_TIMELINE_ZOOM = 640;
 export const DEFAULT_TIMELINE_ZOOM = 160;   // a tick at the default 8 fps is 20 px wide
 export const DEFAULT_ONION_SKIN: OnionSkin = { on: true, opacity: 0.4, count: 1, outline: false, difference: false };
 
-const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0, holdPreview: {}, transformPreview: {}, adjustPreview: {}, elementsPreview: {}, overlaysPreview: null, selectedElement: null, stageView: FIT_VIEW } as const;
+const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0, holdPreview: {}, transformPreview: {}, adjustPreview: {}, elementsPreview: {}, overlaysPreview: null, selectedElement: null } as const;
 
 // A factory, so every test (and, if ever needed, a second studio) gets its own store.
 export function createEditorStore() {
@@ -193,7 +188,6 @@ export function createEditorStore() {
     // "Full" is the stronger message: an "almost full" estimate never replaces it.
     setStorageNotice: (notice) => { if (!(notice === "almost-full" && get().storageNotice === "full")) set({ storageNotice: notice }); },
 
-    setStageView: (view) => set({ stageView: clampView({ ...get().stageView, ...view }) }),
 
     previewSafeMargin: (margin) => set({ safeMarginPreview: margin === null ? null : clampSafeMargin(margin) }),
 

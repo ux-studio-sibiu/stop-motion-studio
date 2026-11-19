@@ -91,7 +91,7 @@ test("deleting an animation forgets everything remembered about it, and nothing 
   await page.waitForURL(/project=/);
   const id = new URL(page.url()).searchParams.get("project")!;
   // What the studio remembers per animation (remembered.ts), for this one and for another.
-  const families = ["view", "selection", "stage-view", "overlay-selection"];
+  const families = ["view", "selection", "overlay-selection"];
   await page.evaluate(({ id, families }) => {
     for (const family of families) {
       localStorage.setItem(`stop-motion-studio:${family}:${id}`, JSON.stringify("x"));

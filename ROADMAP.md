@@ -352,7 +352,9 @@ neighbours. Step 18 is moving; step 19 is lining up.
   blended over the current one so that everything that lines up turns black and misalignment glows,
   over the live camera too. Snap guides while dragging, to the stage's centre and edges and to the
   see-through picture. A view zoom on the stage (Ctrl + wheel or a trackpad pinch, around the
-  pointer) with panning (Space-drag or the middle button), remembered per animation.
+  pointer) with panning (Space-drag or the middle button), remembered per animation. *Removed
+  later:* the view zoom scaled the safe zone with the picture, across every picture; a pinch and
+  Ctrl + wheel now size the picture, like the wheel.
 - **Decisions:** see-through is the one ghost, with three looks (photo, outline only, spot the
   difference), drawn by the onion-skin renderer from step 17 with each picture's own transform; the
   difference is a CSS blend (`mix-blend-mode: difference`), so it works over the `<video>` as well
@@ -710,7 +712,7 @@ feature folder of its own.
 - [x] 25 GIF export ([page](public/steps/25-gif-export.html))
 - [x] 26 Video export ([page](public/steps/26-video-export.html))
 - [x] 27 Project archive ([page](public/steps/27-project-archive.html))
-- [ ] 28 Import photos
+- [x] 28 Import photos ([page](public/steps/28-import-photos.html))
 - [ ] 29 Kid-friendly capture
 - [ ] 30 Accessibility and keyboard map
 - [ ] 31 Performance with long projects

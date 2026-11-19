@@ -24,7 +24,7 @@
     align-items: center;
     gap: var(--space-1);
 
-    .tools-gap { width: var(--space-2); }
+    .tools-gap { width: var(--space-3); }   // between the groups: zoom, previous / next, the picture actions
   }
 
   // From tablet width on, the tools are a tab on the timeline's top-left edge, as wide as its

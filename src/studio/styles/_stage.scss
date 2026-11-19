@@ -32,14 +32,10 @@
     text-align: center;
   }
 
-  // The picture's layers, as one: zoomed in and panned as a whole while lining up (step 19).
-  // The stage frame clips what's outside the view.
+  // The picture's layers, as one, filling the stage frame.
   .stage-view {
     position: absolute;
     inset: 0;
-    transform-origin: 0 0;
-
-    &.is-zoomed canvas { image-rendering: pixelated; }   // look closer: see the real pixels
   }
 
   // Cover-fit, like the capture in step 05: a 4:3 webcam is cropped to the 16:9 frame,

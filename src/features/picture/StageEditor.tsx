@@ -5,7 +5,6 @@ import { shownIndex, angleTo, boundsOf, boxLines, moveBy, rotateBy, scaleAround,
 import { frameCorners } from "@/core/render";
 import { useEditor, useShownFrames, editorStore } from "@/store/useEditor";
 import { bitmaps } from "@/studio/media";
-import { useStagePan } from "./useStagePan";
 import { cancelPreview, commitPreview, commitSoon, previewEach, shownTransform, useEditTargets, type SaveTransforms } from "./transformEditing";
 import { frameRunner, toProjectPoint, type FrameRunner } from "@/studio/stagePointer";
 
@@ -20,7 +19,6 @@ type Edit = { kind: "move" | "turn"; pointerId: number; start: Point; base: Reco
 // (Shift: 10) and + / - size around the centre. Several selected pictures move together.
 // Lining up (step 19): a drag snaps the picture's edges and centre to the stage's and, with
 // see-through on, to the picture before, with a guide line (hold Alt to place it freely; nudges never snap).
-// Zooming and panning the view: useStagePan.
 // Positions are worked out in project pixels: the stage canvas is the project's size scaled to
 // fit, so a pointer movement is converted with the canvas's on-screen size.
 export function StageEditor({ save }: { save: SaveTransforms }) {
@@ -32,7 +30,6 @@ export function StageEditor({ save }: { save: SaveTransforms }) {
   const height = useEditor((state) => state.project?.height ?? 720);
   const element = useRef<HTMLDivElement>(null);
   const gesture = useRef<Edit | null>(null);
-  const pan = useStagePan(element);
   const [guides, setGuides] = useState<{ x: number | null; y: number | null } | null>(null);
   const size = { width, height };
 
@@ -85,7 +82,7 @@ export function StageEditor({ save }: { save: SaveTransforms }) {
   };
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (pan.start(event) || event.button !== 0 || targets.length === 0) return;
+    if (event.button !== 0 || targets.length === 0) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     event.currentTarget.focus({ preventScroll: true });
     const box = event.currentTarget.getBoundingClientRect();
@@ -98,7 +95,6 @@ export function StageEditor({ save }: { save: SaveTransforms }) {
 
   // Redraw on the next animation frame, not on every pointer event, so dragging stays smooth.
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (pan.move(event)) return;
     const current = gesture.current;
     if (!current || current.pointerId !== event.pointerId) return;
     current.latest = toProject(event.clientX, event.clientY);
@@ -107,7 +103,6 @@ export function StageEditor({ save }: { save: SaveTransforms }) {
   };
 
   const onPointerUp = (event: PointerEvent<HTMLDivElement>) => {
-    if (pan.end(event)) return;
     const current = gesture.current;
     if (!current || current.pointerId !== event.pointerId) return;
     gesture.current = null;
@@ -119,15 +114,15 @@ export function StageEditor({ save }: { save: SaveTransforms }) {
     commitPreview(targets, current.kind === "move" ? "Move picture" : "Turn picture", save);
   };
 
-  const onPointerCancel = (event: PointerEvent<HTMLDivElement>) => {
-    if (pan.end(event)) return;
+  const onPointerCancel = () => {
     const current = gesture.current;
     gesture.current = null;
     setGuides(null);
     if (current) cancelPreview(targets);
   };
 
-  // The wheel sizes around the pointer (with Ctrl it zooms the view: useStagePan). A native
+  // The wheel sizes around the pointer, and so does a trackpad pinch (it sends Ctrl + wheel) or
+  // Ctrl + wheel with a mouse: only the picture, never the stage or the safe zone. A native
   // listener, because React's wheel events can't stop the page from scrolling.
   const latest = useRef({ targets, toProject, size, save });
   useEffect(() => { latest.current = { targets, toProject, size, save }; });
@@ -136,10 +131,12 @@ export function StageEditor({ save }: { save: SaveTransforms }) {
     if (!node) return;
     const onWheel = (event: WheelEvent) => {
       const { targets, toProject, size, save } = latest.current;
-      if (event.ctrlKey || targets.length === 0) return;
+      if (targets.length === 0) return;
       event.preventDefault();
       const point = toProject(event.clientX, event.clientY);
-      previewEach(targets, (t) => scaleAround(t, Math.exp(-event.deltaY * 0.0015), point, size));
+      // A pinch's deltas are small, so they count for more; no single step sizes by more than about 20%.
+      const step = Math.max(-0.2, Math.min(0.2, -event.deltaY * (event.ctrlKey ? 0.01 : 0.0015)));
+      previewEach(targets, (t) => scaleAround(t, Math.exp(step), point, size));
       commitSoon(targets, "Size picture", save);
     };
     node.addEventListener("wheel", onWheel, { passive: false });
@@ -147,7 +144,7 @@ export function StageEditor({ save }: { save: SaveTransforms }) {
   }, []);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === " ") { event.preventDefault(); return; }   // held for panning
+    if (event.key === " ") { event.preventDefault(); return; }   // don't scroll the page
     if (targets.length === 0) return;
     const step = event.shiftKey ? 10 : 1;
     const move = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[event.key];
@@ -167,7 +164,7 @@ export function StageEditor({ save }: { save: SaveTransforms }) {
 
   if (targets.length === 0) return null;
   return (
-    <div ref={element} className={`stage-editor${pan.panning ? " is-panning" : ""}`} tabIndex={0} role="application" aria-label="Move the picture: drag it, turn it with the round handle, size it with the wheel; arrow keys nudge, + and - size" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onKeyDown={onKeyDown}>
+    <div ref={element} className="stage-editor" tabIndex={0} role="application" aria-label="Move the picture: drag it, turn it with the round handle, size it with the wheel; arrow keys nudge, + and - size" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onKeyDown={onKeyDown}>
       <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
         {guides && guides.x !== null && <line className="guide" data-guide="x" x1={guides.x} y1={0} x2={guides.x} y2={height} />}
         {guides && guides.y !== null && <line className="guide" data-guide="y" x1={0} y1={guides.y} x2={width} y2={guides.y} />}

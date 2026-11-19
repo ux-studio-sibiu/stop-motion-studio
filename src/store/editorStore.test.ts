@@ -168,15 +168,6 @@ describe("onion skin", () => {
   });
 });
 
-describe("stage view", () => {
-  it("starts fitted, stays in range, and goes back to fit when another animation opens", () => {
-    expect(store.getState().stageView).toEqual({ zoom: 1, x: 0, y: 0 });
-    store.getState().setStageView({ zoom: 2, x: 0.9 });
-    expect(store.getState().stageView).toEqual({ zoom: 2, x: 0.5, y: 0 });
-    store.getState().loadProject(createProject(), []);
-    expect(store.getState().stageView).toEqual({ zoom: 1, x: 0, y: 0 });
-  });
-});
 
 describe("objects (step 23)", () => {
   beforeEach(() => store.getState().loadProject({ ...project, frameIds: [a.id, b.id] }, [a, b]));

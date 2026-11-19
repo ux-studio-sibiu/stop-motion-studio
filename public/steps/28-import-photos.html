@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>28 Import photos · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 28 · Part 9 Export and import</p>
+  <h1>Import photos</h1>
+  <p class="intro"><strong>Add photos</strong>, a small picture-with-a-plus icon in the timeline's tools between Duplicate and Delete, adds photos from the computer, as many as wanted. Photos <strong>dropped anywhere on the studio</strong> are added too.</p>
+  <ul>
+    <li>They go <strong>after the selected picture</strong> (or at the end), in <strong>name order</strong> with numbers counted as numbers (IMG_2 before IMG_10), and are selected. <strong>One undo takes them all back.</strong></li>
+    <li>Each photo <strong>keeps its shape</strong>, shrunk to fit inside the animation's size (never enlarged), and turned the way the camera held it. The stage fits it in whole, as for a capture, so a portrait photo has bars at its sides.</li>
+    <li>While they're opened, a note above the timeline (and the button's tooltip) says <strong>how far it got</strong>. Afterwards the note says what was added and why any weren't: iPhone photos (HEIC) this browser can't open, broken files, files over 50 MB, files that aren't photos, and more than 300 at once.</li>
+  </ul>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><strong>The rules</strong>, <code>src/core/photos/photos.ts</code>: <code>isPhotoFile</code> and <code>isHeic</code>, <code>photoOrder</code>, <code>photoSize</code>, <code>photoNote</code> and <code>PHOTO_LIMITS</code>. Plain code, tested in Node.</li>
+    <li><strong>Opening a photo</strong>, <code>src/adapters/images/photo.ts</code>: <code>preparePhoto</code> opens it with <code>createImageBitmap(file, { imageOrientation: "from-image" })</code> and resizes it on an <code>OffscreenCanvas</code>, on white for see-through PNGs. It gives a JPEG and a thumbnail, the same <code>Capture</code> a camera shot gives. The thumbnail code is shared with restoring a backup (<code>thumbnailOf</code> in <code>thumbnail.ts</code>).</li>
+    <li><strong>The feature</strong>, <code>src/features/photo-import/</code>:
+      <ul>
+        <li><code>usePhotoImport</code>: opens the photos one at a time, then saves them all with <code>addFrames</code>, like a capture. The undo button's title says "Add 10 photos". Thumbnails go into memory first, and the storage check runs afterwards;</li>
+        <li><code>PhotoImportButton</code>, placed by <code>Studio.tsx</code> in the timeline's tools (<code>Timeline</code> takes it as <code>addPhotos</code>), between Duplicate and Delete;</li>
+        <li><code>PhotoDrop</code>: the dashed outline while photos are dragged over the studio, the drop, and the note.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>The same path as capture once the picture exists</strong> (the roadmap's plan): the same <code>Capture</code> and the same command, so the timeline, export and backup don't care where a picture came from.</li>
+    <li><strong>Its own shape, not cut to the animation's</strong>, unlike the camera, which fills the frame. A portrait phone photo cut to 16:9 would lose most of itself. The child can still zoom it to fill the frame in the Picture tab.</li>
+    <li><strong>Dropped anywhere on the studio</strong>, not only on the timeline: a bigger target for small hands. The outline covers the whole studio, so it's clear the drop will work.</li>
+    <li><strong>Opened one at a time</strong>, so ten 12-megapixel photos never sit decoded in memory at once. Only the small JPEGs are kept until the save.</li>
+    <li><strong>No FrameSource list</strong> (PLAN.md): placed directly, as since step 22.</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>HEIC</strong> opens in Safari only. Elsewhere the note names those photos and says what to do; nothing is added in their place.</li>
+    <li><strong>EXIF orientation</strong> is asked for explicitly, and current browsers apply it by default. No test uses a photo with an EXIF turn in it: check with a phone photo taken sideways.</li>
+    <li><strong>A failed save</strong> (full storage) shows the usual message and adds nothing; the import note isn't shown then.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li>Select a picture and add 10 photos of mixed sizes, including a portrait one and a panorama. They come after it, in name order, each whole. One undo removes them all.</li>
+    <li>Drag a few photos from the file manager onto the studio: the outline shows, and they're added.</li>
+    <li>Add a phone photo taken sideways: it's upright. Add a HEIC in Chrome: the note says why it wasn't added.</li>
+  </ul>
+  <div class="note">Checked while building:
+    <ul>
+      <li>377 unit tests and 45 browser tests pass; lint and typecheck are clean.</li>
+      <li>End-to-end: the photos spec (2), the camera spec (9) and the timeline spec, against the dev server. The other specs, the production build and WebKit weren't run.</li>
+      <li>No screenshot: the button and the drop outline haven't been looked at yet.</li>
+    </ul>
+  </div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/photos/</code> (<code>photos.ts</code>, <code>photos.test.ts</code>, <code>index.ts</code>); <code>src/adapters/images/</code> (<code>photo.ts</code>, <code>photo.browser.test.ts</code>, <code>thumbnail.ts</code>); <code>src/features/photo-import/</code> (<code>usePhotoImport.ts</code>, <code>PhotoImportButton.tsx</code>, <code>PhotoDrop.tsx</code>, <code>_photo-import.scss</code>); <code>src/studio/timeline/Timeline.tsx</code>; <code>src/design-system/DesignPage.tsx</code> (the timeline specimen); <code>src/features/README.md</code>; <code>src/studio/Studio.tsx</code>; <code>e2e/photos.spec.ts</code>; <code>CLAUDE.md</code> (the spec map), <code>ROADMAP.md</code>; <code>public/steps/28-import-photos.html</code>, <code>27-project-archive.html</code> (next link), <code>index.html</code>.</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit, 4 in <code>photos.test.ts</code>:
+      <ul>
+        <li>which files are photos, and which are HEIC;</li>
+        <li>name order, with numbers counted as numbers;</li>
+        <li>the size: shape kept, never enlarged;</li>
+        <li>the note.</li>
+      </ul>
+    </li>
+    <li>Browser, 4 in <code>photo.browser.test.ts</code>:
+      <ul>
+        <li>a big photo is shrunk to fit, keeps its colours and gets a thumbnail;</li>
+        <li>a portrait photo stays upright and whole, and a small one keeps its size;</li>
+        <li>a see-through PNG goes on white;</li>
+        <li>a file that can't be opened is refused.</li>
+      </ul>
+    </li>
+    <li>End-to-end, 2 in <code>photos.spec.ts</code>:
+      <ul>
+        <li>10 photos of mixed sizes and a text file: the photos go after the selected picture, in name order, each at its fitted size. One undo removes them all, and redo brings them back.</li>
+        <li>a dropped photo is added, and a HEIC that can't be opened is named in the note.</li>
+      </ul>
+    </li>
+  </ul>
+  <p><strong>Tests changed:</strong> none. The thumbnail tests for restoring a backup pass unchanged on the shared <code>thumbnailOf</code>.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>photos go after the selection, in name order, and one undo takes them all back</li>
+    <li>each keeps its shape, fits inside the animation, is upright, and is never enlarged</li>
+    <li>files that can't be added are named in the note, with a reason</li>
+    <li>after the picture is made, it's saved exactly like a capture</li>
+    <li><code>npm test</code>, <code>npm run test:browser</code>, <code>npm run lint</code>, <code>npm run typecheck</code> and <code>photos.spec</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="27-project-archive.html">Previous: 27 · Project archive</a>
+    <span>Next: 29 · Kid-friendly capture</span>
+  </nav>
+</main>
+</body>
+</html>

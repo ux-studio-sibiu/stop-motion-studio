@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, Check, ChevronDown, ChevronLeft, Clapperboard, CopyPlus, Download, Eraser, HardDrive, Image as ImageIcon, Layers, Pause, Pencil, Play, Redo2, RotateCcw, Shapes, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, CopyPlus, Download, Eraser, HardDrive, Image as ImageIcon, ImagePlus, Layers, Pause, Pencil, Play, Redo2, RotateCcw, Shapes, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { bubbleProps, createBubble, createShape, createText, SHAPE, shapeProps, SPEECH_BUBBLE, TEXT, textProps, withProps } from "@/core/model";
 import { BubbleSettings } from "@/features/objects/BubbleSettings";
@@ -291,7 +291,11 @@ export function DesignPage() {
               <button type="button" className="icon-button is-small"><ZoomOut size={20} /></button>
               <button type="button" className="icon-button is-small"><ZoomIn size={20} /></button>
               <span className="tools-gap" />
+              <button type="button" className="icon-button is-small"><ChevronLeft size={20} /></button>
+              <button type="button" className="icon-button is-small"><ChevronRight size={20} /></button>
+              <span className="tools-gap" />
               <button type="button" className="icon-button is-small"><CopyPlus size={20} /></button>
+              <button type="button" className="icon-button is-small"><ImagePlus size={20} /></button>
               <button type="button" className="icon-button is-small"><Trash2 size={20} /></button>
             </div>
             <div className="timeline-scroll">

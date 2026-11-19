@@ -1,7 +1,7 @@
 import { expect, test } from "./fixtures";
 
 // Editing a picture: moving, sizing, turning and flipping it (step 18), lining it up (step 19:
-// snapping, zooming the stage) and its brightness and contrast (step 20), on the stage with the
+// snapping) and its brightness and contrast (step 20), on the stage with the
 // camera off and in the Picture tab. The Picture tab's fields show where the picture is, in project pixels.
 
 test.beforeEach(async ({ studio, page }) => {
@@ -114,7 +114,7 @@ test("the stage's editing tools are there only while the Picture tab is open", a
   await expect(editor).toBeVisible();
 });
 
-// Lining up (step 19): snapping while dragging, and zooming the stage to look closer.
+// Lining up (step 19): snapping while dragging; a pinch sizes the picture, never the stage.
 
 test("a drag snaps to the stage's centre, with a guide; with Alt it doesn't", async ({ page }) => {
   const editor = page.getByRole("application", { name: /^Move the picture/ });
@@ -139,36 +139,21 @@ test("a drag snaps to the stage's centre, with a guide; with Alt it doesn't", as
   await expect(field(page, "Left / right")).not.toHaveValue("0");
 });
 
-test("Ctrl + wheel zooms the stage without changing the picture; Space-drag looks around; it's remembered", async ({ studio, page }) => {
-  const view = page.locator(".stage-view");
+test("a pinch (Ctrl + wheel) sizes this picture only; the safe zone and the other pictures stay as they were", async ({ studio, page }) => {
+  const zone = page.locator(".safe-zone");
+  const zoneBefore = await zone.boundingBox();
   const box = (await page.locator(".stage-frame").boundingBox())!;
-  const middle = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-  await expect(view).not.toHaveClass(/is-zoomed/);
-
-  await page.mouse.move(middle.x, middle.y);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.keyboard.down("Control");
-  await page.mouse.wheel(0, -100);
+  await page.mouse.wheel(0, -10);   // a pinch outwards sends small deltas
   await page.keyboard.up("Control");
-  await expect(view).toHaveClass(/is-zoomed/);
-  await expect(field(page, "Size")).toHaveValue("100");   // the view, not the picture
-  const before = await view.getAttribute("style");
+  await expect.poll(async () => Number(await field(page, "Size").inputValue())).toBeGreaterThan(100);
+  await expect(page.getByRole("button", { name: "Undo" })).toHaveAttribute("title", "Undo: Size picture");
+  expect(await zone.boundingBox()).toEqual(zoneBefore);   // the safe zone didn't move or grow
 
-  await page.getByRole("application", { name: /^Move the picture/ }).focus();
-  await page.keyboard.down(" ");
-  await page.mouse.down();
-  await page.mouse.move(middle.x + 60, middle.y + 30, { steps: 5 });
-  await page.mouse.up();
-  await page.keyboard.up(" ");
-  await expect(view).not.toHaveAttribute("style", before!);   // panned
-  await expect(field(page, "Left / right")).toHaveValue("0");    // the picture didn't move
-  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
-
-  await page.reload();
-  await studio.picture(1).click();
-  await expect(view).toHaveClass(/is-zoomed/);
-
-  await page.getByRole("tab", { name: "Draw" }).click();   // only while the Picture tab is open
-  await expect(view).not.toHaveClass(/is-zoomed/);
+  await studio.picture(2).click();
+  await expect(field(page, "Size")).toHaveValue("100");
+  expect(await zone.boundingBox()).toEqual(zoneBefore);
 });
 
 // Brightness and contrast (step 20), in the Picture tab.

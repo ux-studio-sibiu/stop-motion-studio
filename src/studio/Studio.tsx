@@ -5,6 +5,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Camera, ChevronLeft, Image as ImageIcon, Pencil, Redo2, Shapes, Undo2 } from "lucide-react";
 import { CameraPanel } from "@/features/camera/CameraPanel";
+import { PhotoDrop } from "@/features/photo-import/PhotoDrop";
+import { PhotoImportButton } from "@/features/photo-import/PhotoImportButton";
+import { usePhotoImport } from "@/features/photo-import/usePhotoImport";
 import { GifExportMenu } from "@/features/gif-export/GifExportMenu";
 import { VideoExportButton } from "@/features/video-export/VideoExportButton";
 import { DrawLayer } from "@/features/draw/DrawLayer";
@@ -25,7 +28,6 @@ import { useRememberedStudio } from "./remembered";
 import { SafeZone } from "./SafeZone";
 import { PanelTab, SidePanel } from "./SidePanel";
 import { StagePicture } from "./StagePicture";
-import { StageView } from "./StageView";
 import { StorageNotice } from "./StorageNotice";
 import { Timeline } from "./timeline/Timeline";
 import { useCamera } from "./useCamera";
@@ -54,6 +56,7 @@ export function Studio() {
   const canCapture = camera.status === "live" && status === "ready" && videoReady;
   const history = useHistory(projectId);
   const { capture, capturing } = useCapture(video, canCapture, history.run);
+  const photos = usePhotoImport(history.run);   // Add photos, and photos dropped on the studio
   usePlayback();
   useStorageWatch();   // the "almost full" warning
   useRememberedStudio();   // see-through, loop and selection, as they were left (remembered.ts)
@@ -113,7 +116,7 @@ export function Studio() {
             </>
           ) : stageMode !== "empty" ? (
             <>
-              <StageView zoomable={editing}>
+              <div className="stage-view">
                 <StagePicture />
                 {stageMode === "frame" && <OnionSkin mode="frame" />}
                 <SafeZone />
@@ -121,7 +124,7 @@ export function Studio() {
                 {editing && <StageEditor save={commands.transformPictures} />}
                 {stageMode === "frame" && stageTool === "objects" && <ObjectEditor saves={objectSaves} />}
                 {stageMode === "frame" && stageTool === "draw" && <DrawLayer save={commands.setObjects} />}
-              </StageView>
+              </div>
               <div className="stage-note"><CameraMessage camera={camera} more /></div>
             </>
           ) : <CameraMessage camera={camera} />}
@@ -147,7 +150,9 @@ export function Studio() {
         </PanelTab>
       </SidePanel>
 
-      <Timeline onOverlays={commands.setOverlays} onDelete={commands.deletePictures} onDuplicate={commands.duplicatePictures} onResize={commands.resizePictures} onReorder={commands.reorderPictures} onNudge={commands.nudgePictures} />
+      <Timeline onOverlays={commands.setOverlays} onDelete={commands.deletePictures} onDuplicate={commands.duplicatePictures} onResize={commands.resizePictures} onReorder={commands.reorderPictures} onNudge={commands.nudgePictures} addPhotos={<PhotoImportButton photos={photos} disabled={status !== "ready"} />} />
+
+      <PhotoDrop photos={photos} enabled={status === "ready"} />
 
       <PlaybackBar onSpeed={commands.setSpeed} onSafeMargin={commands.setSafeMargin}>
         <SeeThroughMenu />

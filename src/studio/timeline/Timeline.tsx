@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import { Camera, ChevronLeft, ChevronRight, CopyPlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { formatSeconds, formatTicks, inOrder, objectLabel, neighbourAfterDelete, pxPerTick, rulerScale, ticksToSeconds, totalTicks } from "@/core/model";
 import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, selectedOverlayId, withPreview } from "@/store/editorStore";
@@ -22,6 +22,7 @@ type TimelineProps = {
   onReorder: (before: string[], after: string[], moved: string[]) => void;
   onNudge: (moved: string[], direction: -1 | 1) => void;   // Ctrl+arrow: one place along, from the saved order
   onOverlays: SaveOverlays;   // the overlay track's changes (step 24)
+  addPhotos: ReactNode;       // Add photos, placed by Studio between Duplicate and Delete
 };
 
 // The timeline, drawn to time: a picture is as wide as it lasts (hold ticks × px per tick), and a
@@ -33,7 +34,7 @@ type TimelineProps = {
 //   useReorder            dragging pictures to a new place
 //   useScrub              the playhead, scrubbing along the ruler
 //   OverlayTrack          the objects that live in time, under the pictures (step 24)
-export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, onOverlays }: TimelineProps) {
+export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, onOverlays, addPhotos }: TimelineProps) {
   const shown = useShownFrames();   // with any move, brightness or object change not saved yet, for the thumbnails
   const holdPreview = useEditor((state) => state.holdPreview);
   const frames = useMemo(() => withPreview(shown, "hold", holdPreview), [shown, holdPreview]);   // and any resize in progress
@@ -150,10 +151,12 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
         <button type="button" className="icon-button is-small" aria-label="Zoom out" disabled={zoom <= MIN_TIMELINE_ZOOM} onClick={() => zoomTo(zoom / ZOOM_STEP)}><ZoomOut size={20} /></button>
         <button type="button" className="icon-button is-small" aria-label="Zoom in" disabled={zoom >= MAX_TIMELINE_ZOOM} onClick={() => zoomTo(zoom * ZOOM_STEP)}><ZoomIn size={20} /></button>
         <span className="tools-gap" />
-        <button type="button" className="icon-button is-small" aria-label={`Duplicate ${pictures}`} title={`Duplicate ${pictures} (Ctrl + D)`} disabled={count === 0} onClick={duplicateSelected}><CopyPlus size={20} /></button>
-        <button type="button" className="icon-button is-small" aria-label={`Delete ${pictures}`} title={`Delete ${pictures} (Delete key)`} disabled={count === 0} onClick={deleteSelected}><Trash2 size={20} /></button>
         <button type="button" className="icon-button is-small" aria-label="Previous picture" title="Previous picture (←)" disabled={order.length === 0} onClick={() => step(-1)}><ChevronLeft size={20} /></button>
         <button type="button" className="icon-button is-small" aria-label="Next picture" title="Next picture (→)" disabled={order.length === 0} onClick={() => step(1)}><ChevronRight size={20} /></button>
+        <span className="tools-gap" />
+        <button type="button" className="icon-button is-small" aria-label={`Duplicate ${pictures}`} title={`Duplicate ${pictures} (Ctrl + D)`} disabled={count === 0} onClick={duplicateSelected}><CopyPlus size={20} /></button>
+        {addPhotos}
+        <button type="button" className="icon-button is-small" aria-label={`Delete ${pictures}`} title={`Delete ${pictures} (Delete key)`} disabled={count === 0} onClick={deleteSelected}><Trash2 size={20} /></button>
       </div>
 
       <div ref={scroller} className="timeline-scroll">

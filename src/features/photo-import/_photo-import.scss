@@ -1,0 +1,44 @@
+// Adding photos (step 28): the outline while photos are dragged over the studio, and the note
+// about what was added, floating above the timeline.
+
+.nsc-photo-drop {
+  position: fixed;
+  inset: var(--space-3);
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  border: 4px dashed var(--color-accent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  pointer-events: none;
+
+  p {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin: 0;
+    font-size: var(--text-heading);
+    font-weight: 800;
+  }
+}
+
+.nsc-photo-note {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--timeline-height) + var(--space-4));
+  z-index: 40;
+  width: max-content;
+  max-width: min(32rem, calc(100vw - 2rem));
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: var(--line-width) solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-floating);
+  font-size: var(--text-hint);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transform: translateX(-50%);
+
+  &.is-problem { border-color: var(--color-danger); }
+}

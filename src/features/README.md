@@ -7,6 +7,7 @@ The studio's features, one folder each, so a feature's code lives together:
   picture on the stage.
 - `onion-skin/`: see-through, on the stage, and its button and options.
 - `draw/`: the Draw tab (pencil, eraser, colour, width) and drawing on the stage (step 24b).
+- `photo-import/`: adding photos from the computer (the Add photos button in the timeline, dropping photos on the studio, step 28).
 - `objects/`: the Objects tab (speech bubbles, text, shapes), each kind's settings, and placing
   objects on the stage, on a picture or in time (the overlay track itself is in
   `src/studio/timeline/`).
