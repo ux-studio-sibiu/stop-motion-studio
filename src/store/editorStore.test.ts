@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createBubble, createFrame, createOverlay, createProject, createText, frameIndexAt, withProps, type Frame, type Project } from "@/core/model";
+import { createBubble, createFrame, createOverlay, createProject, createSoundClip, createText, frameIndexAt, moveSoundClip, withProps, type Frame, type Project } from "@/core/model";
 import { createEditorStore, MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, orderedFrames, selectedOverlayId, withPreview, type EditorStore } from "@/store/editorStore";
 
 let store: EditorStore;
@@ -129,6 +129,30 @@ describe("safe zone preview", () => {
     expect(store.getState().safeMarginPreview).toBe(60);
     store.getState().syncProject({ ...project, safeMargin: 60 }, []);
     expect(store.getState().safeMarginPreview).toBeNull();
+  });
+});
+
+describe("picked sound (step 29b)", () => {
+  it("keeps the pick while the animation has that sound (one just added counts once it's saved), and lets go when it's deleted or another animation opens", () => {
+    const boing = createSoundClip("cartoon/boing", 2);
+    const project = { ...createProject(), sounds: [boing] };
+    store.getState().loadProject({ ...project, sounds: [] }, []);
+    store.getState().pickSound(boing.id);                 // added, not saved yet
+    store.getState().syncProject(project, []);             // the save comes back
+    expect(store.getState().pickedSound).toBe(boing.id);
+    store.getState().pickSound("nope");
+    store.getState().syncProject(project, []);
+    expect(store.getState().pickedSound).toBeNull();      // not a sound it has
+    store.getState().pickSound(boing.id);
+    expect(store.getState().pickedSound).toBe(boing.id);
+    store.getState().syncProject({ ...project, sounds: [moveSoundClip(boing, 1)] }, []);
+    expect(store.getState().pickedSound).toBe(boing.id);   // moved, still there
+    store.getState().syncProject({ ...project, sounds: [] }, []);
+    expect(store.getState().pickedSound).toBeNull();
+    store.getState().syncProject(project, []);
+    store.getState().pickSound(boing.id);
+    store.getState().loadProject(createProject(), []);
+    expect(store.getState().pickedSound).toBeNull();
   });
 });
 

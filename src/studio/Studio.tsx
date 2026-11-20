@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Camera, ChevronLeft, Image as ImageIcon, Pencil, Redo2, Shapes, Undo2 } from "lucide-react";
+import { Camera, ChevronLeft, Image as ImageIcon, Music, Pencil, Redo2, Shapes, Undo2 } from "lucide-react";
 import { CameraPanel } from "@/features/camera/CameraPanel";
+import { CaptureSoundToggle } from "@/features/camera/CaptureSoundToggle";
 import { PhotoDrop } from "@/features/photo-import/PhotoDrop";
 import { PhotoImportButton } from "@/features/photo-import/PhotoImportButton";
 import { usePhotoImport } from "@/features/photo-import/usePhotoImport";
@@ -20,11 +21,12 @@ import { SeeThroughMenu } from "@/features/onion-skin/SeeThroughMenu";
 import { AdjustControls } from "@/features/picture/AdjustControls";
 import { PictureControls } from "@/features/picture/PictureControls";
 import { StageEditor } from "@/features/picture/StageEditor";
+import { SoundsPanel } from "@/features/sounds/SoundsPanel";
 import { editorStore, useEditor } from "@/store/useEditor";
 import { CameraMessage } from "./CameraMessage";
 import { CameraView } from "./CameraView";
 import { PlaybackBar } from "./PlaybackBar";
-import { useRememberedStudio } from "./remembered";
+import { remembered, useRememberedState, useRememberedStudio } from "./remembered";
 import { SafeZone } from "./SafeZone";
 import { PanelTab, SidePanel } from "./SidePanel";
 import { StagePicture } from "./StagePicture";
@@ -55,7 +57,8 @@ export function Studio() {
   const onVideo = useCallback((element: HTMLVideoElement | null) => { video.current = element; setVideoReady(element !== null); }, []);
   const canCapture = camera.status === "live" && status === "ready" && videoReady;
   const history = useHistory(projectId);
-  const { capture, capturing } = useCapture(video, canCapture, history.run);
+  const [captureSound, setCaptureSound] = useRememberedState(remembered.captureSound, true);   // the shutter click (step 29)
+  const { capture, capturing } = useCapture(video, canCapture, history.run, captureSound);
   const photos = usePhotoImport(history.run);   // Add photos, and photos dropped on the studio
   usePlayback();
   useStorageWatch();   // the "almost full" warning
@@ -131,12 +134,14 @@ export function Studio() {
         </div>
       </main>
 
-      {/* The picked object's settings, floating by it (outside the stage, so its clipping and zoom don't touch them). */}
+      {/* The picked object's settings, floating by it (outside the stage, so its clipping doesn't touch them). */}
       {stageMode === "frame" && stageTool === "objects" && <ObjectFloat saves={objectSaves} />}
 
       <SidePanel active={panelTab} onChange={editorStore.getState().setPanelTab}>
         <PanelTab id="camera" label="Camera" icon={<Camera size={31} />}>
-          <CameraPanel camera={camera} canCapture={canCapture} onCapture={capture} capturing={capturing} />
+          <CameraPanel camera={camera} canCapture={canCapture} onCapture={capture} capturing={capturing}>
+            <CaptureSoundToggle on={captureSound} onChange={setCaptureSound} />
+          </CameraPanel>
         </PanelTab>
         <PanelTab id="picture" label="Picture" title="Adjust your picture" icon={<ImageIcon size={31} />}>
           <PictureControls save={commands.transformPictures} />
@@ -148,9 +153,12 @@ export function Studio() {
         <PanelTab id="draw" label="Draw" title="Draw on the picture" icon={<Pencil size={31} />}>
           <DrawPanel save={commands.setObjects} onStage={stageMode === "frame"} />
         </PanelTab>
+        <PanelTab id="sounds" label="Sounds" title="Sounds in the animation" icon={<Music size={31} />}>
+          <SoundsPanel save={commands.setSounds} />
+        </PanelTab>
       </SidePanel>
 
-      <Timeline onOverlays={commands.setOverlays} onDelete={commands.deletePictures} onDuplicate={commands.duplicatePictures} onResize={commands.resizePictures} onReorder={commands.reorderPictures} onNudge={commands.nudgePictures} addPhotos={<PhotoImportButton photos={photos} disabled={status !== "ready"} />} />
+      <Timeline onOverlays={commands.setOverlays} onSounds={commands.setSounds} onDelete={commands.deletePictures} onDuplicate={commands.duplicatePictures} onResize={commands.resizePictures} onReorder={commands.reorderPictures} onNudge={commands.nudgePictures} addPhotos={<PhotoImportButton photos={photos} disabled={status !== "ready"} />} />
 
       <PhotoDrop photos={photos} enabled={status === "ready"} />
 

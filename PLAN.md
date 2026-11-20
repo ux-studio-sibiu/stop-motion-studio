@@ -165,6 +165,16 @@ type Overlay = {
   length: number;           // ticks, >= 1
   element: Element;
 };
+
+// The bottom timeline row (step 29b): sound effects in time. Same ticks as overlays, anchored to
+// time; the length is the sound's own, so only the start is stored.
+type SoundClip = {
+  id: string;
+  start: number;            // ticks from the start of the animation
+  sound: string;            // a library entry, "cartoon/boing" (core/sound/library.ts); later a recording's id
+  volume: number;           // 0.5 quiet, 1 normal, 1.5 loud
+};
+// Project gains: sounds: SoundClip[]
 ```
 
 - Frame timing is `hold` in ticks of `1/fps`, not milliseconds: changing FPS keeps the rhythm kids built.
@@ -222,6 +232,6 @@ can be undone. Lists of data (element kinds, exporters) are the "dynamic data" e
 
 ## 7. Out of scope (for now)
 
-Several picture layers, audio tracks, free drawing on frames, animating elements between keyframes,
+Several picture layers, music and recorded audio (sound effects are planned: ROADMAP 29b), free drawing on frames, animating elements between keyframes,
 chroma key, cloud sync and sharing, multi-user editing. The architecture leaves room for each; none is
 planned in the roadmap.

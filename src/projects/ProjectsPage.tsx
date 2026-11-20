@@ -77,9 +77,11 @@ export function ProjectsPage() {
     <main id="nsc--home">
       <header className="masthead">
         <h1>Stop-motion Studio</h1>
-        <p className="lede">Take pictures, move your toys a little, take more pictures. Then press play.</p>
-        <button type="button" className="start" onClick={startNew} disabled={creating}><Plus size={32} />New animation</button>
-        <button type="button" className="icon-button restore" onClick={() => picker.current?.click()} disabled={restoring} aria-busy={restoring}><ArchiveRestore size={22} />{restoring ? "Restoring…" : "Restore a backup"}</button>
+        {/* The two ways in, side by side: a new animation (green, the main one), or one loaded from a backup file. */}
+        <div className="ctas">
+          <button type="button" className="icon-button is-go" onClick={startNew} disabled={creating}><Plus size={24} />New animation</button>
+          <button type="button" className="icon-button" title="Open an animation saved as a backup (.zip)" onClick={() => picker.current?.click()} disabled={restoring} aria-busy={restoring}><ArchiveRestore size={24} />{restoring ? "Loading…" : "Load project"}</button>
+        </div>
         <input ref={picker} type="file" accept=".zip,application/zip" hidden aria-label="Backup file" onChange={(event) => void restore(event.currentTarget.files?.[0])} />
         {archiveNote && <p className={`archive-note${archiveNote.problem ? " is-problem" : ""}`} role="status">{archiveNote.text}</p>}
       </header>
@@ -94,7 +96,7 @@ export function ProjectsPage() {
       )}
 
       {list && list.projects.length > 0 && (
-        <section aria-labelledby="projects-title">
+        <section className="project-list" aria-labelledby="projects-title">
           <h2 id="projects-title" className="section-title">Your animations</h2>
           <ul className="projects">
             {list.projects.map((project) => <ProjectCard key={project.id} project={project} coverUrl={coverUrl(project)} size={list.sizeOf[project.id] ?? 0} onDelete={() => setDeleting(project)} onBackUp={() => void backUp(project)} />)}

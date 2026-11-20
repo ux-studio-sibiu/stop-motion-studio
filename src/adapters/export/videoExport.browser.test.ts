@@ -1,8 +1,9 @@
-import { ALL_FORMATS, BlobSource, canEncodeVideo, Input } from "mediabunny";
+import { ALL_FORMATS, BlobSource, canEncodeAudio, canEncodeVideo, Input } from "mediabunny";
 import { describe, expect, it } from "vitest";
 import { exportVideo, VIDEO_FORMATS, videoFormat } from "@/adapters/export/videoExport";
 import { videoFrames } from "@/core/export";
-import { createFrame } from "@/core/model";
+import { createFrame, createSoundClip } from "@/core/model";
+import { mixSounds } from "@/adapters/sound/sound";
 import { exportRect, type DrawableImage } from "@/core/render";
 
 // The video pipeline in Chromium: the page draws, WebCodecs encodes, and the file is read back
@@ -62,6 +63,30 @@ describe("exportVideo", () => {
       made++;
     }
     expect(made).toBeGreaterThan(0);
+  });
+
+  it("carries the sound row as an audio track, where the browser can encode one, and stays as long", async () => {
+    const options = setup([1, 8, 3]);   // 1.5 s
+    const format = (await videoFormat(options.rect))!;
+    const audio = await mixSounds([createSoundClip("cartoon/boing", 4)], 8, 12);
+    expect(audio).not.toBeNull();
+    const blob = await exportVideo({ ...options, format, audio });
+    using input = new Input({ formats: ALL_FORMATS, source: new BlobSource(blob) });
+    const track = await input.getPrimaryAudioTrack();
+    if (await canEncodeAudio(format.audioCodec, { numberOfChannels: 2, sampleRate: audio!.sampleRate })) {
+      expect(track?.codec).toBe(format.audioCodec);
+      expect(await track!.computeDuration()).toBeCloseTo(1.5, 1);
+    } else {
+      expect(track).toBeNull();   // this browser can't: the video is made without sound
+    }
+    expect(await input.computeDuration()).toBeCloseTo(1.5, 1);
+  });
+
+  it("has no audio track when there's nothing to hear", async () => {
+    const options = setup([2, 2]);
+    const format = (await videoFormat(options.rect))!;
+    using input = new Input({ formats: ALL_FORMATS, source: new BlobSource(await exportVideo({ ...options, format, audio: null })) });
+    expect(await input.getPrimaryAudioTrack()).toBeNull();
   });
 
   it("stops when asked: it rejects with an AbortError", async () => {

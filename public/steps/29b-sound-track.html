@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>29b Sound track · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 29b · Part 10 Kids, polish and shipping</p>
+  <h1>Sound track</h1>
+  <p class="intro">Animations can have <strong>sound effects</strong>. A new <strong>Sounds</strong> tab lists them; one press adds a sound to a new <strong>bottom row of the timeline</strong>, under the objects in time. It plays when playback reaches it, and it's in the <strong>video</strong>.</p>
+  <ul>
+    <li><strong>The Sounds tab</strong>: 76 sounds in 13 groups (Cartoon, Whooshes, Bangs, Magic, Animals, People, Footsteps, Vehicles, Machines, Home, Nature, Water, Music): 18 made by the synthesiser, and 58 recordings. Each is a small pill, so many fit. A click plays it. Dragging it onto the stage adds it at the selected picture (or the start); dragging it onto the Sound Layer adds it where it's dropped. Either way it's picked and played, and a hidden Sound Layer shows as soon as the drag starts.</li>
+    <li><strong>Timeline layers</strong>: a stacked-layers button with a caret, first in the timeline's buttons, opens a list below it, over the timeline. Its two switches show or hide the <em>Objects Layer</em> and the <em>Sound Layer</em>. Both show at first, and the choice is remembered (<code>timelineLayers</code> in <code>remembered.ts</code>). A hidden row still plays and still goes in the video, and adding a sound shows the Sounds row again.</li>
+    <li><strong>The sound row</strong>: each sound is a bar as long as it sounds. Drag it to move it in time, or use the arrow keys; click it to pick it and hear it. Overlapping sounds go in rows of their own.</li>
+    <li><strong>The picked sound</strong>, at the top of the tab: Quiet, Normal or Loud, and Delete sound. Adding, moving, volume and deleting are one undo step each.</li>
+    <li><strong>Anchored to time</strong>, like objects in time: moving or deleting pictures doesn't move a sound. It's saved with the animation and in backups.</li>
+    <li><strong>Save as video</strong> mixes the sounds into an audio track: AAC in an MP4, Opus in a WebM. The GIF stays silent.</li>
+  </ul>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><strong>The data</strong>, <code>src/core/model/sound.ts</code>: <code>SoundClip</code> (<code>id</code>, <code>start</code> in ticks, <code>sound</code>, <code>volume</code>) on <code>Project.sounds</code>. With <code>soundsOf</code>, <code>soundTicks</code>, <code>moveSoundClip</code>, <code>soundLanes</code> and <code>soundsFrom</code>, which works out what to play from a given tick. Plain code, tested in Node.</li>
+    <li><strong>The library</strong>, <code>src/core/sound/library.ts</code>: each sound is a few notes for the synthesiser. Notes can now glide (a boing) or be noise (a whoosh, a drum roll).</li>
+    <li><strong>The command</strong>: <code>setSounds</code>, one command for the whole list, like <code>setOverlays</code>. Backups (<code>core/archive</code>) carry the sounds, checked and capped at 500.</li>
+    <li><strong>Sound in the browser</strong>, <code>src/adapters/sound/sound.ts</code>:
+      <ul>
+        <li><code>soundBuffer</code> renders a sound once and keeps it;</li>
+        <li><code>previewSound</code> plays one now, <code>playSounds</code> plays the row from a point;</li>
+        <li><code>mixSounds</code> mixes the row for a video.</li>
+      </ul>
+    </li>
+    <li><strong>Video</strong>, <code>videoExport.ts</code>: an <code>AudioBufferSource</code> next to the video track, where the browser can encode it.</li>
+    <li><strong>On screen</strong>:
+      <ul>
+        <li><code>src/studio/timeline/SoundTrack.tsx</code>: the row;</li>
+        <li><code>src/studio/soundEditing.ts</code>: adding, changing, deleting, and where a new sound goes;</li>
+        <li><code>src/features/sounds/SoundsPanel.tsx</code>: the tab;</li>
+        <li><code>pickedSound</code> in the editor store;</li>
+        <li><code>usePlayback</code> plays the sounds along.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>Recorded sounds added after review</strong>: 58 CC0 recordings from BigSoundBank, in <code>public/sounds/</code> (7.5 MB) and listed in <code>src/core/sound/recorded.ts</code>, with the length of each file. They're fetched and decoded the first time they're used (<code>soundBuffer</code>). The site blocked further automated downloads, so 34 more from the list are still to fetch by hand; 7 long background recordings were left out.</li>
+    <li><strong>Made by the synthesiser at first</strong>: nothing is downloaded or licensed yet. The 137 recorded CC0 candidates in <code>SOUND_EFFECTS.md</code> need downloading and a listen first. They'll join as library entries with a file; a project only stores the sound's id, so nothing else changes.</li>
+    <li><strong>Dragged to add, clicked to hear</strong> (changed after review): a sound goes where it's put, on the stage or on the Sound Layer, like objects. A click only plays it, so a child can try sounds without adding them. Two sounds dropped quickly both stay: each change builds on the last one saved (<code>soundEditing.ts</code>).</li>
+    <li><strong>Start in ticks, length in seconds</strong>: a speed change keeps a sound on the same picture, and it still sounds as long.</li>
+    <li><strong>Played on the audio clock</strong>: every sound is scheduled when Play is pressed, again when a loop comes round. Timers would drift from the pictures.</li>
+    <li><strong>Its own pick</strong> (<code>pickedSound</code>), beside the timeline's selection of pictures or one object bar, so picking a sound never changes what the stage shows.</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Sounds after the last picture</strong> are kept on the row but aren't played or put in the video, like objects in time.</li>
+    <li><strong>The toolbar's Duplicate and Delete</strong> act on pictures and object bars, not sounds: a sound is deleted from the Sounds tab or with the Delete key on its bar.</li>
+    <li><strong>A browser that can't encode audio</strong> makes the video without sound, silently. Playwright's Chromium can (checked); Safari and Firefox weren't tried.</li>
+    <li><strong>A sound from a newer studio</strong> is kept and shown as "Sound", one second long, and stays silent.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li>Select picture 3, open Sounds, press Boing: it plays and sits under picture 3. Make it Loud, play: it's louder.</li>
+    <li>Add Ding at the start, drag Boing later, play: both sound at their pictures. Change the speed: they stay with their pictures.</li>
+    <li>Save as video and open it in the computer's player: the sounds are there, in time.</li>
+    <li>Undo a few times: the sounds go back step by step.</li>
+  </ul>
+  <div class="note">Checked while building:
+    <ul>
+      <li>389 unit tests and 51 browser tests pass; lint and typecheck are clean.</li>
+      <li>End-to-end, against the dev server: <code>sounds.spec</code> (4), <code>export.spec</code> (5, including the video's audio track), and the stage, timeline, projects and objects specs, all passing. The production build and WebKit weren't run.</li>
+      <li><strong>Fixed on the way:</strong> the floating object settings could cover the timeline's Duplicate and Delete. The buttons got wider in step 28, and <code>overlays.spec</code> caught it in a 1280 × 720 window. The panel now moves to the right of the buttons, or above them, but never over the object itself (<code>clearOf</code> in <code>ObjectFloat.tsx</code>). The objects, overlays and draw specs pass with it.</li>
+      <li>Not heard or looked at yet: the sounds themselves, the tab and the row.</li>
+    </ul>
+  </div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/model/</code> (<code>sound.ts</code>, <code>sound.test.ts</code>, <code>types.ts</code>, <code>repository.ts</code>, <code>index.ts</code>); <code>src/core/sound/</code> (<code>library.ts</code>, <code>library.test.ts</code>, <code>sounds.ts</code>, <code>index.ts</code>); <code>src/core/commands/projectCommands.ts</code>; <code>src/core/archive/</code> (<code>archive.ts</code>, <code>archive.test.ts</code>); <code>src/adapters/sound/</code> (<code>sound.ts</code>, <code>sound.browser.test.ts</code>); <code>src/adapters/export/</code> (<code>videoExport.ts</code>, <code>videoExport.browser.test.ts</code>); <code>src/adapters/storage/frameCommands.test.ts</code>; <code>src/store/</code> (<code>editorStore.ts</code>, <code>editorStore.test.ts</code>); <code>src/studio/</code> (<code>soundEditing.ts</code>, <code>timeline/SoundTrack.tsx</code>, <code>timeline/Timeline.tsx</code>, <code>timeline/_timeline.scss</code>, <code>usePlayback.ts</code>, <code>useStudioCommands.ts</code>, <code>Studio.tsx</code>); <code>src/features/sounds/</code> (<code>SoundsPanel.tsx</code>, <code>_sounds.scss</code>); <code>src/features/video-export/VideoExportButton.tsx</code>; <code>src/features/objects/ObjectFloat.tsx</code> (kept off the timeline's buttons); <code>src/features/README.md</code>; <code>e2e/sounds.spec.ts</code>, <code>e2e/export.spec.ts</code>; <code>CLAUDE.md</code> (the spec map), <code>PLAN.md</code>, <code>ROADMAP.md</code>; <code>public/steps/29b-sound-track.html</code>, <code>29-capture-sound.html</code> (next link), <code>index.html</code>.</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit:
+      <ul>
+        <li><code>sound.test.ts</code> (6): reading clips, whole ticks and volumes, length in ticks, replace and compare, rows, what to play from a tick;</li>
+        <li><code>library.test.ts</code> (3): unique ids by category, short and never loud, finding one;</li>
+        <li><code>frameCommands.test.ts</code> (2): <code>setSounds</code> adds, moves and deletes, one undo each, without touching pictures or overlays; nothing changed isn't recorded;</li>
+        <li><code>archive.test.ts</code> (1 new, 1 extended): sounds come back from a backup; broken ones are left out, and the count is capped;</li>
+        <li><code>editorStore.test.ts</code> (1): the picked sound.</li>
+      </ul>
+    </li>
+    <li>Browser:
+      <ul>
+        <li><code>sound.browser.test.ts</code> (2): every library sound renders and is heard; the mix puts each sound at its time and volume;</li>
+        <li><code>videoExport.browser.test.ts</code> (2): the audio track is there where the browser can encode one; no track with nothing to hear.</li>
+      </ul>
+    </li>
+    <li>End-to-end:
+      <ul>
+        <li><code>sounds.spec.ts</code> (4): adding at the selected picture, the volume, deleting and undoing, the reload; moving by drag and keys, and staying put when a picture is deleted; playing starts the sounds; the row shows only when it's needed;</li>
+        <li><code>export.spec.ts</code> (1): the video has an audio track.</li>
+      </ul>
+    </li>
+  </ul>
+  <p><strong>Tests changed:</strong> the step 29 shutter test now checks its sound renders through the new library code; nothing else changed.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>a sound is added at the selected picture, plays, and is picked</li>
+    <li>moving, volume and delete are one undo step each; sounds stay put when pictures move</li>
+    <li>playback plays them in time, loops included; the video has them</li>
+    <li>backups carry them; an unknown sound is kept, not lost</li>
+    <li><code>npm test</code>, <code>npm run test:browser</code>, <code>npm run lint</code>, <code>npm run typecheck</code>, <code>sounds.spec</code> and <code>export.spec</code> pass</li>
+    <li>the sound row shows only with the Sounds tab open or sounds in the animation</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="29-capture-sound.html">Previous: 29 · Capture sound</a>
+    <span>Next: 30 · Accessibility and keyboard map</span>
+  </nav>
+</main>
+</body>
+</html>

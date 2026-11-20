@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { addFrames, createHistory, deleteFrames, duplicateFrames, nudgeFrames, reorderFrames, setAdjusts, setElements, setElementsOf, setFps, setHold, setOverlays, setSafeMargin, setTransforms, type History } from "@/core/commands";
-import { createBubble, createFrame, createOverlay, createProject, createText, moveIds, moveOverlay, overlaysOf, withProps, type Project, type ProjectRepository } from "@/core/model";
+import { addFrames, createHistory, deleteFrames, duplicateFrames, nudgeFrames, reorderFrames, setAdjusts, setElements, setElementsOf, setFps, setHold, setOverlays, setSafeMargin, setSounds, setTransforms, type History } from "@/core/commands";
+import { createBubble, createFrame, createOverlay, createProject, createSoundClip, createText, moveIds, moveOverlay, moveSoundClip, overlaysOf, soundsOf, withProps, type Project, type ProjectRepository } from "@/core/model";
 import { openStudioDb, type StudioDb } from "@/adapters/storage/db";
 import { createDexieRepository } from "@/adapters/storage/dexieRepository";
 
@@ -403,6 +403,35 @@ describe("setOverlays (step 24)", () => {
     await history.undo();   // undoing the delete doesn't touch it either
     expect(await saved()).toEqual([title]);
     expect(await order()).toEqual([a, b]);
+  });
+});
+
+describe("setSounds (step 29b)", () => {
+  const saved = async () => soundsOf(await repository.getProject(project.id));
+
+  it("adds, moves and removes sounds, each one undo step, and leaves the pictures and overlays alone", async () => {
+    const [a] = await takePictures(1);
+    const title = createOverlay(createText("Hi"), 0, 8);
+    await history.run(setOverlays(project.id, [], [title], "Add text"));
+    const boing = createSoundClip("cartoon/boing", 4);
+    await history.run(setSounds(project.id, [], [boing], "Add Boing"));
+    const later = moveSoundClip(boing, 3);
+    await history.run(setSounds(project.id, [boing], [later], "Move Boing"));
+    await history.run(setSounds(project.id, [later], [], "Delete Boing"));
+    expect(await saved()).toEqual([]);
+
+    await history.undo();
+    expect(await saved()).toEqual([later]);
+    await history.undo();
+    expect(await saved()).toEqual([boing]);
+    expect(await order()).toEqual([a]);
+    expect(overlaysOf(await repository.getProject(project.id))).toEqual([title]);
+  });
+
+  it("isn't recorded when nothing changed", async () => {
+    const boing = createSoundClip("cartoon/boing", 0);
+    await expect(history.run(setSounds(project.id, [boing], [boing], "Move Boing"))).rejects.toThrow();
+    expect(history.state().canUndo).toBe(false);
   });
 });
 

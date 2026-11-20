@@ -1,5 +1,6 @@
 import type { Element } from "./element";
 import type { Overlay } from "./overlay";
+import type { SoundClip } from "./sound";
 
 // The animation data model (PLAN.md §3). Plain data: no classes, no methods, so it
 // stores in IndexedDB, serialises to an archive and diffs for undo without conversion.
@@ -18,6 +19,9 @@ export type Project = {
   // Objects that live in time (step 24), on the timeline's second track. Missing in older
   // projects: none then. Read it with overlaysOf().
   overlays?: Overlay[];
+  // Sound effects in time (step 29b), on the timeline's bottom row. Missing in older projects:
+  // none then. Read it with soundsOf().
+  sounds?: SoundClip[];
   createdAt: number;       // ms since epoch
   updatedAt: number;
 };

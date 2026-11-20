@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { clampAdjust, clampHold, clampSafeMargin, cloneElements, cloneOverlays, copyOf, frameIndexAt, overlaysOf, safeMargin, sameAdjust, sameElements, sameOverlays, sameTransform, type Element, type Frame, type Overlay, type Project } from "@/core/model";
+import { clampAdjust, clampHold, clampSafeMargin, cloneElements, cloneOverlays, copyOf, frameIndexAt, overlaysOf, safeMargin, soundsOf, sameAdjust, sameElements, sameOverlays, sameTransform, type Element, type Frame, type Overlay, type Project } from "@/core/model";
 
 // Live editor state (PLAN.md §1): what the studio is showing and doing right now.
 // Metadata only: never Blobs, MediaStreams or DOM nodes. Photos live in the image cache
@@ -73,6 +73,10 @@ export type UiSlice = {
   // Objects tab shows its settings.
   selectedElement: string | null;
   selectElement: (id: string | null) => void;
+  // The sound picked on the sound row (step 29b), its clip id: the Sounds tab shows its volume and
+  // Delete. Its own pick, beside the timeline's selection. Gone when the saved project hasn't that sound.
+  pickedSound: string | null;
+  pickSound: (id: string | null) => void;
   // The object copied with Ctrl+C, to paste onto other pictures (step 24b): a copy of its own.
   // Kept when another animation opens, so things can be carried between animations; not after a
   // reload.
@@ -121,7 +125,7 @@ export const MAX_TIMELINE_ZOOM = 640;
 export const DEFAULT_TIMELINE_ZOOM = 160;   // a tick at the default 8 fps is 20 px wide
 export const DEFAULT_ONION_SKIN: OnionSkin = { on: true, opacity: 0.4, count: 1, outline: false, difference: false };
 
-const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0, holdPreview: {}, transformPreview: {}, adjustPreview: {}, elementsPreview: {}, overlaysPreview: null, selectedElement: null } as const;
+const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0, holdPreview: {}, transformPreview: {}, adjustPreview: {}, elementsPreview: {}, overlaysPreview: null, selectedElement: null, pickedSound: null } as const;
 
 // A factory, so every test (and, if ever needed, a second studio) gets its own store.
 export function createEditorStore() {
@@ -147,10 +151,13 @@ export function createEditorStore() {
       const elementsPreview = unsaved("elements", state.elementsPreview, next);
       const safeMarginPreview = state.safeMarginPreview !== null && safeMargin(project) !== state.safeMarginPreview ? state.safeMarginPreview : null;
       const overlaysPreview = state.overlaysPreview && !sameOverlays(overlaysOf(project), state.overlaysPreview) ? state.overlaysPreview : null;
-      set({ project, frames: next, selection: state.selection.filter((id) => id in next), holdPreview, transformPreview, adjustPreview, elementsPreview, safeMarginPreview, overlaysPreview });
+      const pickedSound = state.pickedSound && soundsOf(project).some((clip) => clip.id === state.pickedSound) ? state.pickedSound : null;
+      set({ project, frames: next, selection: state.selection.filter((id) => id in next), holdPreview, transformPreview, adjustPreview, elementsPreview, safeMarginPreview, overlaysPreview, pickedSound });
     },
 
     unloadProject: () => set(EMPTY),
+
+    pickSound: (id) => set({ pickedSound: id }),   // a sound just added may not be in the project yet: syncProject checks
 
     select: (ids) => {
       const state = get();

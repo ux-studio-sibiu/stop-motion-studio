@@ -20,10 +20,15 @@
     @include respond-to-max("tablet") { display: none; }
 
     // The tabs start where a panel's content does, below its title: the panel's padding, the title
-    // (1.125rem text, about 1.6875rem tall) and the gap after it.
+    // (1.125rem text, about 1.6875rem tall) and the gap after it. They end above the panel's bottom
+    // corner and never hang below it: in a short window they get flatter (.tab), and when even that
+    // isn't enough, they start higher, up to the panel's padding. --tab-count is set by SidePanel.
     .tabs {
+      --tab-min: 2.5rem;
+
       position: absolute;
-      top: calc(2 * var(--space-3) + 1.6875rem);
+      top: clamp(var(--space-3), calc(100% - var(--space-3) - var(--tab-count, 4) * var(--tab-min) - (var(--tab-count, 4) - 1) * var(--space-1)), calc(2 * var(--space-3) + 1.6875rem));
+      bottom: var(--space-3);
       right: 100%;
       display: flex;
       flex-direction: column;
@@ -43,6 +48,8 @@
       // the list exactly covers that border, and no further.
       width: var(--ear-width);
       height: var(--ear-width);
+      flex: 0 1 auto;          // flatter when the panel is short (see .tabs)
+      min-height: var(--tab-min);
       margin-right: -25px;                                              // pushed 25 px in, under the panel
       clip-path: inset(-1px calc(25px + var(--line-width)) -1px 0);     // cut off at the panel's outside edge
       padding: 0;

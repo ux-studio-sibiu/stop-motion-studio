@@ -3,7 +3,9 @@
 import { Film, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { exportVideo, videoFormat, type VideoFormat } from "@/adapters/export/videoExport";
+import { mixSounds } from "@/adapters/sound/sound";
 import { exportFileName, videoFrames } from "@/core/export";
+import { soundsOf, totalTicks } from "@/core/model";
 import { projectExportRect } from "@/core/render";
 import { useEditor } from "@/store/useEditor";
 import { bitmaps } from "@/studio/media";
@@ -12,7 +14,8 @@ import { useExport } from "@/studio/useExport";
 // Save as video (step 26), in the toolbar beside Save as GIF: an MP4 (H.264), or a WebM (VP9)
 // where the browser can't make MP4s, of what's inside the dotted line at its full size, every
 // picture as long as it's held. While it's made the button shows how far it got, and a cross
-// stops it (useExport). Where the browser can make neither, there's no button at all.
+// stops it (useExport). Where the browser can make neither, there's no button at all. The sound
+// row is mixed in (AAC in an MP4, Opus in a WebM) where the browser can encode it.
 export function VideoExportButton() {
   const hasPictures = useEditor((state) => (state.project?.frameIds.length ?? 0) > 0);
   const width = useEditor((state) => state.project?.width ?? 1280);
@@ -31,14 +34,16 @@ export function VideoExportButton() {
   if (!format) return null;
 
   const save = () => run({
-    make: ({ project, frames, signal, onProgress }) => {
+    make: async ({ project, frames, signal, onProgress }) => {
       const overlays = project.overlays ?? [];
+      const audio = await mixSounds(soundsOf(project), project.fps, totalTicks(frames));   // the sound row (step 29b)
       return exportVideo({
         scene: { width: project.width, height: project.height, frames, overlays },
         rect: projectExportRect(project),
         frames: videoFrames(frames, overlays, project.fps),
         format,
         loadImage: (imageId) => bitmaps.load(imageId),
+        audio,
         onProgress,
         signal,
       });

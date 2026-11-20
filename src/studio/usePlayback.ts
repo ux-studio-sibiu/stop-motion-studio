@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { frameIndexAt, frameStarts, inOrder, totalTicks } from "@/core/model";
+import { frameIndexAt, frameStarts, inOrder, soundsFrom, soundsOf, totalTicks } from "@/core/model";
+import { soundSeconds } from "@/core/sound";
+import { playSounds } from "@/adapters/sound/sound";
 import { readClock, startClock } from "@/core/playback/clock";
 import { orderedFrames } from "@/store/editorStore";
 import { editorStore, useEditor } from "@/store/useEditor";
@@ -17,6 +19,8 @@ const PRELOAD = 4;   // pictures decoded ahead of the playhead
 //     or the loop setting starts it again from where it is.
 //   - Pausing selects the picture it stopped on, so the stage and timeline agree; reaching the
 //     end (without loop) goes back to the start for the next Play.
+//   - The sound row plays along (step 29b): scheduled on the audio clock when Play is pressed,
+//     again from the start each time a loop comes round, and stopped on pause.
 // Enter plays and pauses, unless a button, link or text field has the keyboard.
 export function usePlayback() {
   const isPlaying = useEditor((state) => state.isPlaying);
@@ -35,6 +39,10 @@ export function usePlayback() {
     const clock = startClock(performance.now(), from, fps, total, loop);
     let ended = false;
     let request = 0;
+    const clips = soundsOf(state.project);
+    const sounds = (tick: number) => playSounds(soundsFrom(clips, tick, total, fps, (clip) => soundSeconds(clip.sound)));
+    let stopSounds = sounds(from);
+    let last = from;
 
     const preload = (index: number) => {
       for (let i = 0; i < PRELOAD; i++) {
@@ -45,6 +53,8 @@ export function usePlayback() {
 
     const step = (now: number) => {
       const reading = readClock(clock, now);
+      if (reading.tick < last) { stopSounds(); stopSounds = sounds(reading.tick); }   // a loop came round
+      last = reading.tick;
       if (reading.tick !== editorStore.getState().playhead) editorStore.getState().seek(reading.tick);
       preload(frameIndexAt(frames, reading.tick));
       if (reading.ended) { ended = true; editorStore.getState().pause(); return; }
@@ -56,6 +66,7 @@ export function usePlayback() {
 
     return () => {
       cancelAnimationFrame(request);
+      stopSounds();
       const now = editorStore.getState();
       if (now.project?.id !== state.project?.id) return;   // left the project
       if (ended) {

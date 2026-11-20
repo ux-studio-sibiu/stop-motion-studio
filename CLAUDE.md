@@ -21,12 +21,12 @@ fast, logic is never "trust the edit".
   Chromium against the dev server, which skips the production build
   (`npm run test:e2e:dev -- e2e/picture.spec.ts e2e/stage.spec.ts`, about 8-12 s for one spec; it reuses
   the `next dev` on port 3000, or starts one). Which spec covers what:
-  - `camera.spec`: the camera, capture; `stage.spec`: the stage, see-through, safe zone, side panel tabs;
+  - `camera.spec`: the camera, capture, the capture sound; `stage.spec`: the stage, see-through, safe zone, side panel tabs;
   - `picture.spec`: moving, snapping, zoom, brightness and contrast (the Picture tab);
   - `timeline.spec`, `frames.spec`, `resize.spec`, `reorder.spec`: the timeline, delete and duplicate,
     lengths, reordering;
   - `history.spec`: undo and redo; `playback.spec`: playing; `persistence.spec`: reloads and the
-    load gate; `projects.spec`: the projects page, backup and restore; `storage.spec`: clean-up, full storage, the 80% warning; `objects.spec`: the Objects tab, speech bubbles, text and shapes; `overlays.spec`: the overlay track, objects in time; `draw.spec`: the Draw tab, free drawing; `export.spec`: Save as GIF and Save as video (the files, their size and timing); `photos.spec`: adding photos from the computer (Add photos, dropping them); `design.spec`: the design system page (one smoke test; a utility page, kept light on purpose).
+    load gate; `projects.spec`: the projects page, backup and restore; `storage.spec`: clean-up, full storage, the 80% warning; `objects.spec`: the Objects tab, speech bubbles, text and shapes; `overlays.spec`: the overlay track, objects in time; `draw.spec`: the Draw tab, free drawing; `export.spec`: Save as GIF and Save as video (the files, their size and timing, the video's sound); `photos.spec`: adding photos from the computer (Add photos, dropping them); `sounds.spec`: the Sounds tab, the sound row, sounds while playing, the timeline's Layers menu; `design.spec`: the design system page (one smoke test; a utility page, kept light on purpose).
   Shared code (`Studio.tsx`, `useProject`, `e2e/fixtures.ts`, storage) means the specs of the flows
   it really changes, not all of them. **The full suite** (`npm run test:e2e`, production build, about
   40 s) and **WebKit** (`npm run test:e2e:all`) run only when the user asks. Say in the summary which

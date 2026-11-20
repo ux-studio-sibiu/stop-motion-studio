@@ -1,5 +1,6 @@
 import { cloneElements, type Element } from "./element";
 import { newId } from "./ids";
+import { timeLanes } from "./lanes";
 import type { Project } from "./types";
 
 // Overlays (step 24): objects that live in time instead of on a picture, on the timeline's second
@@ -61,18 +62,10 @@ export function resizeOverlay(overlay: Overlay, edge: "start" | "end", ticks: nu
   return cleanOverlay({ ...overlay, start, length: end - start });
 }
 
-// Rows to draw the track in, so overlapping overlays don't hide each other: each goes in the
-// first row that's free from its start (they're still one track). By id.
+// Rows to draw the track in, so overlapping overlays don't hide each other (timeLanes; they're
+// still one track). By id.
 export function overlayLanes(overlays: readonly Overlay[]): Record<string, number> {
-  const lanes: Record<string, number> = {};
-  const ends: number[] = [];   // where each row is free from
-  for (const overlay of [...overlays].sort((a, b) => a.start - b.start || a.id.localeCompare(b.id))) {
-    let lane = ends.findIndex((end) => end <= overlay.start);
-    if (lane < 0) lane = ends.length;
-    ends[lane] = overlayEnd(overlay);
-    lanes[overlay.id] = lane;
-  }
-  return lanes;
+  return timeLanes(overlays.map((overlay) => ({ id: overlay.id, start: overlay.start, end: overlayEnd(overlay) })));
 }
 
 // A copy that starts where the original ends, so it follows it on the track without hiding it (a

@@ -62,7 +62,7 @@ export type LoadedProject = { project: Project; frames: Frame[] };
 
 export type ImportedProject = { project: Project; frames: Frame[]; images: StoredImage[]; thumbs: StoredThumb[] };
 
-export type ProjectChanges = Partial<Pick<Project, "name" | "fps" | "frameIds" | "safeMargin" | "overlays">>;
+export type ProjectChanges = Partial<Pick<Project, "name" | "fps" | "frameIds" | "safeMargin" | "overlays" | "sounds">>;
 
 // What can change on a frame after it's made. The id says which frame.
 export type FrameChanges = { id: string } & Partial<Pick<Frame, "hold" | "transform" | "adjust" | "elements">>;

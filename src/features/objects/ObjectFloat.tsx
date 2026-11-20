@@ -13,11 +13,12 @@ type Rect = { left: number; top: number; right: number; bottom: number };
 // goes where it doesn't cover the object: below it, else above, else beside it (right, then left),
 // else below anyway; and, until it's dragged, never over the toolbar or the side panel (so Undo and
 // the object tiles stay in reach): between the top of the stage and the bottom of the window, left
-// of the side panel. It follows the object as it moves or sizes and
-// as the stage zooms. Its header drags it somewhere else, and it keeps that distance from the
-// object until another object is picked. An object picked on the overlay track that isn't on this
-// picture has no place on the stage: the panel sits by the top of the stage then.
-// Fixed to the window, so neither the stage's clipping nor its zoom touch it; it's placed on every
+// of the side panel, and off the timeline's buttons (clearOf). It follows the object as it moves
+// or sizes. Its header drags it somewhere
+// else, and it keeps that distance from the object until another object is picked. An object
+// picked on the overlay track that isn't on this picture has no place on the stage: the panel
+// sits by the top of the stage then.
+// Fixed to the window, so the stage's clipping doesn't touch it; it's placed on every
 // animation frame while shown (the object's box on screen changes with many things).
 export function ObjectFloat({ saves }: { saves: ObjectSaves }) {
   const { picked } = useStageObjects();
@@ -40,7 +41,8 @@ export function ObjectFloat({ saves }: { saves: ObjectSaves }) {
       const { offsetWidth: width, offsetHeight: height } = box;
       const side = document.querySelector(".nsc-side-panel")?.getBoundingClientRect();
       const area = { left: MARGIN, top: stage.top, right: side?.width ? side.left - MARGIN : innerWidth - MARGIN, bottom: innerHeight - MARGIN };
-      const at = placeBy(object, area, width, height);
+      const tools = document.querySelector(".timeline-tools")?.getBoundingClientRect();
+      const at = clearOf(tools, object, placeBy(object, area, width, height), area, width, height);
       const left = clamp(clamp(at.left, area.left, area.right - width) + moved.current.x, MARGIN, innerWidth - width - MARGIN);
       const top = clamp(clamp(at.top, area.top, area.bottom - height) + moved.current.y, MARGIN, innerHeight - height - MARGIN);
       box.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`;
@@ -85,6 +87,19 @@ function placeBy(object: Rect, area: Rect, width: number, height: number): { lef
   if (right.left + width <= area.right) return right;
   if (left.left >= area.left) return left;
   return below;
+}
+
+// Moved off the timeline's buttons when it would cover them (Duplicate, Delete, Add photos stay in
+// reach): to their right if it fits there, else up above them, unless that covers the object (a
+// big panel in a small window): then it stays. To the right first, so it stays
+// below the object.
+function clearOf(tools: Rect | undefined, object: Rect, at: { left: number; top: number }, area: Rect, width: number, height: number): { left: number; top: number } {
+  if (!tools || tools.right <= tools.left) return at;
+  const covers = (box: Rect, left: number, top: number) => left < box.right && left + width > box.left && top < box.bottom && top + height > box.top;
+  if (!covers(tools, at.left, at.top)) return at;
+  if (tools.right + GAP + width <= area.right) return { left: tools.right + GAP, top: at.top };
+  const up = Math.max(area.top, tools.top - GAP - height);
+  return covers(object, at.left, up) ? at : { left: at.left, top: up };   // never over the object itself: that matters more
 }
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));

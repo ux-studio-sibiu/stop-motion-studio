@@ -200,6 +200,24 @@ export class Studio {
       return { type: blob.type, size: blob.size };
     });
   }
+
+  // A sound pill in the Sounds tab (step 29b): a click plays it, a drag adds it.
+  readonly soundTile = (name: string) => this.page.locator(".nsc-sounds-panel").getByRole("button", { name, exact: true });
+
+  // Drags a sound from the Sounds tab (opening it) onto the stage, or onto the Sound Layer at a tick.
+  // The drag starts first, which shows a hidden Sound Layer, then goes to where it lands.
+  async dragSound(name: string, to: "stage" | { tick: number } = "stage"): Promise<void> {
+    await this.page.getByRole("tab", { name: "Sounds" }).click();
+    await this.soundTile(name).hover();   // waits until the tab is showing and the pill holds still
+    const from = (await this.soundTile(name).boundingBox())!;
+    await this.page.mouse.down();
+    await this.page.mouse.move(from.x + from.width / 2 - 20, from.y + from.height / 2, { steps: 4 });
+    const target = to === "stage" ? this.page.locator(".stage-frame") : this.page.getByRole("group", { name: "Sound Layer" });
+    const box = (await target.boundingBox())!;
+    const x = to === "stage" ? box.x + box.width / 2 : box.x + to.tick * Number(await target.getAttribute("data-tick-width")) + 2;
+    await this.page.mouse.move(x, box.y + box.height / 2, { steps: 12 });
+    await this.page.mouse.up();
+  }
 }
 
 // The projects page (home): the list of saved animations.

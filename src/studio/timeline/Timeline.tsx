@@ -7,6 +7,10 @@ import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, selectedOverlayId, withPreview } 
 import { editorStore, useEditor, useShownFrames, useShownOverlays } from "@/store/useEditor";
 import { deleteOverlay, duplicateOverlayById, type SaveOverlays } from "../overlayEditing";
 import { OverlayTrack } from "./OverlayTrack";
+import { SoundTrack } from "./SoundTrack";
+import type { SaveSounds } from "../soundEditing";
+import { ALL_LAYERS, remembered, useRememberedState } from "../remembered";
+import { LayersMenu } from "./LayersMenu";
 import { DragGhost, TimelineFrame } from "./TimelineFrame";
 import { useReorder } from "./useReorder";
 import { useResize, type HoldChange } from "./useResize";
@@ -22,6 +26,7 @@ type TimelineProps = {
   onReorder: (before: string[], after: string[], moved: string[]) => void;
   onNudge: (moved: string[], direction: -1 | 1) => void;   // Ctrl+arrow: one place along, from the saved order
   onOverlays: SaveOverlays;   // the overlay track's changes (step 24)
+  onSounds: SaveSounds;       // the sound row's changes (step 29b)
   addPhotos: ReactNode;       // Add photos, placed by Studio between Duplicate and Delete
 };
 
@@ -34,7 +39,9 @@ type TimelineProps = {
 //   useReorder            dragging pictures to a new place
 //   useScrub              the playhead, scrubbing along the ruler
 //   OverlayTrack          the objects that live in time, under the pictures (step 24)
-export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, onOverlays, addPhotos }: TimelineProps) {
+//   SoundTrack            the sounds in time, the bottom row (step 29b)
+//   LayersMenu            which of those two rows show, remembered
+export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, onOverlays, onSounds, addPhotos }: TimelineProps) {
   const shown = useShownFrames();   // with any move, brightness or object change not saved yet, for the thumbnails
   const holdPreview = useEditor((state) => state.holdPreview);
   const frames = useMemo(() => withPreview(shown, "hold", holdPreview), [shown, holdPreview]);   // and any resize in progress
@@ -45,6 +52,7 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
   const overlay = useShownOverlays().find((item) => item.id === overlayId);
   const fps = useEditor((state) => state.project?.fps ?? 8);
   const projectId = useEditor((state) => state.project?.id);
+  const [layers, setLayers] = useRememberedState(remembered.timelineLayers, ALL_LAYERS);   // the extra rows shown (LayersMenu)
   const thumbRatio = useEditor((state) => (state.project ? `${state.project.width} / ${state.project.height}` : "16 / 9"));
 
   const scroller = useRef<HTMLDivElement>(null);
@@ -148,6 +156,8 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
   return (
     <section className="timeline" aria-label="Timeline">
       <div className="timeline-tools">
+        <LayersMenu layers={layers} onChange={setLayers} />
+        <span className="tools-gap" />
         <button type="button" className="icon-button is-small" aria-label="Zoom out" disabled={zoom <= MIN_TIMELINE_ZOOM} onClick={() => zoomTo(zoom / ZOOM_STEP)}><ZoomOut size={20} /></button>
         <button type="button" className="icon-button is-small" aria-label="Zoom in" disabled={zoom >= MAX_TIMELINE_ZOOM} onClick={() => zoomTo(zoom * ZOOM_STEP)}><ZoomIn size={20} /></button>
         <span className="tools-gap" />
@@ -181,7 +191,8 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
           </li>
         </ol>
 
-        <OverlayTrack frames={frames} tickWidth={tickWidth} fps={fps} onChange={onOverlays} />
+        {layers.objects && <OverlayTrack frames={frames} tickWidth={tickWidth} fps={fps} onChange={onOverlays} />}
+        {layers.sounds && <SoundTrack frames={frames} tickWidth={tickWidth} fps={fps} onChange={onSounds} />}
       </div>
       {reorder.drag && <DragGhost drag={reorder.drag} frames={frames} />}
     </section>

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { asBoolean, asNumber, asObject, asOneOf, asString, asStringList, asTimelineView, definePreference, definePreferenceFamily, PREFIX, type PreferenceStorage } from "@/adapters/preferences/preferences";
+import { asBoolean, asNumber, asObject, asOneOf, asString, asStringList, asTimelineView, definePreference, definePreferenceFamily, forgetRetired, PREFIX, type PreferenceStorage } from "@/adapters/preferences/preferences";
 
-function memoryStorage(): PreferenceStorage & { data: Map<string, string> } {
+function memoryStorage(): PreferenceStorage & Pick<Storage, "length" | "key"> & { data: Map<string, string> } {
   const data = new Map<string, string>();
-  return { data, getItem: (key) => data.get(key) ?? null, setItem: (key, value) => { data.set(key, value); }, removeItem: (key) => { data.delete(key); } };
+  return { data, get length() { return data.size; }, key: (i) => [...data.keys()][i] ?? null, getItem: (key) => data.get(key) ?? null, setItem: (key, value) => { data.set(key, value); }, removeItem: (key) => { data.delete(key); } };
 }
 
 const broken: PreferenceStorage = {
@@ -77,5 +77,20 @@ describe("parsers", () => {
     expect(asTimelineView({ zoom: 200 })).toEqual({ zoom: 200, scrollSeconds: 0 });
     expect(asTimelineView({ zoom: 200, scrollSeconds: -3 })).toEqual({ zoom: 200, scrollSeconds: 0 });
     for (const junk of [null, [], { zoom: "big" }, { zoom: 0 }, { zoom: -5 }]) expect(asTimelineView(junk)).toBeUndefined();
+  });
+});
+
+describe("forgetRetired", () => {
+  it("removes a retired setting and its whole family, and nothing else", () => {
+    const storage = memoryStorage();
+    for (const name of ["stage-view:a1", "stage-view:b2", "stage-view", "stage-viewer", "view:a1", "panel-tab"]) storage.data.set(PREFIX + name, "1");
+    storage.data.set("someone-else:stage-view:a1", "1");
+    forgetRetired(["stage-view"], storage);
+    expect([...storage.data.keys()].sort()).toEqual([`${PREFIX}panel-tab`, `${PREFIX}stage-viewer`, `${PREFIX}view:a1`, "someone-else:stage-view:a1"].sort());
+  });
+
+  it("never throws when storage is blocked or missing", () => {
+    expect(() => forgetRetired(["stage-view"], { ...broken, length: 1, key: () => { throw new Error("blocked"); } })).not.toThrow();
+    expect(() => forgetRetired(["stage-view"], null)).not.toThrow();
   });
 });

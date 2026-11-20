@@ -1,4 +1,4 @@
-import { clampSafeMargin, cleanOverlay, cloneOverlays, sameOverlays, type Overlay, type ProjectRepository } from "../model";
+import { clampSafeMargin, cleanOverlay, cleanSoundClip, cloneOverlays, sameOverlays, sameSounds, type Overlay, type ProjectRepository, type SoundClip } from "../model";
 import type { Command } from "./command";
 
 // Commands that change the animation as a whole, not its pictures (those are frameCommands.ts).
@@ -29,6 +29,16 @@ export function setOverlays(projectId: string, from: readonly Overlay[], to: rea
   const write = (overlays: readonly Overlay[]) => async (repository: ProjectRepository) => {
     if (sameOverlays(from, to)) throw new Error("Nothing changed.");
     await repository.updateProject(projectId, { overlays: cloneOverlays(overlays).map(cleanOverlay) });
+  };
+  return { label, do: write(to), undo: write(from) };
+}
+
+// The sounds in time (step 29b): adding, moving, a louder or quieter volume, deleting. Like the
+// overlays, one command sets the whole list, so every edit is one undo step.
+export function setSounds(projectId: string, from: readonly SoundClip[], to: readonly SoundClip[], label: string): Command {
+  const write = (sounds: readonly SoundClip[]) => async (repository: ProjectRepository) => {
+    if (sameSounds(from, to)) throw new Error("Nothing changed.");
+    await repository.updateProject(projectId, { sounds: sounds.map(cleanSoundClip) });
   };
   return { label, do: write(to), undo: write(from) };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ARCHIVE_LIMITS, ArchiveError, archiveManifest, imageFile, readManifest } from "@/core/archive";
-import { addStroke, createBubble, createFrame, createOverlay, createProject, createShape, withProps, type Frame } from "@/core/model";
+import { addStroke, createBubble, createFrame, createOverlay, createProject, createShape, createSoundClip, withProps, type Frame } from "@/core/model";
 
 // The archive's format: what a backup says, and that reading one back trusts nothing in it.
 
@@ -15,6 +15,7 @@ function animation() {
   const c = createFrame(project.id, "img-a", { hold: 2 });   // a copy: the same picture
   project.frameIds = [b.id, a.id, c.id];
   project.overlays = [createOverlay(createShape("arrow"), 2, 4)];
+  project.sounds = [{ ...createSoundClip("cartoon/boing", 3), volume: 1.5 }];
   const images = [{ id: "img-a", width: 1280, height: 720 }, { id: "img-b", width: 1280, height: 720 }, { id: "unused", width: 10, height: 10 }];
   return { project, frames: [a, b, c], images };
 }
@@ -35,7 +36,7 @@ describe("archiveManifest", () => {
 });
 
 describe("readManifest", () => {
-  it("brings everything back: order, lengths, positions, looks, objects, overlays, speed, safe zone", () => {
+  it("brings everything back: order, lengths, positions, looks, objects, overlays, sounds, speed, safe zone", () => {
     const { project, frames, images } = animation();
     const restored = restore(archiveManifest(project, frames, images));
     expect(restored.project).toMatchObject({ name: "Dino walk", width: 1280, height: 720, fps: 12, safeMargin: 30, createdAt: 100, updatedAt: 999 });
@@ -47,6 +48,18 @@ describe("readManifest", () => {
     expect(ordered[1].elements[0]).toMatchObject({ kind: "speech-bubble", props: { text: "Hi!" } });
     expect(ordered[1].imageId).toBe(ordered[2].imageId);   // the copy still shares its picture
     expect(restored.project.overlays).toEqual([expect.objectContaining({ start: 2, length: 4, element: expect.objectContaining({ kind: "shape" }) })]);
+    expect(restored.project.sounds).toEqual([expect.objectContaining({ start: 3, sound: "cartoon/boing", volume: 1.5 })]);
+  });
+
+  it("keeps only real sounds from a backup, in range; a backup from before sounds has none", () => {
+    const { project, frames, images } = animation();
+    const manifest = archiveManifest(project, frames, images);
+    manifest.project.sounds = [{ id: "s", start: -4, sound: "magic/zap", volume: 9 }, { id: "x", start: 1, sound: "", volume: 1 }, null as never, ...Array(ARCHIVE_LIMITS.sounds + 5).fill(project.sounds![0])];
+    const restored = restore(manifest);
+    expect(restored.project.sounds![0]).toEqual({ id: "s", start: 0, sound: "magic/zap", volume: 1 });
+    expect(restored.project.sounds).toHaveLength(ARCHIVE_LIMITS.sounds - 2);   // at most that many are read, the two that aren't sounds among them
+    delete manifest.project.sounds;
+    expect(restore(manifest).project.sounds).toEqual([]);
   });
 
   it("gives the animation, its frames and its pictures new ids, so a restore never overwrites", () => {

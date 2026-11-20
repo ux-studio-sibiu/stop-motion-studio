@@ -1,4 +1,4 @@
-import { BufferTarget, CanvasSource, canEncodeVideo, Mp4OutputFormat, Output, QUALITY_HIGH, WebMOutputFormat, type VideoCodec } from "mediabunny";
+import { AudioBufferSource, BufferTarget, CanvasSource, canEncodeAudio, canEncodeVideo, Mp4OutputFormat, Output, QUALITY_HIGH, WebMOutputFormat, type AudioCodec, type VideoCodec } from "mediabunny";
 import { drawExportFrame } from "@/core/export/frame";
 import type { VideoFrame } from "@/core/export/video";
 import { frameIndexAt } from "@/core/model";
@@ -11,10 +11,10 @@ import type { DrawableImage, Rect, Scene } from "@/core/render";
 // What this browser can make, best first: MP4 with H.264 plays in every player and app; WebM with
 // VP9 where H.264 can't be encoded (some Linux builds, Chromium without its licensed codecs).
 // Asked of the browser itself (WebCodecs), never guessed from its name.
-export type VideoFormat = { container: "mp4" | "webm"; codec: VideoCodec; extension: string; type: string };
+export type VideoFormat = { container: "mp4" | "webm"; codec: VideoCodec; audioCodec: AudioCodec; extension: string; type: string };
 export const VIDEO_FORMATS: readonly VideoFormat[] = [
-  { container: "mp4", codec: "avc", extension: "mp4", type: "video/mp4" },
-  { container: "webm", codec: "vp9", extension: "webm", type: "video/webm" },
+  { container: "mp4", codec: "avc", audioCodec: "aac", extension: "mp4", type: "video/mp4" },
+  { container: "webm", codec: "vp9", audioCodec: "opus", extension: "webm", type: "video/webm" },
 ];
 
 export async function videoFormat(size: { width: number; height: number }): Promise<VideoFormat | null> {
@@ -33,11 +33,12 @@ export type VideoExportOptions = {
   frames: readonly VideoFrame[];   // what becomes the video's frames (videoFrames)
   format: VideoFormat;          // from videoFormat
   loadImage: (imageId: string) => Promise<DrawableImage | undefined>;
+  audio?: AudioBuffer | null;   // the sound row mixed (mixSounds), as long as the animation; none: no sound track
   onProgress?: (fraction: number) => void;   // 0 to 1
   signal?: AbortSignal;         // stops it: the promise rejects with an AbortError
 };
 
-export async function exportVideo({ scene, rect, frames, format, loadImage, onProgress, signal }: VideoExportOptions): Promise<Blob> {
+export async function exportVideo({ scene, rect, frames, format, loadImage, audio, onProgress, signal }: VideoExportOptions): Promise<Blob> {
   if (frames.length === 0) throw new Error("Nothing to export.");
   signal?.throwIfAborted();
   const full = context(scene.width, scene.height);
@@ -48,10 +49,16 @@ export async function exportVideo({ scene, rect, frames, format, loadImage, onPr
   const output = new Output({ format: format.container === "mp4" ? new Mp4OutputFormat({ fastStart: "in-memory" }) : new WebMOutputFormat(), target });
   const source = new CanvasSource(out.canvas, { codec: format.codec, quality: QUALITY_HIGH });
   output.addVideoTrack(source);
+  // The sounds (step 29b), where the browser can encode them; otherwise the video is silent.
+  const sound = audio && (await canEncodeAudio(format.audioCodec, { numberOfChannels: audio.numberOfChannels, sampleRate: audio.sampleRate }).catch(() => false))
+    ? new AudioBufferSource({ codec: format.audioCodec, bitrate: QUALITY_HIGH })
+    : null;
+  if (sound) output.addAudioTrack(sound);
 
   try {
     await output.start();
     onProgress?.(0);
+    if (sound && audio) await sound.add(audio);
     for (const [index, frame] of frames.entries()) {
       signal?.throwIfAborted();
       const picture = scene.frames[frameIndexAt(scene.frames, frame.tick)];

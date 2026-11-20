@@ -1,61 +1,70 @@
 @use "@/styles/breakpoints" as *;
 
-// The projects page (home).
+// The studio's page colour behind the home page too.
+body:has(#nsc--home) { background-color: var(--color-studio); }
+
+// The projects page (home). It fits the window: the title and buttons, the storage meter and the
+// notes stay put, and only the list of animations scrolls, inside its own area.
 #nsc--home {
-  display: grid;
-  align-content: start;
-  gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   max-width: 72rem;
-  min-height: 100dvh;
+  height: 100dvh;
   margin: 0 auto;
   padding: var(--space-4) var(--space-3);
+  isolation: isolate;   // keeps the texture below behind the page's content
 
-  @include respond-to("tablet") { padding: 3rem var(--space-4); }
+  @include respond-to("tablet") { padding: var(--space-4); }
+
+  > * { flex: none; }
+
+  // The studio's background texture (studio.scss): faint graph paper across the whole window,
+  // whatever the page's width.
+  &::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: var(--color-ink);
+    -webkit-mask: url("/textures/graph-paper.svg") 0 0 / 90px 90px repeat;
+    mask: url("/textures/graph-paper.svg") 0 0 / 90px 90px repeat;
+    opacity: 0.1;
+  }
 
   .masthead {
     display: grid;
     justify-items: center;
     gap: var(--space-3);
-    padding: var(--space-4) 0;
+    padding: var(--space-3) 0 0;
     text-align: center;
   }
 
   h1 {
     margin: 0;
-    font-size: clamp(2.25rem, 7vw, 4rem);
+    font-size: clamp(2rem, 6vw, 3.5rem);
     font-weight: 900;
     line-height: 1.05;
+    text-transform: uppercase;   // shown in capitals; the words themselves stay as written (for screen readers)
   }
 
-  .lede {
-    max-width: 32ch;
-    margin: 0;
-    color: var(--color-muted);
-    font-size: 1.25rem;
-  }
-
-  .start {
-    display: inline-flex;
-    align-items: center;
+  // The two buttons, side by side, the studio's own (like Play and See-through): New animation,
+  // green, and Load project (a backup, step 27), the plain default one.
+  .ctas {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: var(--space-3);
-    min-height: var(--hit-big);
-    padding: 0 var(--space-4);
-    border: 0;
-    border-radius: 999px;
-    background: var(--color-accent);
-    color: var(--color-on-strong);
-    font: inherit;
-    font-size: var(--text-heading);
-    font-weight: 800;
-    box-shadow: var(--shadow-press);
-    cursor: pointer;
-
-    &:active:not(:disabled) { transform: translateY(0.25rem); box-shadow: var(--shadow-pressed); }
-    &:disabled { opacity: 0.6; cursor: progress; }
   }
 
-  // Restoring a backup (step 27): a quieter button under New animation, and what happened.
-  .restore { font-size: var(--text-hint); }
+  // The animations: the part that takes the space left, and scrolls when there are many.
+  .project-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--space-1);   // room for the cards' focus rings inside the scrolling area
+  }
 
   .archive-note {
     margin: 0;

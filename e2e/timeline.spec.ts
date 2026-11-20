@@ -144,8 +144,8 @@ test("each animation remembers which pictures were selected", async ({ studio, p
   expect(await studio.selectedOrder()).toEqual((await studio.order()).slice(1, 3));
 });
 
-test("the timeline's buttons come in three groups: zoom, previous and next, then duplicate, add photos and delete", async ({ page }) => {
+test("the timeline's buttons come in four groups: layers, zoom, previous and next, then duplicate, add photos and delete", async ({ page }) => {
   const tools = page.locator(".timeline-tools").locator("button, .tools-gap");
   const names = await tools.evaluateAll((items) => items.map((item) => (item.classList.contains("tools-gap") ? "|" : item.getAttribute("aria-label"))));
-  expect(names).toEqual(["Zoom out", "Zoom in", "|", "Previous picture", "Next picture", "|", "Duplicate picture", "Add photos", "Delete picture"]);
+  expect(names).toEqual(["Timeline layers", "|", "Zoom out", "Zoom in", "|", "Previous picture", "Next picture", "|", "Duplicate picture", "Add photos", "Delete picture"]);
 });

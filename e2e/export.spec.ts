@@ -95,3 +95,21 @@ test("Save as video downloads the animation: its full exported size, as long as 
   expect(await input.computeDuration()).toBeCloseTo(0.75, 2);              // 1 + 4 + 1 ticks at 8 per second
   expect((await track.computePacketStats()).packetCount).toBe(3);
 });
+
+// Sounds in the video (step 29b): the sound row is mixed into an audio track (AAC in an MP4, Opus
+// in a WebM), and the video is as long as before.
+test("Save as video carries the sounds as an audio track", async ({ studio, page }) => {
+  const { ALL_FORMATS, BufferSource, Input } = await import("mediabunny");
+  await studio.seedPictures(4);   // 0.5 s
+  await studio.dragSound("Pop");
+  await expect(page.getByRole("group", { name: "Sound Layer" }).getByRole("button")).toHaveCount(1);
+
+  const downloading = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Save as video" }).click();
+  const bytes = await readFile((await (await downloading).path())!);
+  using input = new Input({ formats: ALL_FORMATS, source: new BufferSource(bytes) });
+  const audio = await input.getPrimaryAudioTrack();
+  expect(audio).not.toBeNull();
+  expect(["aac", "opus"]).toContain(audio!.codec);
+  expect(await input.computeDuration()).toBeCloseTo(0.5, 1);
+});

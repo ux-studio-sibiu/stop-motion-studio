@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
-import { asBoolean, asNumber, asObject, asOneOf, asString, asStringList, asTimelineView, definePreference, definePreferenceFamily, type Preference } from "@/adapters/preferences/preferences";
+import { asBoolean, asNumber, asObject, asOneOf, asString, asStringList, asTimelineView, definePreference, definePreferenceFamily, forgetRetired, type Preference } from "@/adapters/preferences/preferences";
 import { GIF_QUALITIES, GIF_SIZES } from "@/core/export";
 import { selectedOverlayId, type EditorState, type OnionSkin } from "@/store/editorStore";
 import { editorStore } from "@/store/useEditor";
@@ -27,7 +27,22 @@ export const remembered = {
   drawWidth: definePreference("draw-width", asString),                 //   the pencil width
   gifSize: definePreference("gif-size", asOneOf(GIF_SIZES)),                     // Save as GIF: small, medium or full size (step 25)
   gifQuality: definePreference("gif-quality", asOneOf(GIF_QUALITIES)),               //   and low, medium or high quality
+  captureSound: definePreference("capture-sound", asBoolean),          // the shutter click when a picture is taken (step 29)
+  timelineLayers: definePreference("timeline-layers", asTimelineLayers),   // which of the timeline's extra rows show (objects in time, sounds)
 };
+
+// The timeline's extra rows under the pictures, each shown or hidden from the timeline's Layers
+// button. Both show at first; a missing one counts as shown.
+export type TimelineLayers = { objects: boolean; sounds: boolean };
+export const ALL_LAYERS: TimelineLayers = { objects: true, sounds: true };
+function asTimelineLayers(raw: unknown): TimelineLayers | undefined {
+  const value = asObject(raw);
+  return value && { objects: value.objects !== false, sounds: value.sounds !== false };
+}
+
+// Settings the studio used to remember and no longer does, cleared once when it opens:
+//   stage-view  each animation's stage zoom and pan (the view zoom was removed after step 28)
+const RETIRED = ["stage-view"];
 
 // Forgets everything remembered about one animation, when it's deleted: every per-animation entry
 // above (each preference family), so one added later is forgotten too without another line.
@@ -51,12 +66,16 @@ function current<T>(preference: Preference<T>): T | undefined {
 export function useRememberedState<T>(preference: Preference<T>, fallback: T, valid: (value: T) => boolean = () => true) {
   const saved = useSyncExternalStore(subscribe, () => current(preference), () => undefined);
   const value = saved !== undefined && valid(saved) ? saved : fallback;
-  const set = (next: T) => {
-    preference.save(next);
-    cache.delete(preference.key);
-    listeners.forEach((listener) => listener());
-  };
+  const set = (next: T) => saveRemembered(preference, next);
   return [value, set] as const;
+}
+
+// Saves a remembered value from outside a component (adding a sound turns its timeline row on);
+// every useRememberedState of it updates.
+export function saveRemembered<T>(preference: Preference<T>, value: T): void {
+  preference.save(value);
+  cache.delete(preference.key);
+  listeners.forEach((listener) => listener());
 }
 
 // Keeps a field of the editor store remembered: restores it once when the studio opens, saves it
@@ -100,6 +119,7 @@ export function useRememberedSelection() {
 // The studio's remembered store fields, set up once by the studio: see-through, loop, the open
 // side-panel tab, and each animation's selection.
 export function useRememberedStudio() {
+  useEffect(() => forgetRetired(RETIRED), []);
   useRememberedStore(remembered.onionSkin, (state) => state.onionSkin, (value) => editorStore.getState().setOnionSkin(value as Partial<OnionSkin>));
   useRememberedStore(remembered.loop, (state) => state.loop, (value) => editorStore.getState().setLoop(value));
   useRememberedStore(remembered.panelTab, (state) => state.panelTab ?? "", (value) => editorStore.getState().setPanelTab(value));

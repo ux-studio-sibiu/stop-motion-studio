@@ -1,7 +1,7 @@
 import {
-  bubbleProps, clampAdjust, clampFps, clampHold, clampSafeMargin, cleanName, cleanOverlay, DRAWING, drawingProps, MAX_HEIGHT, MAX_WIDTH, newId,
+  bubbleProps, clampAdjust, clampFps, clampHold, clampSafeMargin, cleanName, cleanOverlay, cleanSoundClip, DRAWING, drawingProps, MAX_HEIGHT, MAX_WIDTH, newId,
   normaliseAngle, SCHEMA_VERSION, SHAPE, shapeProps, SPEECH_BUBBLE, TEXT, textProps,
-  type Element, type ElementBox, type Frame, type Overlay, type Project, type Transform,
+  type Element, type ElementBox, type Frame, type Overlay, type Project, type SoundClip, type Transform,
 } from "../model";
 
 // The project archive (step 27): a backup of one animation as a .zip, `project.json` beside its
@@ -19,6 +19,7 @@ export const ARCHIVE_LIMITS = {
   pictures: 5000,           // frames in one animation
   objects: 200,             // objects on one picture
   overlays: 500,            // objects on the overlay track
+  sounds: 500,              // sounds on the sound row
   strokes: 2000,            // lines in one drawing
   strokePoints: 20000,      // numbers in one line (x, y pairs)
   imageBytes: 25 * 1024 * 1024,        // one photo
@@ -31,7 +32,7 @@ export type ArchiveManifest = {
   format: typeof ARCHIVE_FORMAT;
   version: number;
   schemaVersion: number;    // the storage schema it was made from, for the record
-  project: Pick<Project, "name" | "width" | "height" | "fps" | "safeMargin" | "createdAt" | "updatedAt"> & { overlays: Overlay[] };
+  project: Pick<Project, "name" | "width" | "height" | "fps" | "safeMargin" | "createdAt" | "updatedAt"> & { overlays: Overlay[]; sounds?: SoundClip[] };
   frames: ArchiveFrame[];   // in animation order
   images: ArchiveImage[];
 };
@@ -48,7 +49,7 @@ export function archiveManifest(project: Project, frames: readonly Frame[], imag
     format: ARCHIVE_FORMAT,
     version: ARCHIVE_VERSION,
     schemaVersion: project.schemaVersion,
-    project: { name: project.name, width: project.width, height: project.height, fps: project.fps, safeMargin: project.safeMargin, overlays: project.overlays ?? [], createdAt: project.createdAt, updatedAt: project.updatedAt },
+    project: { name: project.name, width: project.width, height: project.height, fps: project.fps, safeMargin: project.safeMargin, overlays: project.overlays ?? [], sounds: project.sounds ?? [], createdAt: project.createdAt, updatedAt: project.updatedAt },
     frames: ordered.map((frame) => ({ image: frame.imageId, hold: frame.hold, transform: frame.transform, adjust: frame.adjust, elements: frame.elements ?? [] })),
     images: images.filter((image) => used.has(image.id)).map((image) => ({ ...image, file: imageFile(image.id) })),
   };
@@ -118,6 +119,12 @@ export function readManifest(raw: unknown, { files, now = Date.now(), makeId = n
     return [cleanOverlay({ id: typeof overlay.id === "string" ? overlay.id : makeId(), track: 1, start: number(overlay.start, 0), length: number(overlay.length, 1), element })];
   });
 
+  const sounds = list(stored.sounds, ARCHIVE_LIMITS.sounds).flatMap((item): SoundClip[] => {
+    const clip = record(item);
+    if (!clip || typeof clip.sound !== "string" || clip.sound === "") return [];
+    return [cleanSoundClip({ id: typeof clip.id === "string" ? clip.id : makeId(), start: number(clip.start, 0), sound: clip.sound, volume: number(clip.volume, 1) })];
+  });
+
   const project: Project = {
     id,
     schemaVersion: SCHEMA_VERSION,
@@ -128,6 +135,7 @@ export function readManifest(raw: unknown, { files, now = Date.now(), makeId = n
     ...(stored.safeMargin === undefined ? {} : { safeMargin: clampSafeMargin(number(stored.safeMargin, NaN)) }),
     frameIds: restoredFrames.map((frame) => frame.id),
     overlays,
+    sounds,
     createdAt: Number.isFinite(stored.createdAt) ? (stored.createdAt as number) : now,
     updatedAt: now,   // restored now: it comes first in the list
   };

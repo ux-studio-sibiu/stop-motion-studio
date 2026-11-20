@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { captureFrame } from "@/adapters/camera/capture";
+import { playNotes } from "@/adapters/sound/sound";
 import { addFrames, type Command } from "@/core/commands";
 import { createFrame, inOrder, newId } from "@/core/model";
+import { SHUTTER } from "@/core/sound";
 import { editorStore } from "@/store/useEditor";
 import { isTextEntry, ownsKey } from "./keyboard";
 import { thumbs } from "./media";
@@ -18,7 +20,8 @@ import { checkStorage } from "./useStorageWatch";
 // button sends Tab, so a child can take pictures from a distance. That gives up Tab moving the
 // focus while the camera is on (on purpose: the user's call); Shift+Tab still moves it back, and
 // Tab in a text field is left alone.
-export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: boolean, run: (command: Command) => Promise<unknown>) {
+// With `sound` on, a shutter click says the picture was saved (step 29).
+export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: boolean, run: (command: Command) => Promise<unknown>, sound = true) {
   const [capturing, setCapturing] = useState(false);
   const busy = useRef(false);
   const previous = useRef<{ selection: readonly string[]; frameId: string } | null>(null);
@@ -51,14 +54,17 @@ export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: b
         images: [{ id: imageId, projectId: project.id, blob: shot.image, width: shot.width, height: shot.height, createdAt: Date.now() }],
         thumbs: [{ imageId, projectId: project.id, blob: shot.thumb }],
       }));
-      if (saved) void checkStorage();   // every picture brings the device closer to full
+      if (saved) {
+        if (sound) playNotes(SHUTTER);
+        void checkStorage();   // every picture brings the device closer to full
+      }
     } catch (error) {
       console.warn("Capture failed", error);   // no frame yet (a failed save shows its own message: useHistory)
     } finally {
       busy.current = false;
       setCapturing(false);
     }
-  }, [video, enabled, run]);
+  }, [video, enabled, run, sound]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {

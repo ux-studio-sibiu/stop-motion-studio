@@ -13,3 +13,5 @@ export * from "./objectKinds";
 export * from "./drawing";
 export * from "./clipboard";
 export * from "./overlay";
+export * from "./sound";
+export * from "./lanes";

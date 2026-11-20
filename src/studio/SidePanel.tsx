@@ -1,6 +1,6 @@
 "use client";
 
-import { Children, cloneElement, isValidElement, type KeyboardEvent, type ReactElement, type ReactNode } from "react";
+import { Children, cloneElement, isValidElement, type CSSProperties, type KeyboardEvent, type ReactElement, type ReactNode } from "react";
 
 // The one panel beside the stage, split into tabs picked from a column of icons on its left
 // edge. Each tab is a <PanelTab> child, so adding one (later steps will) is adding a child:
@@ -30,7 +30,7 @@ export function SidePanel({ children, active: wanted, onChange }: { children: Re
   };
 
   return (
-    <aside className="nsc-side-panel" aria-label="Tools">
+    <aside className="nsc-side-panel" aria-label="Tools" style={{ "--tab-count": tabs.length } as CSSProperties}>
       <div className="tabs" role="tablist" aria-orientation="vertical" aria-label="Panels" onKeyDown={onKeyDown}>
         {tabs.map(({ props }) => (
           <button key={props.id} id={tabId(props.id)} type="button" role="tab" className={`tab${props.id === active ? " is-active" : ""}`} aria-selected={props.id === active} aria-controls={panelId(props.id)} aria-label={props.label} title={props.label} tabIndex={props.id === active ? 0 : -1} onClick={() => setChosen(props.id)}>

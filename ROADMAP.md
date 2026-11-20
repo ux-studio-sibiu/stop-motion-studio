@@ -621,6 +621,46 @@ inside the band.
   toggle; animations respect `prefers-reduced-motion`.
 - **Watch out:** autoplay rules: sounds only start after a user gesture.
 - **Check:** a 7-year-old can make a 10-frame animation without help (the real test).
+- **As built (cut down on request):** only the capture sound: a short synthesised shutter click when
+  a picture is saved, on at first, with a Sound on/off button in the Camera tab (remembered). No timer,
+  celebration or new count wording: not needed for now.
+
+### 29b · Sound track: sound effects in time *(added)*
+- **Builds:** a third timeline row, at the **bottom**, under the overlay track: a sound is a bar from
+  `start` for as long as it plays, like an overlay. A **Sounds** tab in the side panel lists a
+  starter library by category (cartoon, animals, vehicles, nature, magic, people, music stingers...)
+  with a play button on each; drag one onto the sound row (or press it to put it at the playhead).
+  On the stage nothing shows. Playback plays each sound when the playhead reaches it; the video
+  export mixes them into an audio track (the GIF stays silent). Undoable like overlays: one
+  `setSounds` command.
+- **Data:** `Project.sounds: SoundClip[]` with `{ id, start, sound, volume }` (ticks, like overlays).
+  `sound` names a library entry (`"cartoon/boing"`), so the project stays small and the archive
+  needn't copy library files; a child's own recording later is a `StoredSound` blob referenced the same
+  way. The bar's length comes from the sound's duration in ticks, so changing the speed changes how
+  many pictures it covers but not how long it sounds.
+- **Library:** about 100 short effects, CC0 where possible, bundled in `public/sounds/` as small OGG/MP3
+  files with a `sounds.json` (id, name, category, seconds, licence, source). Candidates and licences:
+  [SOUND_EFFECTS.md](SOUND_EFFECTS.md). Decoded once with `decodeAudioData` and cached, like bitmaps.
+- **Decisions:** sounds are anchored to time, not to pictures (same rule as overlays). One sound row,
+  with overlapping sounds stacked in lanes like overlays. Volume per clip (quiet, normal, loud), no
+  fades. The capture shutter (29) stays a UI sound, never in the animation.
+- **Watch out:** browsers only play sound after a press (Play is one). Playback has to schedule
+  sounds on the audio clock, not on timers, or they drift from the pictures. Starting playback in
+  the middle of a sound starts it part-way. Export: Mediabunny's `AudioBufferSource` with an
+  `OfflineAudioContext` render of the whole mix; check MP4 (AAC) and WebM (Opus) encoders exist,
+  otherwise export without sound and say so. Library licences must allow bundling without per-video
+  credit; keep the source and licence of every file in `sounds.json`.
+- **Check:** add a boing at 1 s and a moo at 2 s, play: they sound at the right pictures; change the
+  speed, they keep their seconds; export a video, the sounds are in it; undo removes a sound.
+- **As built:** the library is 18 sounds made by the synthesiser (no files yet), in four categories
+  (Cartoon, Magic, Machines, Music), in `core/sound/library.ts`; recorded files from
+  SOUND_EFFECTS.md come later as entries with a file. A sound is added from the Sounds tab with its
+  name button (at the first selected picture, or the playhead), not dragged; the tab also has its
+  volume and Delete, and the row moves it (drag, or the arrow keys). The timeline toolbar's Duplicate
+  and Delete don't act on sounds. A sound's start is in ticks like an overlay's, so a speed change
+  keeps it on the same picture (its length stays in seconds). Playback schedules the sounds on the
+  audio clock when Play is pressed and again when a loop comes round; sounds starting after the
+  last picture aren't played or exported. Backups carry the sounds.
 
 ### 30 · Accessibility and keyboard map
 - **Builds:** focus styles, labels for all icon buttons, a keyboard shortcut sheet (`?`), live region
@@ -671,7 +711,7 @@ inside the band.
 
 ## Later (not planned)
 
-More picture layers, more overlay tracks, overlays that stick to a picture, sound, drawing on the
+More picture layers, more overlay tracks, overlays that stick to a picture, recording sounds (sound effects are 29b), drawing on the
 time track (free drawing on pictures is step 24b),
 animating elements between keyframes, backgrounds/chroma key, cloud backup and sync (e.g. Supabase
 behind `ProjectRepository`), classroom sharing. Each would start with a `schemaVersion` bump and a
@@ -713,7 +753,8 @@ feature folder of its own.
 - [x] 26 Video export ([page](public/steps/26-video-export.html))
 - [x] 27 Project archive ([page](public/steps/27-project-archive.html))
 - [x] 28 Import photos ([page](public/steps/28-import-photos.html))
-- [ ] 29 Kid-friendly capture
+- [x] 29 Kid-friendly capture, cut down to the capture sound ([page](public/steps/29-capture-sound.html))
+- [x] 29b Sound track: sound effects in time ([page](public/steps/29b-sound-track.html))
 - [ ] 30 Accessibility and keyboard map
 - [ ] 31 Performance with long projects
 - [ ] 32 Offline (PWA)

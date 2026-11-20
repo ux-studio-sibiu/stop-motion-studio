@@ -18,7 +18,7 @@ export type Preference<T> = {
 
 export const PREFIX = "stop-motion-studio:";
 
-function browserStorage(): PreferenceStorage | null {
+function browserStorage(): Storage | null {
   try { return typeof localStorage === "undefined" ? null : localStorage; } catch { return null; }
 }
 
@@ -43,6 +43,17 @@ export function definePreference<T>(name: string, parse: (raw: unknown) => T | u
       } catch { /* storage blocked or full: just don't remember */ }
     },
   };
+}
+
+// Forgets every setting under names the studio no longer uses (a whole family: "stage-view"
+// removes "stage-view:<id>" for every animation), so a removed feature leaves nothing behind.
+export function forgetRetired(names: readonly string[], storage: (PreferenceStorage & Pick<Storage, "length" | "key">) | null = browserStorage()): void {
+  try {
+    if (!storage) return;
+    const prefixes = names.map((name) => PREFIX + name);
+    const keys = Array.from({ length: storage.length }, (_, i) => storage.key(i)).filter((key): key is string => key !== null);
+    for (const key of keys) if (prefixes.some((prefix) => key === prefix || key.startsWith(`${prefix}:`))) storage.removeItem(key);
+  } catch { /* storage blocked: nothing to forget */ }
 }
 
 // The same setting for each animation, one entry per animation id ("view:<id>").

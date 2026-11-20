@@ -179,3 +179,32 @@ test("a reload in another tab leaves the camera off, even when it was on and all
   await page.getByRole("tab", { name: "Camera" }).click();
   await expect(studio.video()).toBeVisible({ timeout: 15_000 });
 });
+
+// The capture sound (step 29): on at first, a click confirms each picture; it can be turned off,
+// and stays as it was left. (What's heard is checked in sound.browser.test.ts.)
+test("the capture sound plays for each picture, can be turned off, and is remembered @real-camera", async ({ studio, page }) => {
+  await page.addInitScript(() => {
+    // Counts the sounds started, instead of listening to the speakers.
+    const start = OscillatorNode.prototype.start;
+    Object.assign(window, { soundsPlayed: 0 });
+    OscillatorNode.prototype.start = function (...args) { (window as unknown as { soundsPlayed: number }).soundsPlayed++; return start.apply(this, args); };
+  });
+  const played = () => page.evaluate(() => (window as unknown as { soundsPlayed: number }).soundsPlayed);
+  await studio.open();
+  await studio.cameraOn();
+  const sound = page.getByRole("button", { name: "Sound", exact: true });
+  await expect(sound).toHaveAttribute("aria-pressed", "true");
+
+  await studio.takePictures(1);
+  await expect.poll(played).toBeGreaterThan(0);
+
+  await sound.click();
+  await expect(sound).toHaveAttribute("aria-pressed", "false");
+  const before = await played();
+  await studio.takePictures(1);
+  await page.waitForTimeout(300);
+  expect(await played()).toBe(before);   // off: no click
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Sound", exact: true })).toHaveAttribute("aria-pressed", "false");
+});

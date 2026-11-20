@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>29 Capture sound · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 29 · Part 10 Kids, polish and shipping</p>
+  <h1>Capture sound</h1>
+  <p class="intro">Taking a picture now makes a short <strong>click</strong>, so a child knows it worked without looking at the screen. A <strong>Sound</strong> button in the Camera tab, above the camera switch, turns it off and on.</p>
+  <ul>
+    <li>The click plays once the picture is <strong>saved</strong>, so a failed save stays silent. It's the same for the button, Space and Tab.</li>
+    <li>It's <strong>on at first</strong>, and the setting is <strong>remembered</strong>. Turning it on plays it once.</li>
+    <li>The roadmap's other ideas for this step (a timer, a celebration, new count wording) were left out on request. Sound effects in the animation itself are planned as step 29b (ROADMAP.md), with a list of candidate sounds in <code>SOUND_EFFECTS.md</code>.</li>
+  </ul>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><strong>The sound</strong>, <code>src/core/sound/sounds.ts</code>: <code>SHUTTER</code>, two short notes for a tiny synthesiser, and <code>notesLength</code>. Plain code, tested in Node.</li>
+    <li><strong>Playing it</strong>, <code>src/adapters/sound/sound.ts</code>: <code>playNotes</code> and <code>scheduleNotes</code>, with Web Audio (oscillators with a quick fade in and out). There are no sound files.</li>
+    <li><strong>When</strong>: <code>src/studio/useCapture.ts</code> takes a <code>sound</code> flag and plays the shutter after a successful save.</li>
+    <li><strong>The setting</strong>: <code>src/features/camera/CaptureSoundToggle.tsx</code>, placed by <code>Studio.tsx</code> inside <code>CameraPanel</code>, which takes children above the switch. <code>remembered.ts</code> has <code>captureSound</code>.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>On by default</strong>: it's a confirmation, the reason for having it. One press turns it off for a quiet classroom.</li>
+    <li><strong>Synthesised, not recorded</strong>: nothing to download or license, and a test can check the notes. The sound effects planned for 29b are real recordings, from a bundled library.</li>
+    <li><strong>A UI sound, not part of the animation</strong>: it never goes into an export.</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li><strong>Autoplay rules</strong>: browsers only allow sound after a press. The click always follows one (capture, or the Sound button), which is when the audio is set up.</li>
+    <li><strong>No test hears the speakers</strong>: the browser test renders the sound offline, and the end-to-end test counts the sounds started. Check by ear below.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li>Take a picture: a click. Turn Sound off, take another: silent. Reload: still off.</li>
+    <li>Turn it on: one click, straight away.</li>
+  </ul>
+  <div class="note">Checked while building:
+    <ul>
+      <li>374 unit tests and 47 browser tests pass; lint and typecheck are clean.</li>
+      <li>End-to-end, against the dev server: the camera spec (10) and the design spec (4). The other specs, the production build and WebKit weren't run.</li>
+      <li>Not heard yet: the click itself.</li>
+    </ul>
+  </div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/core/sound/</code> (<code>sounds.ts</code>, <code>sounds.test.ts</code>, <code>index.ts</code>); <code>src/adapters/sound/</code> (<code>sound.ts</code>, <code>sound.browser.test.ts</code>); <code>src/features/camera/</code> (<code>CaptureSoundToggle.tsx</code>, <code>CameraPanel.tsx</code>); <code>src/features/README.md</code>; <code>src/studio/</code> (<code>useCapture.ts</code>, <code>Studio.tsx</code>, <code>remembered.ts</code>); <code>src/design-system/DesignPage.tsx</code>; <code>e2e/camera.spec.ts</code>; <code>CLAUDE.md</code> (the spec map), <code>PLAN.md</code> (the sound clip, for 29b), <code>ROADMAP.md</code> (29 as built, 29b planned), <code>SOUND_EFFECTS.md</code>; <code>public/steps/29-capture-sound.html</code>, <code>28-import-photos.html</code> (next link), <code>index.html</code>.</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit, 2 in <code>sounds.test.ts</code>: the shutter is short, audible and never loud; how long notes last.</li>
+    <li>Browser, 2 in <code>sound.browser.test.ts</code>: the shutter is heard and then silent; playing never throws.</li>
+    <li>End-to-end, 1 in <code>camera.spec.ts</code>: a picture plays the sound; with Sound off it doesn't; the setting survives a reload.</li>
+  </ul>
+  <p><strong>Tests changed:</strong> none.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>one click per saved picture, none with Sound off</li>
+    <li>on at first, remembered, plays once when turned on</li>
+    <li>never in an export</li>
+    <li><code>npm test</code>, <code>npm run test:browser</code>, <code>npm run lint</code>, <code>npm run typecheck</code> and <code>camera.spec</code> pass</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="28-import-photos.html">Previous: 28 · Import photos</a>
+    <a href="29b-sound-track.html">Next: 29b · Sound track</a>
+  </nav>
+</main>
+</body>
+</html>

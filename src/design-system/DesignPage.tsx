@@ -1,17 +1,20 @@
 "use client";
 
-import { Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, CopyPlus, Download, Eraser, HardDrive, Image as ImageIcon, ImagePlus, Layers, Pause, Pencil, Play, Redo2, RotateCcw, Shapes, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, CopyPlus, Download, Eraser, HardDrive, Image as ImageIcon, ImagePlus, Layers, Music, Pause, Pencil, Play, Redo2, RotateCcw, Shapes, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { bubbleProps, createBubble, createShape, createText, SHAPE, shapeProps, SPEECH_BUBBLE, TEXT, textProps, withProps } from "@/core/model";
 import { BubbleSettings } from "@/features/objects/BubbleSettings";
 import { SettingsHeader } from "@/features/objects/ObjectSettings";
 import { CameraPanel } from "@/features/camera/CameraPanel";
+import { CaptureSoundToggle } from "@/features/camera/CaptureSoundToggle";
 import { GifExportMenu } from "@/features/gif-export/GifExportMenu";
 import { VideoExportButton } from "@/features/video-export/VideoExportButton";
 import { ObjectTile } from "@/features/objects/ObjectTile";
 import { ShapeSettings } from "@/features/objects/ShapeSettings";
 import { TextSettings } from "@/features/objects/TextSettings";
 import { ObjectIcon } from "@/studio/ObjectIcon";
+import { ALL_LAYERS } from "@/studio/remembered";
+import { LayersMenu } from "@/studio/timeline/LayersMenu";
 import { PanelTab, SidePanel } from "@/studio/SidePanel";
 import type { Camera as CameraState } from "@/studio/useCamera";
 import { FILLS, INKS, Swatches } from "@/studio/Swatches";
@@ -285,9 +288,11 @@ export function DesignPage() {
       </Section>
 
       <Section id="timeline" title="Timeline">
-        <Specimen label="The timeline" note="tools, ruler, pictures (selected, on the stage, long), the grip, objects in time" wide studio>
+        <Specimen label="The timeline" note="tools (the real Layers menu first), ruler, pictures (selected, on the stage, long), the grip, objects in time, sounds" wide studio>
           <section className="timeline ds-timeline">
             <div className="timeline-tools">
+              <LayersMenu layers={ALL_LAYERS} onChange={nothing} />
+              <span className="tools-gap" />
               <button type="button" className="icon-button is-small"><ZoomOut size={20} /></button>
               <button type="button" className="icon-button is-small"><ZoomIn size={20} /></button>
               <span className="tools-gap" />
@@ -312,6 +317,10 @@ export function DesignPage() {
               <div className="overlay-track" style={{ width: 640, "--lanes": 2 } as CSSProperties}>
                 <OverlayBar left={0} width={240} lane={0} kind={TEXT} text="Once upon a time" />
                 <OverlayBar left={120} width={220} lane={1} kind={SHAPE} text="arrow" selected />
+              </div>
+              <div className="sound-track" style={{ width: 640, "--lanes": 1 } as CSSProperties}>
+                <div className="sound-bar" style={{ left: 40, width: 120, "--lane": 0 } as CSSProperties}><span className="bar-label"><Music size={14} /><span>Boing</span></span></div>
+                <div className="sound-bar is-selected" style={{ left: 300, width: 80, "--lane": 0 } as CSSProperties}><span className="bar-label"><Music size={14} /><span>Pop</span></span></div>
               </div>
             </div>
           </section>
@@ -356,8 +365,8 @@ export function DesignPage() {
             <div className="nsc-storage-notice is-full ds-inline" role="status"><HardDrive size={22} /><p><strong>There&apos;s no room left on this device.</strong> That wasn&apos;t saved.</p><button type="button" className="icon-button is-small" aria-label="Close message"><X size={18} /></button></div>
           </div>
         </Specimen>
-        <Specimen label="Camera tab" note="the real CameraPanel, with two cameras: on/off, and the arrow lists them" studio>
-          <div className="nsc-side-panel ds-loose ds-camera-tab"><CameraPanel camera={TWO_CAMERAS} canCapture onCapture={nothing} capturing={false} /></div>
+        <Specimen label="Camera tab" note="the real CameraPanel, with two cameras: on/off, and the arrow lists them; the capture sound above them" studio>
+          <div className="nsc-side-panel ds-loose ds-camera-tab"><CameraPanel camera={TWO_CAMERAS} canCapture onCapture={nothing} capturing={false}><CaptureSoundToggle on onChange={nothing} /></CameraPanel></div>
         </Specimen>
       </Section>
 
