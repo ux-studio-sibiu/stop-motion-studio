@@ -8,7 +8,7 @@ test("the design system page shows every section, with no errors", async ({ page
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
   await page.goto("/design");
-  for (const name of ["Tokens", "Words", "Controls", "Side panel", "Objects", "Stage", "Timeline", "Bars and menus", "Projects"]) {
+  for (const name of ["Tokens", "Cardboard", "Words", "Controls", "Side panel", "Objects", "Stage", "Timeline", "Bars and menus", "Projects"]) {
     await expect(page.getByRole("region", { name, exact: true })).toBeVisible();
   }
   await expect(page.getByRole("tab", { name: "Picture" })).toHaveAttribute("aria-selected", "true");   // the real side panel
@@ -19,7 +19,7 @@ test("a token changed in the panel restyles the page, not the panel; reset puts 
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/design");
   const panel = page.getByRole("dialog", { name: "Design tokens" });
-  const border = () => page.locator("#bars .toolbar .icon-button").first().evaluate((element) => getComputedStyle(element).borderTopColor);
+  const border = () => page.locator("#controls .icon-button").first().evaluate((element) => getComputedStyle(element).borderTopColor);
   const panelBorder = () => panel.evaluate((element) => getComputedStyle(element).borderTopColor);
   await expect.poll(border).toBe("rgb(51, 51, 51)");
   const before = await panelBorder();
@@ -37,7 +37,7 @@ test("Alt+click copies a colour token, Ctrl+Alt+click pastes it on another, as a
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/design");
   const panel = page.getByRole("dialog", { name: "Design tokens" });
-  const border = () => page.locator("#bars .toolbar .icon-button").first().evaluate((element) => getComputedStyle(element).borderTopColor);
+  const border = () => page.locator("#controls .icon-button").first().evaluate((element) => getComputedStyle(element).borderTopColor);
   const ink = page.locator('[data-colour-token="--color-ink"]');
   const borderToken = page.locator('[data-colour-token="--color-border"]');
 
@@ -55,8 +55,8 @@ test("picking an element lists only the tokens it uses", async ({ page }) => {
   const panel = page.getByRole("dialog", { name: "Design tokens" });
   const row = (name: string) => panel.getByRole("textbox", { name, exact: true }).or(panel.getByRole("spinbutton", { name, exact: true }));
   await panel.getByRole("button", { name: "Pick" }).click();
-  await page.locator("#bars .toolbar .icon-button").first().click();   // the toolbar's back button
-  await expect(panel.getByText(/Tokens of a\.icon-button/)).toBeVisible();
+  await page.locator("#controls .icon-button").first().click();   // the first plain icon button
+  await expect(panel.getByText(/Tokens of button\.icon-button/)).toBeVisible();
   for (const name of ["--color-border", "--radius-small", "--color-surface", "--line-width"]) await expect(row(name)).toBeVisible();
   await expect(row("--color-scrim")).toHaveCount(0);   // photo labels: nothing to do with buttons
   await panel.getByRole("button", { name: "Show all tokens" }).click();

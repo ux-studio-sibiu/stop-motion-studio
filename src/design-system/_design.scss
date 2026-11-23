@@ -1,3 +1,5 @@
+@use "@/styles/cardboard" as *;
+
 // The design system page (Part 8b): its own layout only. The specimens are styled by the studio's
 // stylesheets; nothing here changes how a specimen looks, except to give it room.
 .nsc-design {
@@ -54,7 +56,7 @@
     overflow: hidden;
     border: 1px solid var(--color-line);
     border-radius: var(--radius);
-    background: var(--color-faint);
+    background: color-mix(in srgb, var(--color-ink) 4%, var(--color-surface));   // a quiet backdrop, so white specimens show
 
     &.is-wide { grid-column: 1 / -1; }
 
@@ -104,6 +106,23 @@
   .ds-shadow { width: 2.5rem; height: 2.5rem; border-radius: var(--radius-small); background: var(--color-surface); }
 
   .ds-type p { margin: 0 0 0.25rem; }
+
+  // The Cardboard section's sample pieces: the mixins on plain boxes.
+  .ds-pieces { gap: var(--space-4); }
+
+  .ds-cardboard {
+    @include cardboard(8px, $shadow: box);
+    display: grid;
+    place-items: center;
+    width: 7rem;
+    height: 5rem;
+    color: var(--cardboard-ink);
+    font-size: var(--text-small);
+    font-weight: 800;
+
+    &.has-paper { @include cardboard-paper; }
+    &.is-coloured { --paint: #f2c12e; }   // the home page's yellow
+  }
 
   // The token board: the groups flow into columns; each token a row of its look and its name.
   .ds-specimen.is-board { overflow: visible; }   // tooltips may reach past the card
@@ -204,10 +223,8 @@
   .ds-picture { position: absolute; inset: 0; }
   .ds-panel-frame { display: grid; grid-template-columns: 22rem; justify-content: center; height: 26rem; }
   .ds-scroller { display: grid; height: 14rem; margin-left: 0; }
-  .ds-timeline { height: var(--timeline-height); margin: 3.5rem 0 0;   // room for its tool tab, which sticks up
-    border-bottom: var(--line-width) solid var(--color-border);
-    border-radius: 0 var(--radius) var(--radius) var(--radius);   // square top-left, where the tab sits, as in the studio
-  }
+  .ds-timeline { margin: 3.5rem 0 0; }   // room for its tools tab, which sticks up; not out to the window's sides
+  .ds-rail { min-height: 15rem; }   // Save and Help hang under the back arrow
   .ds-menu-room { display: grid; align-content: end; min-height: 17rem; }   // the menus open upwards
   .ds-inline { position: static; width: auto; translate: none; }
   .ds-capture { display: grid; justify-items: center; }

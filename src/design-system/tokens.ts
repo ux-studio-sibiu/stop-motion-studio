@@ -15,7 +15,6 @@ export const TOKENS: readonly Token[] = [
   { name: "--color-bg", group: "Surfaces", kind: "colour", light: "#fbf7f0", dark: "#14161c", note: "the page behind everything" },
   { name: "--color-studio", group: "Surfaces", kind: "colour", light: "#eeeeee", dark: "#101217", note: "the studio's background, under the graph paper" },
   { name: "--color-surface", group: "Surfaces", kind: "colour", light: "#ffffff", dark: "#1d2029", note: "panels, buttons, cards" },
-  { name: "--color-faint", group: "Surfaces", kind: "colour", light: "#f3ede3", dark: "#232733", note: "quiet backgrounds: settings cards, the overlay track" },
   { name: "--color-line", group: "Surfaces", kind: "colour", light: "#e6e0d5", dark: "#2c303b", note: "light rules and fills: dividers, the ruler, pushed-back tabs" },
   { name: "--color-border", group: "Surfaces", kind: "colour", light: "#333333", dark: "#4a5162", note: "outlines of panels, controls and cards" },
   { name: "--color-ink", group: "Text and icons", kind: "colour", light: "#1f2433", dark: "#eef0f5", note: "text and icons" },
@@ -53,7 +52,6 @@ export const TOKENS: readonly Token[] = [
   { name: "--timeline-height", group: "Size", kind: "length", light: "12.25rem", note: "the timeline (less on wider screens, where its tools are a tab)" },
 
   { name: "--shadow-floating", group: "Shadow", kind: "text", light: "0 8px 24px rgb(0 0 0 / 0.15)", note: "menus, notices" },
-  { name: "--shadow-card", group: "Shadow", kind: "text", light: "0 0.375rem 0 rgb(0 0 0 / 0.18)", note: "cards on the page: a solid drop" },
   { name: "--shadow-dragged", group: "Shadow", kind: "text", light: "0 6px 18px rgb(0 0 0 / 0.28)", note: "things being dragged" },
   { name: "--shadow-press", group: "Shadow", kind: "text", light: "0 0.375rem 0 rgb(0 0 0 / 0.18)", note: "a big button's depth" },
   { name: "--shadow-pressed", group: "Shadow", kind: "text", light: "0 0.125rem 0 rgb(0 0 0 / 0.18)", note: "pressed in" },

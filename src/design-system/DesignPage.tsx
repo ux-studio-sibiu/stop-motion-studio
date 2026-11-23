@@ -13,9 +13,11 @@ import { VideoExportButton } from "@/features/video-export/VideoExportButton";
 import { ObjectTile } from "@/features/objects/ObjectTile";
 import { ShapeSettings } from "@/features/objects/ShapeSettings";
 import { TextSettings } from "@/features/objects/TextSettings";
+import { HelpButton } from "@/studio/HelpButton";
 import { ObjectIcon } from "@/studio/ObjectIcon";
 import { DEFAULT_LAYERS } from "@/studio/remembered";
 import { LayersMenu } from "@/studio/timeline/LayersMenu";
+import { SaveMenu } from "@/studio/SaveMenu";
 import { PanelTab, SidePanel } from "@/studio/SidePanel";
 import type { Camera as CameraState } from "@/studio/useCamera";
 import { FILLS, INKS, Swatches } from "@/studio/Swatches";
@@ -91,7 +93,7 @@ export function DesignPage() {
         <h1>Design system</h1>
         <p className="ds-lede">Every part of the studio&apos;s interface, as it looks in the studio, in one place. Nothing here does anything. Tune the design tokens in the floating panel (Shift+T): everything follows. Alt+click a colour token to copy it, Ctrl+Alt+click another to paste it there.</p>
         <nav className="ds-contents" aria-label="Sections">
-          {[["tokens", "Tokens"], ["words", "Words"], ["controls", "Controls"], ["panel", "Side panel"], ["objects", "Objects"], ["stage", "Stage"], ["timeline", "Timeline"], ["bars", "Bars and menus"], ["projects", "Projects"]].map(([id, name]) => <a key={id} href={`#${id}`}>{name}</a>)}
+          {[["tokens", "Tokens"], ["cardboard", "Cardboard"], ["words", "Words"], ["controls", "Controls"], ["panel", "Side panel"], ["objects", "Objects"], ["stage", "Stage"], ["timeline", "Timeline"], ["bars", "Bars and menus"], ["projects", "Projects"]].map(([id, name]) => <a key={id} href={`#${id}`}>{name}</a>)}
         </nav>
       </header>
 
@@ -104,6 +106,34 @@ export function DesignPage() {
                 {tokensIn(group).map((token) => <TokenSpecimen key={token.name} token={token} />)}
               </div>
             ))}
+          </div>
+        </Specimen>
+      </Section>
+
+      <Section id="cardboard" title="Cardboard" intro="The studio's look, as on the home page (@/styles/cardboard): pieces of cardboard, square, with paper pasted on them up to the corrugated rim. Under the pointer, white paper goes a shade darker and coloured paper lighter; nothing moves or eases (stop motion).">
+        <Specimen label="Pieces" note="cardboard(): bare; cardboard-paper(): white paper, or a colour through --paint">
+          <div className="ds-row ds-pieces">
+            <div className="ds-cardboard"><span>Bare</span></div>
+            <div className="ds-cardboard has-paper"><span>Paper</span></div>
+            <div className="ds-cardboard has-paper is-coloured"><span>--paint</span></div>
+          </div>
+        </Specimen>
+        <Specimen label="Buttons beside the stage" note="cardboard-button(): back, Save (the real SaveMenu) and Help, one size, in a column" studio>
+          <div className="ds-rail"><div className="toolbar-start">
+            <a className="icon-button" href="#cardboard" aria-label="All projects"><ChevronLeft size={30} strokeWidth={3} /></a>
+            <div className="toolbar-side">
+              <SaveMenu>
+                <VideoExportButton />
+                <GifExportMenu />
+              </SaveMenu>
+              <HelpButton />
+            </div>
+          </div></div>
+        </Specimen>
+        <Specimen label="Play and See" note="cardboard-split(): each a button joined to its options arrow, one piece; stopped, playing, See on" studio>
+          <div className="ds-stack">
+            <PlaybackSpecimen />
+            <PlaybackSpecimen playing seeOn />
           </div>
         </Specimen>
       </Section>
@@ -147,30 +177,6 @@ export function DesignPage() {
             <button type="button" className="icon-button is-small"><CopyPlus size={20} /></button>
             <button type="button" className="icon-button is-small is-on">2</button>
             <button type="button" className="icon-button is-small is-danger"><Trash2 size={18} /><span>Clear drawing</span></button>
-          </div>
-        </Specimen>
-        <Specimen label="Split buttons" note="option-menu: a main button joined to the arrow that opens its options; plain, filled (is-go), playing (is-primary, the stop look), off and on" studio>
-          <div className="ds-row">
-            <div className="nsc-playback-options option-menu">
-              <button type="button" className="icon-button toggle play"><Play size={24} /><span className="play-label"><span>Play</span><span className="is-hidden">Pause</span></span></button>
-              <button type="button" className="icon-button more" aria-label="Playback options"><ChevronDown size={20} /></button>
-            </div>
-            <div className="nsc-playback-options option-menu">
-              <button type="button" className="icon-button toggle play is-go"><Play size={24} /><span className="play-label"><span>Play</span><span className="is-hidden">Pause</span></span></button>
-              <button type="button" className="icon-button more is-go" aria-label="Playback options, filled"><ChevronDown size={20} /></button>
-            </div>
-            <div className="nsc-playback-options option-menu">
-              <button type="button" className="icon-button toggle play is-primary"><Pause size={24} /><span className="play-label"><span className="is-hidden">Play</span><span>Pause</span></span></button>
-              <button type="button" className="icon-button more is-primary" aria-label="Playback options, playing"><ChevronDown size={20} /></button>
-            </div>
-            <div className="nsc-see-through option-menu">
-              <button type="button" className="icon-button toggle"><Layers size={24} /><span>See-through</span></button>
-              <button type="button" className="icon-button more" aria-label="See-through options"><ChevronDown size={20} /></button>
-            </div>
-            <div className="nsc-see-through option-menu">
-              <button type="button" className="icon-button toggle is-on" aria-pressed="true"><Layers size={24} /><span>See-through</span></button>
-              <button type="button" className="icon-button more is-on" aria-label="See-through options, on"><ChevronDown size={20} /></button>
-            </div>
           </div>
         </Specimen>
         <Specimen label="Capture button" note="big-button is-capture" studio>
@@ -243,7 +249,7 @@ export function DesignPage() {
             </SidePanel>
           </div>
         </Specimen>
-        <Specimen label="Scrollbar" note="the browser's own, inside the side panel's rounded corners" studio>
+        <Specimen label="Scrollbar" note="the browser's own, its track see-through" studio>
           <div className="nsc-side-panel ds-scroller">
             <section className="panel">
               <h2 className="panel-title">A long tab</h2>
@@ -318,7 +324,7 @@ export function DesignPage() {
       </Section>
 
       <Section id="timeline" title="Timeline">
-        <Specimen label="The timeline" note="tools (the real Layers menu first, zoom, undo and redo), ruler, pictures (selected, on the stage, long), the grip, objects in time, sounds" wide studio>
+        <Specimen label="The timeline" note="bare cardboard, edge to edge; the tools a tab on it, cut at 45°; the ruler's gradations (a setting, off at first); the red playhead behind the selected picture, with its grip; objects in time, sounds" wide studio>
           <section className="timeline ds-timeline">
             <div className="timeline-tools">
               <LayersMenu layers={DEFAULT_LAYERS} onChange={nothing} />
@@ -334,7 +340,8 @@ export function DesignPage() {
               <button type="button" className="icon-button is-small"><Trash2 size={20} /></button>
             </div>
             <div className="timeline-scroll">
-              <div className="ruler" style={{ width: 640, backgroundSize: "160px 100%" }}>
+              <div className="playhead" style={{ left: "calc(var(--timeline-inset) + 80px)", width: 200 }} />
+              <div className="ruler has-gradations" style={{ backgroundSize: "40px 6px, 100% 1px" }}>
                 {[0, 1, 2, 3].map((at) => <span key={at} className="ruler-label" style={{ left: at * 160 }}>{at}s</span>)}
               </div>
               <ol className="track" style={{ "--thumb-ratio": "16 / 9" } as CSSProperties}>
@@ -358,23 +365,11 @@ export function DesignPage() {
       </Section>
 
       <Section id="bars" title="Bars and menus">
-        <Specimen label="Toolbar" wide studio>
-          <header className="toolbar">
-            <a className="icon-button" href="#bars" aria-label="All projects"><ChevronLeft size={24} /></a>
-            <h1 className="project-name">My animation</h1>
-            <div className="toolbar-actions">
-              <button type="button" className="icon-button" aria-label="Undo"><Undo2 size={24} /></button>
-              <button type="button" className="icon-button" aria-label="Redo" disabled><Redo2 size={24} /></button>
-              <GifExportMenu />
-              <VideoExportButton />
-            </div>
-          </header>
-        </Specimen>
-        <Specimen label="Playback bar, a menu open" note="Play, its options, see-through" wide studio>
+        <Specimen label="Playback bar, a menu open" note="Play's options open over the stage" wide studio>
           <div className="ds-menu-room">
             <footer className="playback-bar">
               <div className="nsc-playback-options option-menu">
-                <button type="button" className="icon-button toggle play is-go"><Play size={24} /><span className="play-label"><span>Play</span><span className="is-hidden">Pause</span></span></button>
+                <button type="button" className="icon-button toggle play is-go"><Play size={24} fill="currentColor" /><span className="play-label"><span>Play</span><span className="is-hidden">Pause</span></span></button>
                 <button type="button" className="icon-button more is-go" aria-expanded="true"><ChevronDown size={20} /></button>
                 <div className="options" role="group" aria-label="Playback options">
                   <label className="option"><span>Speed</span><span className="range-ends"><span>Slow</span><input type="range" min={0} max={5} defaultValue={2} /><span>Fast</span></span></label>
@@ -383,7 +378,7 @@ export function DesignPage() {
                 </div>
               </div>
               <div className="nsc-see-through option-menu">
-                <button type="button" className="icon-button toggle is-on"><Layers size={24} /><span className="desktop-only">See-through</span></button>
+                <button type="button" className="icon-button toggle is-on"><Layers size={24} /><span className="desktop-only">See</span></button>
                 <button type="button" className="icon-button more is-on"><ChevronDown size={20} /></button>
               </div>
             </footer>
@@ -401,7 +396,7 @@ export function DesignPage() {
       </Section>
 
       <Section id="projects" title="Projects">
-        <Specimen label="A project card" note="the real ProjectCard: the cover across the top, name, details, actions; the controls' line and --shadow-card">
+        <Specimen label="A project card" note="the real ProjectCard: the cover across the top, name, details, actions">
           <ul className="ds-cards">
             <ProjectCard project={SAMPLE_PROJECT} coverUrl={SAMPLE_COVER} size={3_250_000} onDelete={nothing} onBackUp={nothing} />
             <ProjectCard project={{ ...SAMPLE_PROJECT, id: "sample-empty", name: "A new one", frameIds: [] }} size={0} onDelete={nothing} onBackUp={nothing} />
@@ -410,6 +405,24 @@ export function DesignPage() {
       </Section>
     </main>
     </TokenValues.Provider>
+  );
+}
+
+// Play and See under the stage, as PlaybackBar and SeeThroughMenu draw them (they need an open animation).
+function PlaybackSpecimen({ playing = false, seeOn = false }: { playing?: boolean; seeOn?: boolean }) {
+  const fill = playing ? "is-primary" : "is-go";
+  const on = seeOn ? " is-on" : "";
+  return (
+    <footer className="playback-bar">
+      <div className="nsc-playback-options option-menu">
+        <button type="button" className={`icon-button toggle play ${fill}`} aria-label={playing ? "Pause" : "Play"}>{playing ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}<span className="play-label" aria-hidden="true"><span className={playing ? "is-hidden" : undefined}>Play</span><span className={playing ? undefined : "is-hidden"}>Pause</span></span></button>
+        <button type="button" className={`icon-button more ${fill}`} aria-label="Playback options"><ChevronDown size={20} /></button>
+      </div>
+      <div className="nsc-see-through option-menu">
+        <button type="button" className={`icon-button toggle${on}`} aria-label="See-through" aria-pressed={seeOn}><Layers size={24} /><span className="desktop-only">See</span></button>
+        <button type="button" className={`icon-button more${on}`} aria-label="See-through options"><ChevronDown size={20} /></button>
+      </div>
+    </footer>
   );
 }
 
