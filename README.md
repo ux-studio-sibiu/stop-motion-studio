@@ -10,18 +10,21 @@ a timeline, play them back and export a GIF or video. No accounts, and photos ne
 ## Stack
 
 Next.js (App Router, static export) · React · TypeScript · SCSS · Zustand · Dexie (IndexedDB) ·
-Vitest. Later: gifenc, Mediabunny, fflate.
+gifenc (GIF) · Mediabunny (video) · fflate (backups) · Vitest · Playwright.
 
 ## Layout
 
 ```
-src/app/        routes: projects list, studio
-src/core/       plain TypeScript: model, commands, playback, renderer, registry (no React/Next/Dexie)
+src/app/        routes: projects list, studio, design system (/design)
+src/core/       plain TypeScript: model, commands, playback, renderer, export, sound (no React/Next/Dexie)
 src/adapters/   browser and library code behind core interfaces: storage, camera, encoders
 src/store/      Zustand editor state
-src/studio/     studio components and their SCSS
-src/features/   built-in plugins
-src/styles/     tokens, breakpoints, globals
+src/studio/     the studio screen and its SCSS; timeline/ for the timeline
+src/features/   one folder per feature (camera, picture, objects, draw, sounds, exports...), placed by Studio.tsx
+src/projects/   the projects page (home): its intro, the cards, backup and restore
+src/design-system/ the /design page: every part of the interface, and the token panel
+src/styles/     tokens (globals, _colours), breakpoints, the cardboard mixins
+e2e/            Playwright specs, one per flow
 public/steps/   build notes, one HTML page per step
 ```
 
@@ -48,6 +51,8 @@ npm run dev
 | `npm run test:e2e:all` | The same in Chromium and WebKit: on request, or for Safari-specific changes |
 | `npm run test:e2e:ui` | The same in Playwright's UI mode, test by test |
 | `npm run test:e2e:report` | Opens the last HTML report |
+| `npm run test:e2e:dev` | Playwright against the dev server (no production build): the quick way to run one or two specs |
+| `MEASURE=1 npm run test:e2e -- e2e/performance.spec.ts` | Measures a 2000-picture animation and prints the numbers (`MEASURE_PICTURES` for another count) |
 
 The webcam needs a secure context: `localhost` works, a LAN IP over plain `http://` does not.
 

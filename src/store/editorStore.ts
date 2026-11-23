@@ -1,5 +1,5 @@
 import { createStore } from "zustand/vanilla";
-import { clampAdjust, clampHold, clampSafeMargin, cloneElements, cloneOverlays, copyOf, frameIndexAt, overlaysOf, safeMargin, soundsOf, sameAdjust, sameElements, sameOverlays, sameTransform, type Element, type Frame, type Overlay, type Project } from "@/core/model";
+import { clampAdjust, clampHold, clampSafeMargin, cloneElements, cloneOverlays, copyOf, frameIndexAt, overlaysOf, safeMargin, soundsOf, sameAdjust, sameElements, sameFrame, sameOverlays, sameTransform, type Element, type Frame, type Overlay, type Project } from "@/core/model";
 
 // Live editor state (PLAN.md §1): what the studio is showing and doing right now.
 // Metadata only: never Blobs, MediaStreams or DOM nodes. Photos live in the image cache
@@ -144,7 +144,8 @@ export function createEditorStore() {
     syncProject: (project, frames) => {
       const state = get();
       if (state.project?.id !== project.id) return state.loadProject(project, frames);
-      const next = byId(frames);
+      // Frames that came back unchanged keep the objects the store has, so only what changed redraws.
+      const next = byId(frames.map((frame) => (state.frames[frame.id] && sameFrame(state.frames[frame.id], frame) ? state.frames[frame.id] : frame)));
       const holdPreview = unsaved("hold", state.holdPreview, next);
       const transformPreview = unsaved("transform", state.transformPreview, next);
       const adjustPreview = unsaved("adjust", state.adjustPreview, next);
@@ -230,9 +231,16 @@ export function selectedOverlayId(state: Pick<EditorState, "project" | "overlays
 }
 
 // The frames in animation order. Ids without a frame are skipped, the same way loading repairs
-// drift between frameIds and the frames table (step 07).
+// drift between frameIds and the frames table (step 07). The same list back while neither the
+// order nor the frames change (step 31): every component that draws pictures reads it on every
+// change of the store, and with hundreds of pictures rebuilding and comparing it was the slow part.
+let lastOrdered: { frameIds?: readonly string[]; frames?: EditorState["frames"]; list: Frame[] } = { list: [] };
 export function orderedFrames(state: Pick<EditorState, "project" | "frames">): Frame[] {
-  return (state.project?.frameIds ?? []).flatMap((id) => state.frames[id] ?? []);
+  const frameIds = state.project?.frameIds;
+  if (frameIds === lastOrdered.frameIds && state.frames === lastOrdered.frames) return lastOrdered.list;
+  const list = (frameIds ?? []).flatMap((id) => state.frames[id] ?? []);
+  lastOrdered = { frameIds, frames: state.frames, list };
+  return list;
 }
 
 // The frames as they should look right now, with a preview's values in place (a length being

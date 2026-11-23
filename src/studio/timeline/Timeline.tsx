@@ -14,7 +14,9 @@ import { LayersMenu } from "./LayersMenu";
 import { DragGhost, TimelineFrame } from "./TimelineFrame";
 import { useReorder } from "./useReorder";
 import { useResize, type HoldChange } from "./useResize";
+import { Playhead } from "./Playhead";
 import { useScrub } from "./useScrub";
+import { useStableCallback } from "../useStableCallback";
 import { optionId, useTimelineSelection } from "./useTimelineSelection";
 import { useTimelineView } from "./useTimelineView";
 import { ZOOM_STEP, useTimelineZoom } from "./useTimelineZoom";
@@ -39,7 +41,7 @@ type TimelineProps = {
 //   useTimelineZoom       zoom around a point; useTimelineView remembers zoom and scroll
 //   useResize             the grip on a picture's edge, [ and ]
 //   useReorder            dragging pictures to a new place
-//   useScrub              the playhead, scrubbing along the ruler
+//   Playhead              the red playhead, which is the selection; useScrub drags it along the ruler
 //   OverlayTrack          the objects that live in time, under the pictures (step 24)
 //   SoundTrack            the sounds in time, the bottom row (step 29b)
 //   LayersMenu            which of those two rows show, remembered
@@ -74,7 +76,7 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
   const select = useTimelineSelection(order, selection);
   const reorder = useReorder(frames, selection, tickWidth, scroller, track, onReorder);
 
-  const onPick = (id: string, event: MouseEvent) => {
+  const onPick = useStableCallback((id: string, event: MouseEvent) => {
     if (reorder.takeClick()) return;   // this click ended a drag
     const state = editorStore.getState();
     state.pause();    // picking a picture while it plays stops there
@@ -87,10 +89,15 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
     else if (event.ctrlKey || event.metaKey) select.toggle(id);
     else select.selectOnly(id);
     track.current?.focus({ preventScroll: true });   // so the arrow keys work straight after a click
-  };
+  });
 
   const resize = useResize(frames, selection, tickWidth, onResize, onPick);
-  const scrub = useScrub(frames, selection, tickWidth, scroller, select.selectOnly);
+  const scrubHandlers = useScrub(frames, tickWidth, select.selectOnly);
+  const onPress = useStableCallback(reorder.onFramePointerDown);
+  // The pictures are memoised (TimelineFrame) and their handlers stay the same, so a change of
+  // selection redraws only the pictures it changes, not all of them (step 31).
+  const selected = useMemo(() => new Set(selection), [selection]);
+  const dragged = useMemo(() => new Set(reorder.drag?.ids), [reorder.drag?.ids]);
 
   // New pictures: keep the end (and the slot for the next one) in view. Not for the pictures an
   // animation opens with: there the saved view (useTimelineView) decides where it's scrolled.
@@ -194,20 +201,27 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
       </div>
 
       <div ref={scroller} className="timeline-scroll">
-        {scrub.marks.map((mark) => <div key={mark.id} className={`playhead${scrub.isPlaying ? " is-playing" : ""}`} aria-hidden="true" style={{ left: `calc(var(--timeline-inset) + ${mark.start * tickWidth}px)`, width: mark.ticks * tickWidth }} />)}
-        <div className={`ruler${layers.ruler ? " has-gradations" : ""}`} aria-hidden="true" title="Drag along here to scrub through the animation" style={{ backgroundSize: `${markSeconds * zoom}px 6px, 100% 1px` }} {...scrub.rulerHandlers}>
+        <Playhead frames={frames} selection={selection} tickWidth={tickWidth} scroller={scroller} />
+        <div className={`ruler${layers.ruler ? " has-gradations" : ""}`} aria-hidden="true" title="Drag along here to scrub through the animation" style={{ backgroundSize: `${markSeconds * zoom}px 6px, 100% 1px` }} {...scrubHandlers}>
           {layers.ruler && labels.map((at) => <span key={at} className="ruler-label" style={{ left: at * zoom }}>{formatSeconds(at)}</span>)}
         </div>
 
         <ol ref={track} className="track" role="listbox" aria-label="Pictures" aria-orientation="horizontal" aria-multiselectable="true" tabIndex={0} aria-activedescendant={select.focusId ? optionId(select.focusId) : undefined} onKeyDown={onKeyDown} style={{ "--thumb-ratio": thumbRatio } as CSSProperties}>
-          {frames.map((frame, index) => (
-            <TimelineFrame key={frame.id} frame={frame} number={index + 1} width={frame.hold * tickWidth} selected={!overlay && selection.includes(frame.id)} onStage={Boolean(overlay) && selection.includes(frame.id)} dragging={reorder.drag?.ids.includes(frame.id) ?? false} onPick={onPick} onPress={reorder.onFramePointerDown}>
-              {!overlay && selection.includes(frame.id) && (
-                <span className="grip" aria-hidden="true" title="Drag to make it shorter or longer ([ and ] keys)" onPointerDown={(event) => resize.onGripDown(frame.id, event)} onPointerMove={resize.onGripMove} onPointerUp={(event) => resize.onGripUp(frame.id, event)} onPointerCancel={resize.cancel} onClick={(event) => event.stopPropagation()} />
-              )}
-              {resize.grabbed === frame.id && <span className="hold-bubble" role="status">{formatTicks(frame.hold, fps)}</span>}
-            </TimelineFrame>
-          ))}
+          {frames.map((frame, index) => {
+            const isSelected = !overlay && selected.has(frame.id);
+            const grabbed = resize.grabbed === frame.id;
+            return (
+              <TimelineFrame key={frame.id} frame={frame} number={index + 1} width={frame.hold * tickWidth} selected={isSelected} onStage={Boolean(overlay) && selected.has(frame.id)} dragging={dragged.has(frame.id)} onPick={onPick} onPress={onPress}>
+                {/* Only when there's something to show: no children keeps the picture memoised. */}
+                {isSelected || grabbed ? (
+                  <>
+                    {isSelected && <span className="grip" aria-hidden="true" title="Drag to make it shorter or longer ([ and ] keys)" onPointerDown={(event) => resize.onGripDown(frame.id, event)} onPointerMove={resize.onGripMove} onPointerUp={(event) => resize.onGripUp(frame.id, event)} onPointerCancel={resize.cancel} onClick={(event) => event.stopPropagation()} />}
+                    {grabbed && <span className="hold-bubble" role="status">{formatTicks(frame.hold, fps)}</span>}
+                  </>
+                ) : undefined}
+              </TimelineFrame>
+            );
+          })}
           {reorder.drag && <li className="drop-marker" aria-hidden="true" style={{ left: reorder.drag.markerX }} />}
           {/* Where the next picture goes; pressed, it adds an empty (see-through) picture there. */}
           <li ref={next} className="next-slot" role="presentation">

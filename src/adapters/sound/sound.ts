@@ -112,10 +112,13 @@ export function stopPreview(): void {
 
 // Plays the sound row during playback: each sound `delay` seconds from now, from `offset` into
 // it (soundsFrom). `endsIn`: seconds until the animation ends, where sounds still going fade out.
-// Returns a function that stops them all (pause, the end, a loop starting over).
+// Returns a function that stops them all (pause, the end, a loop starting over). With nothing to
+// play it doesn't start the audio at all (step 31: starting it the first time held up Play's
+// first frames for a few hundred ms, even in an animation with no sounds).
 export function playSounds(scheduled: readonly ScheduledSound[], endsIn?: number): () => void {
+  if (scheduled.length === 0) return () => {};
   const ctx = audio();
-  if (!ctx || scheduled.length === 0) return () => {};
+  if (!ctx) return () => {};
   const started = ctx.currentTime + 0.05;   // a moment to start them all on time
   const sources: AudioBufferSourceNode[] = [];
   let stopped = false;

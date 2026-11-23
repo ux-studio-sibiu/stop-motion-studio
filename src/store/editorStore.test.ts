@@ -40,6 +40,16 @@ describe("project slice", () => {
     expect(orderedFrames(store.getState())).toEqual([b, c]);
   });
 
+  // Step 31: every save comes back from storage as new objects; keeping the ones that didn't change
+  // means only the pictures that changed redraw on the timeline, not all of them.
+  it("syncing keeps the frames that didn't change, and takes the ones that did", () => {
+    store.getState().loadProject({ ...project, frameIds: [a.id, b.id] }, [a, b]);
+    const longerB = { ...structuredClone(b), hold: b.hold + 1 };
+    store.getState().syncProject({ ...project, frameIds: [a.id, b.id] }, [structuredClone(a), longerB]);
+    expect(store.getState().frames[a.id]).toBe(a);
+    expect(store.getState().frames[b.id]).toBe(longerB);
+  });
+
   it("syncing a different project loads it fresh", () => {
     store.getState().loadProject({ ...project, frameIds: [a.id] }, [a]);
     store.getState().select([a.id]);
@@ -51,6 +61,22 @@ describe("project slice", () => {
   it("skips ids that have no frame when listing in order", () => {
     store.getState().loadProject({ ...project, frameIds: [a.id, "missing", b.id] }, [a, b]);
     expect(orderedFrames(store.getState())).toEqual([a, b]);
+  });
+
+  // Step 31: every component that draws pictures reads this list on every change (a selection, the
+  // playhead); with hundreds of pictures, building and comparing it each time was what slowed the
+  // studio down. The same list back means nothing to compare.
+  it("lists the same frames as the very same list until the frames or their order change", () => {
+    store.getState().loadProject({ ...project, frameIds: [a.id, b.id] }, [a, b]);
+    const first = orderedFrames(store.getState());
+    store.getState().select([b.id]);
+    store.getState().seek(1);
+    expect(orderedFrames(store.getState())).toBe(first);
+
+    store.getState().syncProject({ ...project, frameIds: [b.id, a.id] }, [a, b]);
+    const reordered = orderedFrames(store.getState());
+    expect(reordered).not.toBe(first);
+    expect(reordered).toEqual([b, a]);
   });
 });
 

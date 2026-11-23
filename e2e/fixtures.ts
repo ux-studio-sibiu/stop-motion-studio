@@ -74,11 +74,13 @@ export class Studio {
   // JPEG (a different colour each, with a white square), saved straight into the app's IndexedDB
   // in the same shape the app saves them, then the page reloads to read them. Nothing ends up
   // selected, and the undo history is empty, as after any reload.
-  async seedPictures(count: number): Promise<void> {
+  // onePhoto: every picture shares one photo (still a picture each), for long animations (step 31),
+  // where drawing thousands of JPEGs would take most of the test.
+  async seedPictures(count: number, { onePhoto = false }: { onePhoto?: boolean } = {}): Promise<void> {
     const projectId = new URL(this.page.url()).searchParams.get("project");
     if (!projectId) throw new Error("Open the studio before seeding pictures");
     const before = await this.pictures().count();
-    await this.page.evaluate(async ({ projectId, count }) => {
+    await this.page.evaluate(async ({ projectId, count, onePhoto }) => {
       const jpeg = async (width: number, height: number, hue: number) => {
         const canvas = new OffscreenCanvas(width, height);
         const ctx = canvas.getContext("2d")!;
@@ -92,13 +94,14 @@ export class Studio {
       const db = await request(indexedDB.open("stop-motion-studio"));
       const project = await request(db.transaction("projects").objectStore("projects").get(projectId));
       const records = [];
+      const shared = onePhoto ? { image: await jpeg(1280, 720, 0), thumb: await jpeg(160, 90, 0) } : null;
       for (let i = 0; i < count; i++) {
         const imageId = crypto.randomUUID();
         const hue = (i * 47) % 360;
         records.push({
           frame: { id: crypto.randomUUID(), projectId, imageId, hold: 1, transform: { x: 0, y: 0, scale: 1, rotation: 0, flipX: false, flipY: false }, adjust: { brightness: 1, contrast: 1 } },
-          image: { id: imageId, projectId, blob: await jpeg(1280, 720, hue), width: 1280, height: 720, createdAt: Date.now() },
-          thumb: { imageId, projectId, blob: await jpeg(160, 90, hue) },
+          image: { id: imageId, projectId, blob: shared?.image ?? await jpeg(1280, 720, hue), width: 1280, height: 720, createdAt: Date.now() },
+          thumb: { imageId, projectId, blob: shared?.thumb ?? await jpeg(160, 90, hue) },
         });
       }
       const tx = db.transaction(["projects", "frames", "images", "thumbs"], "readwrite");
@@ -110,7 +113,7 @@ export class Studio {
       tx.objectStore("projects").put({ ...project, frameIds: [...project.frameIds, ...records.map(({ frame }) => frame.id)], updatedAt: Date.now() });
       await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
       db.close();
-    }, { projectId, count });
+    }, { projectId, count, onePhoto });
     await this.page.reload();
     await expect(this.pictures()).toHaveCount(before + count);
   }

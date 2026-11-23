@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createBubble, clampAdjust, clampSafeMargin, cleanName, sameAdjust, cloneFrame, safeMargin, createFrame, createProject, DEFAULT_ADJUST, DEFAULT_NAME, MAX_NAME_LENGTH, DEFAULT_TRANSFORM, MAX_HEIGHT, MAX_WIDTH, SCHEMA_VERSION, type Frame } from "@/core/model";
+import { createBubble, clampAdjust, clampSafeMargin, cleanName, sameAdjust, sameFrame, cloneFrame, safeMargin, createFrame, createProject, DEFAULT_ADJUST, DEFAULT_NAME, MAX_NAME_LENGTH, DEFAULT_TRANSFORM, MAX_HEIGHT, MAX_WIDTH, SCHEMA_VERSION, type Frame } from "@/core/model";
 
 describe("createProject", () => {
   it("uses the defaults", () => {
@@ -114,6 +114,22 @@ describe("safe zone", () => {
     expect(clampSafeMargin(-5)).toBe(0);
     expect(clampSafeMargin(500)).toBe(60);
     expect(clampSafeMargin(Number.NaN)).toBe(20);
+  });
+});
+
+describe("sameFrame", () => {
+  it("is true for a frame read back from storage unchanged, false when anything about it changed", () => {
+    const frame = createFrame("p", "image", { hold: 2, elements: [createBubble()] });
+    const readBack: Frame = structuredClone(frame);
+    expect(sameFrame(frame, readBack)).toBe(true);
+    for (const changed of [
+      { ...readBack, hold: 3 },
+      { ...readBack, imageId: "other" },
+      { ...readBack, transform: { ...readBack.transform, x: 0.000_000_000_1 } },   // exact: even a move too small to see
+      { ...readBack, adjust: { ...readBack.adjust, contrast: 1.1 } },
+      { ...readBack, elements: [] },
+      { ...readBack, empty: true },
+    ]) expect(sameFrame(frame, changed)).toBe(false);
   });
 });
 

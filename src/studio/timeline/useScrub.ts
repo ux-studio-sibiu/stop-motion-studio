@@ -1,23 +1,12 @@
 "use client";
 
-import { useEffect, useRef, type PointerEvent, type RefObject } from "react";
-import { frameIndexAt, frameStarts, inOrder, totalTicks, type Frame } from "@/core/model";
-import { editorStore, useEditor } from "@/store/useEditor";
-import { timelineInset } from "./useTimelineZoom";
+import { useRef, type PointerEvent } from "react";
+import { frameIndexAt, totalTicks, type Frame } from "@/core/model";
+import { editorStore } from "@/store/useEditor";
 
-// The playhead on the timeline, which is the selection too: stopped, a mark on each selected picture
-// (the first is where Play starts, the last where new pictures go); while playing, one mark on the
-// picture playback is on, jumping from picture to picture, as the stage does. Each mark: its
-// picture, start and length in ticks. Dragging along the ruler scrubs: it stops playback and selects
-// the picture under the pointer, which the stage then shows. While playing, the timeline pages
-// along to keep the playhead in view.
-export function useScrub(frames: readonly Frame[], selection: readonly string[], tickWidth: number, scroller: RefObject<HTMLDivElement | null>, selectOnly: (id: string) => void) {
-  const isPlaying = useEditor((state) => state.isPlaying);
-  const playhead = useEditor((state) => state.playhead);
-  const order = frames.map((frame) => frame.id);
-  const starts = frameStarts(frames);
-  const marked = isPlaying ? (frames.length > 0 ? [frameIndexAt(frames, playhead)] : []) : inOrder(order, selection).map((id) => order.indexOf(id));
-  const marks = marked.filter((at) => frames[at]).map((at) => ({ id: frames[at].id, start: starts[at], ticks: frames[at].hold }));
+// Scrubbing: dragging along the ruler stops playback and selects the picture under the pointer,
+// which the stage then shows. (The playhead itself, which is the selection: Playhead.tsx.)
+export function useScrub(frames: readonly Frame[], tickWidth: number, selectOnly: (id: string) => void) {
   const scrubbing = useRef<number | null>(null);
 
   const scrubTo = (clientX: number, ruler: HTMLElement) => {
@@ -28,7 +17,7 @@ export function useScrub(frames: readonly Frame[], selection: readonly string[],
     selectOnly(frames[frameIndexAt(frames, tick)].id);
   };
 
-  const rulerHandlers = {
+  return {
     onPointerDown: (event: PointerEvent<HTMLDivElement>) => {
       if (event.button !== 0 || frames.length === 0) return;
       editorStore.getState().pause();
@@ -40,13 +29,4 @@ export function useScrub(frames: readonly Frame[], selection: readonly string[],
     onPointerUp: () => { scrubbing.current = null; },
     onPointerCancel: () => { scrubbing.current = null; },
   };
-
-  useEffect(() => {
-    const element = scroller.current;
-    if (!isPlaying || !element) return;
-    const x = timelineInset(element) + playhead * tickWidth;
-    if (x < element.scrollLeft || x > element.scrollLeft + element.clientWidth - 48) element.scrollTo({ left: Math.max(0, x - 48) });
-  }, [isPlaying, playhead, tickWidth, scroller]);
-
-  return { isPlaying, marks, rulerHandlers };
 }

@@ -1,5 +1,5 @@
 import { newId } from "./ids";
-import { cloneElements, type Element } from "./element";
+import { cloneElements, sameElements, type Element } from "./element";
 import type { Adjust, Frame, Project, Transform } from "./types";
 
 // Bump when the stored shape changes, together with a Dexie migration (step 06+)
@@ -106,4 +106,14 @@ export function clampAdjust(adjust: Partial<Adjust>): Adjust {
 
 export function sameAdjust(a: Adjust, b: Adjust): boolean {
   return a.brightness === b.brightness && a.contrast === b.contrast;
+}
+
+// Whether two frames are the same in every detail, exactly (no rounding allowed): a frame read
+// back from storage after a save that didn't touch it (step 31: the store keeps the one it has).
+export function sameFrame(a: Frame, b: Frame): boolean {
+  const ta = a.transform;
+  const tb = b.transform;
+  return a.id === b.id && a.projectId === b.projectId && a.imageId === b.imageId && a.hold === b.hold && Boolean(a.empty) === Boolean(b.empty)
+    && ta.x === tb.x && ta.y === tb.y && ta.scale === tb.scale && ta.rotation === tb.rotation && ta.flipX === tb.flipX && ta.flipY === tb.flipY
+    && sameAdjust(a.adjust, b.adjust) && sameElements(a.elements ?? [], b.elements ?? []);
 }

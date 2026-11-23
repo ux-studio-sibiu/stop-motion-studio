@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>31 Performance · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 31 · Part 10 Kids, polish and shipping</p>
+  <h1>Performance with long projects</h1>
+  <p class="intro">The roadmap planned to <strong>virtualise the timeline</strong> (draw only the pictures in view) and <strong>load thumbnails lazily</strong>, after measuring first. Measured, neither was needed: with 2000 pictures the studio opens in about a second, scrolls at 60 fps and uses little memory. What was slow was <strong>redrawing every picture on every change</strong>, and Play's first frames. Those are fixed, and a spec keeps a 1000-picture animation quick.</p>
+
+  <h2>What was measured</h2>
+  <p>Pictures seeded straight into storage (500 and 2000; a minute of animation is about 500), then: opening, scrolling the timeline end to end, an arrow key (from the key to the next paint, the browser's Event Timing), duplicate and undo, three seconds of playback, the memory. In the dev server and in a production build.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>2000 pictures</th><th>Before</th><th>After</th></tr></thead>
+    <tbody>
+      <tr><td>Opening, until every picture shows</td><td>1.2 s (dev)</td><td>0.9 s (production)</td></tr>
+      <tr><td>Scrolling the timeline: the longest frame</td><td>117 ms (dev)</td><td>17 ms: 60 fps throughout</td></tr>
+      <tr><td>Playing 3 s: frames over 50 ms</td><td>23 (dev)</td><td>1, the first (dev and production)</td></tr>
+      <tr><td>Play's first frame</td><td>150-430 ms</td><td>about 70 ms</td></tr>
+      <tr><td>An arrow key, key to paint</td><td>about 120 ms per press (dev)</td><td>about 60 ms (production), 70-100 (dev)</td></tr>
+      <tr><td>Memory (JS heap)</td><td>80 MB (dev)</td><td>16-30 MB (production)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>The same build measured 64 ms and 120 ms per key press at different times on the same machine, so only side-by-side runs compare. The numbers above are from such runs.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><strong>The playhead draws on its own</strong> (<code>src/studio/timeline/Playhead.tsx</code>). It reads the playhead from the store, which changes many times a second while playing; the timeline used to, and redrew every picture with it. <code>useScrub</code> keeps only dragging along the ruler.</li>
+    <li><strong>The pictures are memoised</strong> (<code>TimelineFrame</code>, with <code>memo</code>). Their handlers stay the same from render to render (<code>src/studio/useStableCallback.ts</code>), the selection is a <code>Set</code>, and a picture gets children (the grip, the length bubble) only when it has something to show: two <code>false</code>s were a new array every time, which undid the memo.</li>
+    <li><strong>The store keeps what didn't change.</strong> <code>orderedFrames</code> hands back the very same list while the frames and their order are the same: every component that draws pictures reads it on every change, and building and comparing 2000 entries each time added up. A save coming back from storage keeps the frame objects it didn't change (<code>sameFrame</code> in <code>core/model</code>), so moving one picture or changing its brightness redraws that picture, not every thumbnail.</li>
+    <li><strong>Play doesn't start the audio when there's nothing to hear</strong> (<code>playSounds</code>). Starting the browser's audio the first time held up Play's first frames, even in an animation with no sounds.</li>
+    <li><strong>A performance spec</strong>, <code>e2e/performance.spec.ts</code>, in place of the roadmap's dev-only "generate 500 frames" button. <code>seedPictures(n, { onePhoto: true })</code> seeds many pictures quickly (one photo shared, still a picture each).</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>No virtualising.</strong> Every picture stays on the timeline. Virtualising pictures of different widths, with the reorder drag, the object and sound rows and the saved scroll position, would be a lot of code, and the measurements show nothing it would fix.</li>
+    <li><strong>No lazy thumbnails.</strong> They're small (about 160 px wide) and load in one read when an animation opens; 2000 of them take under a second.</li>
+    <li><strong>What's left is the browser's layout.</strong> An arrow press lays out the whole page again (about 10,000 boxes at 2000 pictures, 30-40 ms). Containment on the pictures, the track or the scroller didn't make it cheaper (on the track it made it slower), so it's left as it is: well inside the 200 ms that feels instant.</li>
+    <li><strong>Generous limits in the spec.</strong> Timing on a busy machine varies by a factor of two, so the always-on test only catches a real slowdown; the numbers come from the measuring run, on request.</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li>A new prop on <code>TimelineFrame</code> must keep its value from render to render (a number, a flag, a stable function), or every picture redraws again. Inline functions and new objects or arrays undo the memo.</li>
+    <li>Duplicate and undo still redraw the pictures after the one that changed: their numbers shift. At 2000 pictures that's about 0.2-0.3 s for a duplicate.</li>
+    <li>Measure in a production build: the dev server's React adds checks to every element, about doubling the cost.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li><code>MEASURE=1 npm run test:e2e -- e2e/performance.spec.ts</code> builds the app, seeds 2000 pictures and prints one line of numbers (<code>MEASURE_PICTURES=500</code> for another count; <code>test:e2e:dev</code> for the dev server).</li>
+    <li>By hand: a long animation plays without stutter, and the arrow keys move along it at once.</li>
+  </ul>
+  <div class="note">Checked while building: lint and typecheck are clean; 423 unit tests and the browser tests (55) pass; the timeline, frames, resize, reorder, playback, sounds, picture, history and performance specs pass (67, one measuring test skipped), against the dev server. Measured in Chromium, headless.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/studio/timeline/Playhead.tsx</code> (new), <code>useScrub.ts</code>, <code>Timeline.tsx</code>, <code>TimelineFrame.tsx</code>; <code>src/studio/useStableCallback.ts</code> (new); <code>src/store/editorStore.ts</code>; <code>src/core/model/project.ts</code>; <code>src/adapters/sound/sound.ts</code>; <code>e2e/performance.spec.ts</code> (new), <code>e2e/fixtures.ts</code>; the docs (<code>PLAN.md</code>, <code>ROADMAP.md</code>, <code>README.md</code>, <code>CLAUDE.md</code>, the folder READMEs); <code>public/steps/31-performance.html</code>, <code>index.html</code>, <code>30-help.html</code> (next link).</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit, <code>editorStore.test.ts</code>: <code>orderedFrames</code> is the same list until the frames or their order change; syncing keeps the frames that didn't change and takes the ones that did.</li>
+    <li>Unit, <code>project.test.ts</code>: <code>sameFrame</code> is true for a frame read back unchanged, false when anything changed, even a move too small to see.</li>
+    <li>Browser, <code>sound.browser.test.ts</code>: an empty sound row doesn't start the audio; a sound does.</li>
+    <li>End-to-end, <code>performance.spec.ts</code>: a 1000-picture animation opens, scrolls to its end, and answers the arrow keys in under 200 ms; and the measuring run.</li>
+  </ul>
+  <p>Each new unit and browser test failed before its fix. <strong>Tests changed:</strong> none (<code>seedPictures</code> gained an option).</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>nothing in the timeline reads the playhead but <code>Playhead</code></li>
+    <li>every prop handed to <code>TimelineFrame</code> keeps its value when nothing about that picture changed</li>
+    <li><code>sameFrame</code> compares every <code>Frame</code> field, exactly</li>
+    <li>a long animation plays smoothly; its sounds still play when it has some</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="30-help.html">Previous: 30 · Help</a>
+    <span>Next: 32 · Offline (PWA)</span>
+  </nav>
+</main>
+</body>
+</html>

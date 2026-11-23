@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>D5 Cardboard · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step D5 · Part 8b Design system page · added after step 30</p>
+  <h1>The cardboard look</h1>
+  <p class="intro">The home page and the studio are now cut from <strong>cardboard</strong>, like the sets kids build for their films: pieces of the cardboard letters font's own photos, with paper pasted on them. Built over many small rounds, by eye; this page sums up where it landed.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><strong>One set of mixins</strong>, <code>src/styles/_cardboard.scss</code>: <code>cardboard($edge, $shadow)</code> a piece (its corrugated edges, its surface, its shadow), <code>cardboard-paper($colour)</code> paper pasted on it up to the rim, <code>cardboard-button</code> a button (a shade under the pointer, pressed down), <code>cardboard-split</code> a button joined to its options arrow. The colours moved to <code>_colours.scss</code>.</li>
+    <li><strong>Home page</strong>: the title in paper letters on a five-piece burst, the buttons and the animation cards, shown frame by frame as a short stop-motion intro (not when coming back from the studio, not with reduced motion). The storage meter is in a Settings window. The cardboard pictures come from the font project: <code>npm run sync:cardboard</code> (README).</li>
+    <li><strong>Studio</strong>:
+      <ul>
+        <li>the back arrow, Save and Help in a column beside the stage, one size;</li>
+        <li>Play and See under the stage, each one piece with its options arrow;</li>
+        <li>the stage on cardboard, with a white paper border;</li>
+        <li>the side panel and its tabs, reaching down to the timeline;</li>
+        <li>the timeline as bare cardboard from edge to edge, its tools a tab cut at 45°;</li>
+        <li>the playhead and the selection as one red block behind the selected pictures, with a chunky white grip; the ruler's gradations a setting in the Layers menu, off at first;</li>
+        <li>the extra rows with dashed dividers and their names ("Objects", "Sounds").</li>
+      </ul>
+    </li>
+    <li><strong>Design system page</strong>: a Cardboard section after the tokens (the pieces, the buttons beside the stage, Play and See). The top toolbar and plain split-button specimens are gone, and two tokens nothing used any more (<code>--shadow-card</code>, <code>--color-faint</code>).</li>
+    <li>Along the way: a new animation always opens on the Camera tab; the GIF's size is a slider; the timeline zooms in up to 16 times (2560 px a second).</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>Square, no easing.</strong> Cardboard is cut straight; hover and press jump from one pose to the next, as in stop motion.</li>
+    <li><strong>White paper darker under the pointer, coloured paper lighter</strong>: lighter white hardly shows.</li>
+    <li><strong>Box shadows on pieces that hold things fixed to the window</strong> (the timeline, the side panel): a filter shadow would make a dragged picture follow the piece. A thin dark ring on the piece's last pixel hides the edge photo's pale highlight, which read as paper under the cardboard.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li>Open the home page: the intro plays once; come back from the studio: it doesn't.</li>
+    <li>In the studio: the pieces don't move under the pointer, only their paper changes; select several pictures: one red block behind each, the grip on the last.</li>
+    <li><code>/design</code>: the Cardboard section.</li>
+  </ul>
+  <div class="note">Checked while building: each round by screenshot and the specs of the flows it touched; <code>design.spec</code> covers the page, <code>frames</code>, <code>playback</code> and <code>timeline</code> specs the playhead block, the grip and the gradations.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/styles/_cardboard.scss</code>, <code>_colours.scss</code>, <code>globals.scss</code>; <code>src/studio/styles/_cardboard.scss</code>, <code>_stage.scss</code>, <code>_side-panel.scss</code>, <code>studio.scss</code>; <code>src/studio/timeline/</code> (<code>_timeline.scss</code>, <code>_frame.scss</code>, <code>Timeline.tsx</code>, <code>LayersMenu.tsx</code>, the rows); <code>src/projects/</code> (the home page and its intro); <code>src/design-system/</code>.</p>
+
+  <nav class="pager">
+    <a href="d4-design-keep.html">Previous: D4 · Keeping tweaks</a>
+    <a href="25-gif-export.html">Next: 25 · GIF export</a>
+  </nav>
+</main>
+</body>
+</html>

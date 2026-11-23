@@ -30,17 +30,19 @@ plan keeps its shape and changes what is listed under "What changed from the ori
 | One zoom | Only **picture scale** (part of the frame, exported). A view zoom (step 19) was removed later: it moved and resized the safe zone along with the picture, which read as the safe zone changing for every picture | The safe zone stays where the file is cut |
 | Duplicates | **A duplicate is visually identical to its source**: same image, copies of `hold`, `transform`, `adjust` and `elements`; only ids are new. One `cloneFrame()` in `core/` does it, with a test that fails when a new `Frame` field isn't copied | Duplicating is how kids make pauses and variations; a copy that jumps or loses its bubble breaks trust |
 | Undo/redo | **Command pattern from day one**: every change to a project is a command with `do()` / `undo()` | Retrofitting undo is painful. Commands are also the one safe way features change a project |
-| Extension | **Feature folders, composed directly**: each feature's code lives in `src/features/<name>/`, and `Studio.tsx` imports its components and places them in its JSX. Plain lists only where there are many items of one kind handled alike: element kinds (a map of drawing functions, step 23), exporters (step 25). *Changed in step 22: a plugin registry was built, then removed.* | Moving a piece of UI is moving its line, which matters while the UX is still being tried out. A registry decides placement for the features, so each experiment needed a new slot. Nothing is ever loaded from outside: this is a kids' app |
+| Extension | **Feature folders, composed directly**: each feature's code lives in `src/features/<name>/`, and `Studio.tsx` imports its components and places them in its JSX. Plain lists only where there are many items of one kind handled alike: element kinds (a map of drawing functions, step 23), the sound library (step 29b). The exports are placed by hand too, in the Save menu (steps 25-26). *Changed in step 22: a plugin registry was built, then removed.* | Moving a piece of UI is moving its line, which matters while the UX is still being tried out. A registry decides placement for the features, so each experiment needed a new slot. Nothing is ever loaded from outside: this is a kids' app |
 | Rendering | Canvas 2D, one `renderAt(time)` shared by preview, onion skin and export: the picture, its elements, then the overlays active at that time | What you see is what you export |
 | Drag & drop | Plain pointer events for both reordering (`useReorder`) and resizing (`useResize`); no drag library. *Changed in step 14: the plan was `@dnd-kit/sortable`.* | dnd-kit's keyboard dragging needs each picture to take focus, but the timeline keeps focus on the list (`aria-activedescendant`), so Ctrl+arrows move pictures instead. Our own drag also fits the resize grip, group moves and the time-scaled widths without fighting a library, and adds no dependency. Touch: hold to pick up |
 | Remembered UI state | One registry, `src/studio/remembered.ts`: typed `definePreference(name, parse)` entries in `localStorage` (camera, camera off, open tab, loop, see-through, zoom, and per animation its view and selection), used through `useRememberedState` / `useRememberedStore`. *Added after step 18.* | A child finds the studio as they left it. One place to see and add what's remembered; every stored value is checked by its parser, because anything can be in storage. Remembered by default (repo `CLAUDE.md`); moment-to-moment state isn't |
 | Stage tools per tab | The side panel's open tab lives in the editor store (`panelTab`); a tab's tools on the stage (moving a picture for Picture) only show while it's open. *Added after step 18.* | Each tab owns its tools, so later tabs (speech bubbles, step 23) add theirs the same way without clashing |
 | Safe zone | Each animation's `safeMargin` (0-60 project px, default 20): the edge band the video leaves out, shown veiled with a dotted line; export crops to `exportRect`. The margin is taken off the short sides and as large a share off the long ones, so what's exported keeps the picture's shape (1208 × 680 of 1280 × 720; changed in step 25) | Wobbly edges of the set stay out of the film; saved with the animation because the file depends on it |
-| Outlines | One `--line-width` (2px) for every outline: buttons, fields, stage, panels, tabs, dropdowns; hairlines (dividers, ruler) stay 1px | One value to change the whole look; the joints (tab ears, the timeline tab's corner) are worked out from it |
+| Look | **Cardboard**: the home page and the studio's big pieces (the stage, the side panel and its tabs, the timeline and its tools tab, the buttons beside the stage, Play and See) are pieces of cardboard with paper pasted on them, from the cardboard letters font's own photos (`src/styles/_cardboard.scss`: `cardboard()`, `cardboard-paper()`, `cardboard-button()`, `cardboard-split()`). Square, no easing: hover and press jump from one pose to the next. *Added after step 30.* | A stop-motion studio that looks made by hand, like the sets kids build. One set of mixins, so every piece is cut the same way |
+| Outlines | One `--line-width` (2px) for the controls inside the pieces: buttons, fields, dropdowns, the panel's settings; hairlines stay 1px | One value to change them all |
 | GIF export | `gifenc`, in a Web Worker | Small and fast. The worker keeps the UI responsive |
 | Video export | `mediabunny` (WebCodecs + muxing), only when the browser supports it | Real MP4/WebM without shipping FFmpeg.wasm (~30 MB) |
 | Backup | Project archive (`.zip` of `project.json` + images) via `fflate` | Browser storage is not a backup; kids' work must be exportable |
-| Tests | Three layers. **Vitest** (Node) for `core/` and adapters, `fake-indexeddb` for Dexie: fast, many edge cases. **Playwright** end-to-end tests from step 08: the real app in Chromium and WebKit, a fake webcam playing a generated video, real IndexedDB; later axe accessibility scans and screenshot tests. **Vitest browser mode** from step 15 for canvas pixel tests | Logic is tested where failures are cheap to find; a few end-to-end flows prove the pieces work together in a real browser. No jsdom component tests: jsdom has no camera, canvas or IndexedDB |
+| Tests | Three layers. **Vitest** (Node) for `core/` and adapters, `fake-indexeddb` for Dexie: fast, many edge cases. **Playwright** end-to-end tests from step 08: the real app in Chromium and WebKit, a fake webcam playing a generated video, real IndexedDB (axe scans and screenshot tests were planned for step 30 and left for later). **Vitest browser mode** from step 15 for canvas pixel tests | Logic is tested where failures are cheap to find; a few end-to-end flows prove the pieces work together in a real browser. No jsdom component tests: jsdom has no camera, canvas or IndexedDB |
+| Long animations | **Every picture on the timeline**, no virtualising; what's kept cheap is redrawing: the pictures are memoised, the playhead is its own component, the store hands back the same frames while nothing changed. *Measured in step 31*: 2000 pictures open in about a second, scroll at 60 fps, and answer a key in well under 200 ms (`e2e/performance.spec.ts`, `MEASURE=1` for the numbers) | A minute of animation is about 500 pictures. Virtualising pictures of different widths, with the reorder drag and the overlay and sound rows, would add a lot of code for no visible gain |
 | Offline | Installable PWA with a service worker, late in the roadmap | Classrooms often have bad Wi-Fi |
 
 ### What changed from the original plan
@@ -53,7 +55,7 @@ plan keeps its shape and changes what is listed under "What changed from the ori
 - **Thumbnails stored separately at capture time**, so the timeline never loads full images.
 - **Non-destructive adjustments** (brightness/contrast stored as numbers, applied when rendering).
 - **End-to-end tests with Playwright** (fake camera, real storage), not only unit tests.
-- **Alignment tools** (ghost, difference view, snapping, view zoom) and **identical duplicates**.
+- **Alignment tools** (ghost, difference view, snapping) and **identical duplicates**. (A view zoom was built, then removed.)
 - **A time-scaled, two-layer timeline**: resizable pictures, a seconds ruler, and an overlay layer for
   text and shapes. Speech bubbles attach to single pictures.
 - Dropped: Sharp (server-only, not needed), FFmpeg.wasm (too heavy), gif.js (replaced by gifenc).
@@ -79,7 +81,7 @@ Four layers. Arrows are the only allowed import directions.
 ```
 
 - **`core/` imports nothing from the other layers.** An ESLint `no-restricted-imports` rule enforces it.
-- Adapters implement interfaces defined in `core/` (`ProjectRepository`, `Exporter`, `FrameSource`).
+- Adapters implement interfaces defined in `core/` (`ProjectRepository`, the image and bitmap caches); the exporters are plain functions (`exportGif`, `exportVideo`, the archive) called by their buttons.
 - The UI talks to the project only through commands; it reads data through live queries and the store.
 
 ### Folder structure
@@ -101,9 +103,10 @@ src/
 │   ├── export/                  gif (worker), video, archive
 │   └── import/                  photo import, archive import
 ├── store/                       editorStore + slices
-├── studio/                      Studio components (Toolbar, Stage, Timeline, ...) + .scss
+├── studio/                      the studio screen: Studio.tsx, the stage, side panel, playback bar, timeline/ + .scss
 ├── features/                    one folder per feature (camera, picture, onion-skin, ...), placed by Studio.tsx
-└── styles/                      tokens, globals, breakpoints
+├── design-system/               the /design page: every part of the interface, and the token panel
+└── styles/                      tokens (globals, _colours), breakpoints, the cardboard mixins
 ```
 
 ---
@@ -118,7 +121,10 @@ type Project = {
   width: number;            // working resolution, default 1280
   height: number;           // default 720
   fps: number;              // default 8
+  safeMargin?: number;      // the band the video leaves out, project px (0-60, default 20)
   frameIds: string[];       // the order of the animation
+  overlays?: Overlay[];     // objects in time (step 24)
+  sounds?: SoundClip[];     // sound effects in time (step 29b)
   createdAt: number;
   updatedAt: number;
 };
@@ -130,12 +136,14 @@ type Frame = {
   hold: number;             // how many ticks this frame stays on screen, default 1
   transform: { x: number; y: number; scale: number; rotation: number; flipX: boolean; flipY: boolean };
   adjust: { brightness: number; contrast: number };   // 1 = unchanged
+  elements: Element[];      // objects on this picture only (step 23)
+  empty?: boolean;          // an empty, see-through picture (no photo)
 };
 
 type StoredImage = { id: string; projectId: string; blob: Blob; width: number; height: number; createdAt: number };
 type StoredThumb = { imageId: string; projectId: string; blob: Blob };   // ~160 px wide
 
-// Added in steps 23-24 (types sketched here so earlier steps leave room for them):
+// Added in steps 23-29b:
 
 // Something drawn on top of a picture (an "object" in the app). `kind` says how it's drawn: a plain
 // map from kind to drawing function (core/render/elements.ts).
@@ -145,8 +153,6 @@ type Element = {
   box: { x: number; y: number; width: number; height: number; rotation: number };   // fractions of the frame
   props: Record<string, unknown>;   // kind-specific: text, colours, the bubble's tail point
 };
-
-// Frame gains: elements: Element[]   (on this picture only; reorder / duplicate carry them along)
 
 // A free drawing (step 24b) is an Element of kind "drawing", one per picture:
 //   props: { strokes: { points: number[] /* x, y... in fractions of its box */; colour; width }[] }
@@ -174,7 +180,6 @@ type SoundClip = {
   sound: string;            // a library entry, "cartoon/boing" (core/sound/library.ts); later a recording's id
   volume: number;           // 0.5 quiet, 1 normal, 1.5 loud
 };
-// Project gains: sounds: SoundClip[]
 ```
 
 - Frame timing is `hold` in ticks of `1/fps`, not milliseconds: changing FPS keeps the rhythm kids built.
@@ -184,7 +189,7 @@ type SoundClip = {
   overlays (like a second track in a video editor). "Stick to this picture" can be added later.
 - Images are kept until no frame references them (garbage collection, step 21). Undoing a delete
   therefore always finds its image.
-- Picture layers, sound and keyframes are later additions: a `schemaVersion` bump plus a Dexie migration.
+- Picture layers, recorded sounds and keyframes are later additions: a `schemaVersion` bump plus a Dexie migration.
   Until the app ships, changes to the stored shape can simply reset the dev database.
 
 ---
@@ -194,13 +199,13 @@ type SoundClip = {
 | Extension point | Shape | First users |
 |---|---|---|
 | Commands | `Command { label; do(ctx); undo(ctx) }` in `core/commands` | delete, duplicate, insert, reorder, resize, transform, adjust, element and overlay edits |
-| Features | A folder in `src/features/`, its components placed by hand in `Studio.tsx` | camera, picture, see-through, objects |
+| Features | A folder in `src/features/`, its components placed by hand in `Studio.tsx` | camera, picture, see-through, objects, draw, sounds, exports, photo import |
 | Element kinds | A map from kind to its drawing function (`core/render/elements.ts`), its defaults and settings reader in `core/model`, and its tile and settings component placed by hand in the Objects tab (step 23) | speech bubble, text, shape (rectangle, ellipse, arrow) |
-| Exporters | An array of `{ id; label; isSupported(); run(…, onProgress) }` (step 25) | GIF, video, image sequence, project archive |
+| Exports | A button (or split button with its options) placed by hand in the Save menu, calling a plain export function with progress and a stop (`useExport`) | GIF, video; the project archive is on the projects page |
 | Storage | `ProjectRepository` in `core/model` | Dexie now, Supabase later |
 
 Features change a project only through the commands the studio passes them, so everything they do
-can be undone. Lists of data (element kinds, exporters) are the "dynamic data" exception in
+can be undone. Lists of data (element kinds, the sound library) are the "dynamic data" exception in
 `COMPONENT_PATTERNS.md`; everything else composes content as JSX children.
 
 ---
@@ -219,12 +224,12 @@ can be undone. Lists of data (element kinds, exporters) are the "dynamic data" e
 
 ## 6. Designing for kids
 
-- One big capture button, one big play button, one big undo button.
+- One big capture button, one big play button; undo and redo always on the timeline, and Ctrl+Z.
 - Plain words: "pictures", "speed", "see-through" instead of "frames", "FPS", "onion skin" (tooltips may
   keep the real term).
 - Large touch targets (min 56 px), works on a tablet in landscape.
-- Autosave everything; no save button, no file dialogs except export.
-- Celebrate each capture; count pictures ("You've made 12 pictures!").
+- Autosave everything; the Save menu only makes files (a GIF, a video), and the projects page backs up.
+- A capture is heard (a shutter click, with its own off switch) and seen (a flash); the counter and celebration of step 29 were left out.
 - Destructive actions are undoable; deleting a whole project asks first.
 - No accounts, no uploads, no tracking.
 
@@ -232,6 +237,6 @@ can be undone. Lists of data (element kinds, exporters) are the "dynamic data" e
 
 ## 7. Out of scope (for now)
 
-Several picture layers, music and recorded audio (sound effects are planned: ROADMAP 29b), free drawing on frames, animating elements between keyframes,
+Several picture layers, recorded audio (sound effects are built: step 29b), drawing on the time track (drawing on pictures is built: step 24b), animating elements between keyframes,
 chroma key, cloud sync and sharing, multi-user editing. The architecture leaves room for each; none is
 planned in the roadmap.

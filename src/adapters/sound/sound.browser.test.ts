@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SHUTTER, SOUND_LIBRARY, notesLength, soundSeconds } from "@/core/sound";
 import { createSoundClip } from "@/core/model";
 import { mixSounds, playNotes, scheduleNotes, soundBuffer } from "@/adapters/sound/sound";
@@ -22,6 +22,23 @@ describe("sounds", () => {
     const end = notesLength(SHUTTER);
     expect(loudest(samples, RATE, 0, end)).toBeGreaterThan(0.05);
     expect(loudest(samples, RATE, end + 0.02, 1)).toBe(0);
+  });
+
+  // Step 31: starting the audio the first time held up Play's first frames, even with no sounds.
+  it("playing an empty sound row doesn't start the audio; a sound does", async () => {
+    vi.resetModules();   // a fresh module: no audio started by the other tests
+    const Real = window.AudioContext;
+    let started = 0;
+    window.AudioContext = class extends Real { constructor(options?: AudioContextOptions) { super(options); started++; } };
+    try {
+      const fresh = await import("@/adapters/sound/sound");
+      fresh.playSounds([])();
+      expect(started).toBe(0);
+      fresh.playSounds([{ clip: createSoundClip("cartoon/pop", 0), delay: 0, offset: 0 }])();
+      expect(started).toBe(1);
+    } finally {
+      window.AudioContext = Real;
+    }
   });
 
   it("playing never throws, even before the page was pressed", () => {

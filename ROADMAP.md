@@ -554,6 +554,28 @@ styles. Removing the folder and its route removes the page, and nothing else cha
 - **Check:** change two tokens, reload: they're still there; Copy changes gives exactly those two,
   each with its theme, old and new value; Reset all clears them and the copy is empty.
 
+### D5 · The cardboard look *(added, after step 30)*
+- **As built:** the home page and the studio are cut from cardboard, like the sets kids build:
+  pieces of the cardboard letters font's own photos (synced in with `npm run sync:cardboard`),
+  with paper pasted on them. One set of mixins in `src/styles/_cardboard.scss` (`cardboard()`,
+  `cardboard-paper()`, `cardboard-button()`, `cardboard-split()`) cuts every piece.
+  - **Home page:** the title in paper letters on a five-piece burst, the New, open-a-backup and Settings buttons, and the
+    animation cards, shown frame by frame as a short stop-motion intro (not when coming back from the
+    studio, not with reduced motion); the storage meter moved into a Settings window.
+  - **Studio:** the back arrow, Save and Help in a column beside the stage; Play and See (each
+    joined to its options arrow); the stage on cardboard with a white paper border; the side panel
+    and its tabs, reaching down to the timeline; the timeline as bare cardboard from edge to edge,
+    its tools a tab cut at 45°. The playhead and the selection are one red block behind the selected
+    pictures, with a chunky grip; the ruler's gradations are a setting (Layers menu), off at first.
+  - **Design system page:** a Cardboard section after the tokens (the pieces, the buttons beside the
+    stage, Play and See); the old top toolbar and plain split-button specimens are gone, and with
+    them two tokens nothing used (`--shadow-card`, `--color-faint`).
+- **Decisions:** square, no easing (hover and press jump between poses, as in stop motion); white
+  paper goes a shade darker under the pointer, coloured paper lighter. Shadows that hold anything
+  fixed to the window (the timeline, the side panel) are box shadows, not filters.
+- **Check:** `e2e/design.spec.ts` (every section, Cardboard included); the stage, timeline and
+  playback specs for the playhead block and the grip.
+
 ---
 
 ## Part 9 - Export and import
@@ -679,8 +701,8 @@ inside the band.
   (pixel diff with a threshold, the diff image in the report), and how to review a changed baseline.
 - **Check:** complete capture → resize → reorder → add a bubble → play → export using only the keyboard;
   axe reports no serious issues; a deliberate CSS change shows up as a screenshot diff.
-- **As built (replaced on request):** only a **Help** button in the studio's top bar (and the `?`
-  key), opening a window with how to make an animation and every keyboard shortcut the studio
+- **As built (replaced on request):** only a **Help** button in the studio's top bar (now in the
+  column beside the stage, D5) and the `?` key, opening a window with how to make an animation and every keyboard shortcut the studio
   has. No axe scans, keyboard-only run, screenshot tests or contrast pass: those can come back
   later as their own step.
 
@@ -692,6 +714,27 @@ inside the band.
 - **Watch out:** virtualisation and the reorder drag together need care (drag targets outside the rendered
   range); the overlay track must virtualise by the same time range.
 - **Check:** 500 frames: timeline scrolls at 60 fps, memory stays under an agreed budget.
+- **As built (re-evaluated after measuring):** measured first, with 500 and 2000 seeded pictures,
+  in the dev server and a production build. Opening, scrolling and memory were already fine (2000
+  pictures: ready in about a second, 60 fps scrolling, a 16 MB heap), so there's **no
+  virtualisation and no lazy thumbnails**. What was slow was redrawing every picture on every
+  change, and Play's first frames:
+  - **The playhead draws on its own** (`timeline/Playhead.tsx`): while playing it changes many
+    times a second, and the whole timeline used to follow it (23 frames over 50 ms in 3 s of play
+    at 2000 pictures; now none after the first).
+  - **The pictures are memoised** (`TimelineFrame`), with handlers that stay the same
+    (`useStableCallback`) and children only when selected: a new selection redraws the pictures it
+    changes, not all of them.
+  - **The store keeps what didn't change:** `orderedFrames` hands back the same list while the
+    frames and their order are the same, and a save coming back keeps the frame objects it didn't
+    change (`sameFrame`), so moving one picture doesn't redraw every thumbnail.
+  - **Play doesn't start the audio when there are no sounds:** starting it the first time held up
+    the first frames for 150-430 ms; now about 70 ms (the first picture being drawn).
+  - An arrow key at 2000 pictures (production build) now paints in about 60 ms, well inside the
+    200 ms that feels instant; most of what's left is the browser laying out the page.
+  - **No dev-only button:** `e2e/performance.spec.ts` seeds the pictures (`seedPictures(n, { onePhoto:
+    true })`), checks a 1000-picture animation stays quick, and with `MEASURE=1` measures 2000 and
+    prints the numbers.
 
 ### 32 · Offline (PWA)
 - **Builds:** web app manifest, icons, a service worker caching the static export, an "install" hint,
@@ -753,6 +796,7 @@ feature folder of its own.
 - [x] D2 Design system: one list of tokens
 - [x] D3 Design system: the floating tweak panel
 - [x] D4 Design system: keeping tweaks, Copy changes
+- [x] D5 The cardboard look, added after step 30 ([page](public/steps/d5-cardboard.html))
 - [x] 25 GIF export ([page](public/steps/25-gif-export.html))
 - [x] 26 Video export ([page](public/steps/26-video-export.html))
 - [x] 27 Project archive ([page](public/steps/27-project-archive.html))
@@ -760,6 +804,6 @@ feature folder of its own.
 - [x] 29 Kid-friendly capture, cut down to the capture sound ([page](public/steps/29-capture-sound.html))
 - [x] 29b Sound track: sound effects in time ([page](public/steps/29b-sound-track.html))
 - [x] 30 Accessibility and keyboard map, replaced by a Help window ([page](public/steps/30-help.html))
-- [ ] 31 Performance with long projects
+- [x] 31 Performance with long projects, measured first: no virtualising needed ([page](public/steps/31-performance.html))
 - [ ] 32 Offline (PWA)
 - [ ] 33 Ship
