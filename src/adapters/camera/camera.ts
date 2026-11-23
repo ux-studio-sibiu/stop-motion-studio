@@ -101,3 +101,49 @@ export function isMissingDevice(error: unknown): boolean {
 export function unavailableStatus(): CameraStatus {
   return typeof window !== "undefined" && !window.isSecureContext ? "insecure" : "unsupported";
 }
+
+// Locking the camera's automatic settings, for stop motion: a webcam keeps adjusting its focus,
+// exposure and white balance as hands and light change between shots, which shows as flicker,
+// colour shifts and focus pulsing in the animation. Locked, each one the camera can set by hand is
+// set to manual at its current value; unlocked, back to automatic ("continuous"). Only what the
+// camera reports it can do (MediaStreamTrack.getCapabilities: Chrome and Edge, some webcams).
+export type CameraLock = { focus: boolean; exposure: boolean; whiteBalance: boolean };
+export const NO_LOCK: CameraLock = { focus: false, exposure: false, whiteBalance: false };
+
+// The settings involved, as the browser names them (not yet in TypeScript's own types).
+type LockableTrack = Pick<MediaStreamTrack, "applyConstraints"> & {
+  getCapabilities?: () => object;
+  getSettings: () => object;
+};
+const SETTINGS = [
+  { key: "focus", mode: "focusMode", value: "focusDistance" },
+  { key: "exposure", mode: "exposureMode", value: "exposureTime" },
+  { key: "whiteBalance", mode: "whiteBalanceMode", value: "colorTemperature" },
+] as const;
+
+// What this camera can lock: the settings it can switch to manual.
+export function cameraLockSupport(track: LockableTrack | null | undefined): CameraLock {
+  const capabilities = (track?.getCapabilities?.() ?? {}) as Record<string, unknown>;
+  const can = (mode: string) => Array.isArray(capabilities[mode]) && (capabilities[mode] as unknown[]).includes("manual");
+  return { focus: can("focusMode"), exposure: can("exposureMode"), whiteBalance: can("whiteBalanceMode") };
+}
+
+// Locks (or unlocks) what the camera can; returns what it locked (nothing when unlocking, or when
+// the camera refused).
+export async function setCameraLock(track: LockableTrack, locked: boolean): Promise<CameraLock> {
+  const support = cameraLockSupport(track);
+  const settings = track.getSettings() as Record<string, unknown>;
+  const wanted: Record<string, unknown> = {};
+  for (const { key, mode, value } of SETTINGS) {
+    if (!support[key]) continue;
+    wanted[mode] = locked ? "manual" : "continuous";
+    if (locked && typeof settings[value] === "number") wanted[value] = settings[value];   // where it is now
+  }
+  if (Object.keys(wanted).length === 0) return NO_LOCK;
+  try {
+    await track.applyConstraints({ advanced: [wanted] } as MediaTrackConstraints);
+  } catch {
+    return NO_LOCK;   // the camera said no: as if it couldn't
+  }
+  return locked ? support : NO_LOCK;
+}

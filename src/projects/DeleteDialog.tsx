@@ -1,21 +1,14 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { Clapperboard } from "lucide-react";
 import type { Project } from "@/core/model";
+import { useModalDialog } from "./useModalDialog";
 
 // Deleting a project is the one thing undo can't bring back, so it asks first, showing the
 // picture and name, with "Keep it" as the default (focused) answer. A modal <dialog> keeps focus
 // inside, closes on Escape, and is announced as a dialog by screen readers.
 export function DeleteDialog({ project, coverUrl, onCancel, onConfirm }: { project: Project | null; coverUrl?: string; onCancel: () => void; onConfirm: () => void }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const element = dialog.current;
-    if (!element) return;
-    if (project && !element.open) element.showModal();
-    if (!project && element.open) element.close();
-  }, [project]);
+  const dialog = useModalDialog(project !== null);
 
   const count = project?.frameIds.length ?? 0;
 

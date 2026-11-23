@@ -15,7 +15,7 @@ export type GifWriter = {
   finish(): Uint8Array;
 };
 
-export function createGifWriter({ colours, format, tolerance }: GifEncoding = GIF_ENCODING.high): GifWriter {
+export function createGifWriter({ colours, format, tolerance, transparent = false }: GifEncoding = GIF_ENCODING.high): GifWriter {
   const gif = GIFEncoder();
   let shown: Uint8ClampedArray | null = null;   // what the viewer shows so far (RGBA), with a tolerance
   let first = true;
@@ -33,6 +33,24 @@ export function createGifWriter({ colours, format, tolerance }: GifEncoding = GI
   return {
     add(rgba, width, height, delay) {
       const pixels = width * height;
+      // With see-through pictures: every picture whole, its see-through pixels (alpha under half)
+      // given the last palette slot, and the GIF told to clear each picture before the next
+      // (dispose 2), so nothing of one shows through the holes of the next.
+      if (transparent) {
+        const opaque = new Uint8ClampedArray(rgba.length);
+        let count = 0;
+        for (let p = 0; p < pixels; p++) if (rgba[p * 4 + 3] >= 128) opaque.set(rgba.subarray(p * 4, p * 4 + 4), (count++) * 4);
+        const part = opaque.subarray(0, Math.max(1, count) * 4);
+        const palette = count ? quantize(part, colours - 1, { format }) : [];
+        const see = palette.length;
+        const partIndex = count ? applyPalette(part, palette, format) : new Uint8Array(0);
+        palette.push([0, 0, 0]);
+        const index = new Uint8Array(pixels).fill(see);
+        for (let p = 0, n = 0; p < pixels; p++) if (rgba[p * 4 + 3] >= 128) index[p] = partIndex[n++];
+        gif.writeFrame(index, width, height, { palette, delay: delay * 10, ...(first ? { repeat: 0 } : {}), transparent: true, transparentIndex: see, dispose: 2 });
+        first = false;
+        return;
+      }
       if (tolerance === 0 || !shown || shown.length !== rgba.length) {
         const palette = quantize(rgba, colours, { format });
         const index = applyPalette(rgba, palette, format);

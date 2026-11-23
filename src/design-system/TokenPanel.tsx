@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { PANEL_CSS } from "./panelStyles";
 import { changeLines, changesMessage } from "./changes";
@@ -15,6 +15,8 @@ import { baseValue, type Scheme, type Tweaks } from "./tweaks";
 // Pick: click an element on the page and the list shows only the tokens it uses (tokenScan.ts),
 // with or without its hover, focus and pressed looks; hovering a token outlines every element
 // that uses it.
+// Copy and paste a colour (colourCopy.ts): Alt+click a colour token copies it, Ctrl+Alt+click another
+// pastes it there; the page does it (onColourClick, the same as on its token board), the panel says so.
 
 const KNOWN = new Set(TOKENS.map((token) => token.name));
 type Box = { left: number; top: number; width: number; height: number };
@@ -27,7 +29,7 @@ const pickable = (target: EventTarget | null): Element | null => {
 };
 const boxOf = (element: Element): Box => { const r = element.getBoundingClientRect(); return { left: r.left, top: r.top, width: r.width, height: r.height }; };
 
-type Props = { scheme: Scheme; setScheme: (scheme: Scheme) => void; tweaks: Tweaks; values: Record<string, string>; set: (name: string, value: string) => void; reset: (name: string) => void; resetAll: () => void };
+type Props = { scheme: Scheme; setScheme: (scheme: Scheme) => void; tweaks: Tweaks; values: Record<string, string>; set: (name: string, value: string) => void; reset: (name: string) => void; resetAll: () => void; onColourClick: (event: ReactMouseEvent, name: string) => string | null; colourCursor?: string };
 
 export function TokenPanel(props: Props) {
   const [root, setRoot] = useState<ShadowRoot | null>(null);
@@ -43,7 +45,7 @@ export function TokenPanel(props: Props) {
   return <div data-design-panel="" ref={attach}>{root && createPortal(<Panel {...props} host={root.host} />, root)}</div>;
 }
 
-function Panel({ scheme, setScheme, tweaks, values, set, reset, resetAll, host }: Props & { host: Element }) {
+function Panel({ scheme, setScheme, tweaks, values, set, reset, resetAll, onColourClick, colourCursor, host }: Props & { host: Element }) {
   const [open, setOpen] = useState(true);
   const [find, setFind] = useState("");
   const [at, setAt] = useState(() => ({ x: Math.max(16, window.innerWidth - 360 - 24), y: 64 }));   // top right, below the dev server's badge, to start with
@@ -165,7 +167,7 @@ function Panel({ scheme, setScheme, tweaks, values, set, reset, resetAll, host }
           <div key={group}>
             <div className="group">{group}</div>
             {tokens.map((token) => (
-              <TokenRow key={token.name} onHover={(on) => setMarked(on ? elementsUsing(token.name, scope) : [])} token={token} value={values[token.name] ?? baseValue(token, scheme)} changed={token.name in tweaks[scheme]} onChange={(value) => set(token.name, value)} onReset={() => reset(token.name)} />
+              <TokenRow key={token.name} onHover={(on) => setMarked(on ? elementsUsing(token.name, scope) : [])} onColourClick={(event) => { const message = onColourClick(event, token.name); if (message) say(message); }} colourCursor={colourCursor} token={token} value={values[token.name] ?? baseValue(token, scheme)} changed={token.name in tweaks[scheme]} onChange={(value) => set(token.name, value)} onReset={() => reset(token.name)} />
             ))}
           </div>
         ))}
@@ -184,7 +186,7 @@ const LENGTH = /^(-?\d*\.?\d+)(rem|px|em|%)$/;
 const HEX = /^#[0-9a-f]{6}$/i;
 
 // One token: its name, what it's for, and a control for its kind.
-function TokenRow({ token, value, changed, onChange, onReset, onHover }: { token: Token; value: string; changed: boolean; onChange: (value: string) => void; onReset: () => void; onHover: (on: boolean) => void }) {
+function TokenRow({ token, value, changed, onChange, onReset, onHover, onColourClick, colourCursor }: { token: Token; value: string; changed: boolean; onChange: (value: string) => void; onReset: () => void; onHover: (on: boolean) => void; onColourClick: (event: ReactMouseEvent) => void; colourCursor?: string }) {
   const length = token.kind === "length" ? LENGTH.exec(value) : null;
   let control;
   if (token.kind === "colour") {
@@ -210,7 +212,8 @@ function TokenRow({ token, value, changed, onChange, onReset, onHover }: { token
     control = <input type="text" aria-label={token.name} value={value} spellCheck={false} onChange={(event) => onChange(event.target.value)} />;
   }
   return (
-    <div className={`row${changed ? " is-changed" : ""}`} onPointerEnter={() => onHover(true)} onPointerLeave={() => onHover(false)}>
+    <div className={`row${changed ? " is-changed" : ""}`} onPointerEnter={() => onHover(true)} onPointerLeave={() => onHover(false)}
+      {...(token.kind === "colour" ? { onClickCapture: onColourClick, style: colourCursor ? { cursor: colourCursor } : undefined } : {})}>
       <span className="name" title={token.name}>{token.name}</span>
       <button type="button" className="reset" hidden={!changed} aria-label={`Reset ${token.name}`} onClick={onReset}>reset</button>
       <span className="note">{token.note}</span>

@@ -6,6 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { Camera, ChevronLeft, Image as ImageIcon, Music, Pencil, Redo2, Shapes, Undo2 } from "lucide-react";
 import { CameraPanel } from "@/features/camera/CameraPanel";
 import { CaptureSoundToggle } from "@/features/camera/CaptureSoundToggle";
+import { useCameraLock } from "@/features/camera/useCameraLock";
+import { NO_FRAMING } from "@/core/render";
 import { PhotoDrop } from "@/features/photo-import/PhotoDrop";
 import { PhotoImportButton } from "@/features/photo-import/PhotoImportButton";
 import { usePhotoImport } from "@/features/photo-import/usePhotoImport";
@@ -25,6 +27,8 @@ import { SoundsPanel } from "@/features/sounds/SoundsPanel";
 import { editorStore, useEditor } from "@/store/useEditor";
 import { CameraMessage } from "./CameraMessage";
 import { CameraView } from "./CameraView";
+import { HelpButton } from "./HelpButton";
+import { SaveMenu } from "./SaveMenu";
 import { PlaybackBar } from "./PlaybackBar";
 import { remembered, useRememberedState, useRememberedStudio } from "./remembered";
 import { SafeZone } from "./SafeZone";
@@ -34,16 +38,20 @@ import { StorageNotice } from "./StorageNotice";
 import { Timeline } from "./timeline/Timeline";
 import { useCamera } from "./useCamera";
 import { useCapture } from "./useCapture";
+import { useEmptyPicture } from "./useEmptyPicture";
 import { useHistory } from "./useHistory";
 import { useObjectClipboard } from "./useObjectClipboard";
 import { usePlayback } from "./usePlayback";
 import { useProject } from "./useProject";
 import { useStorageWatch } from "./useStorageWatch";
 import { useStudioCommands } from "./useStudioCommands";
+import { useTabToCamera } from "./useTabToCamera";
+import { useLeavingIntroSeen } from "@/projects/introSeen";
 import "./studio.scss";
 
 // The studio screen.
 export function Studio() {
+  useLeavingIntroSeen();   // back on the home page, no intro: it's for opening the app
   const projectId = useSearchParams().get("project");
   const status = useProject(projectId);
   const projectName = useEditor((state) => state.project?.name);
@@ -58,8 +66,16 @@ export function Studio() {
   const canCapture = camera.status === "live" && status === "ready" && videoReady;
   const history = useHistory(projectId);
   const [captureSound, setCaptureSound] = useRememberedState(remembered.captureSound, true);   // the shutter click (step 29)
-  const { capture, capturing } = useCapture(video, canCapture, history.run, captureSound);
-  const photos = usePhotoImport(history.run);   // Add photos, and photos dropped on the studio
+  const [framing, setFraming] = useRememberedState(remembered.cameraFraming(projectId ?? ""), NO_FRAMING);   // the camera's zoom and framing, this animation's
+  const cameraLock = useCameraLock(camera.stream);   // focus, exposure and white balance held, where the camera can
+  // Tab takes a picture; with the camera not taking any (another tab, or off), it opens the Camera
+  // tab, turns the camera on and takes one as soon as it shows a picture.
+  const captureNow = useRef<() => Promise<void>>(async () => {});
+  const tabToCamera = useTabToCamera(camera, canCapture, video, captureNow);
+  const { capture, capturing } = useCapture(video, canCapture, history.run, captureSound, tabToCamera);
+  useEffect(() => { captureNow.current = capture; }, [capture]);
+  const photos = usePhotoImport(history.run);
+  const addEmptyPicture = useEmptyPicture(history.run);   // the timeline's next-picture slot   // Add photos, and photos dropped on the studio
   usePlayback();
   useStorageWatch();   // the "almost full" warning
   useRememberedStudio();   // see-through, loop and selection, as they were left (remembered.ts)
@@ -96,14 +112,19 @@ export function Studio() {
   return (
     <div className={`nsc-studio${ready ? " is-ready" : ""}`} aria-busy={!ready}>
       <header className="toolbar">
-        <Link className="icon-button" href="/" aria-label="All projects"><ChevronLeft size={24} /></Link>
-        <h1 className="project-name">{projectName ?? ""}</h1>
-        <div className="toolbar-actions">
-          <button type="button" className="icon-button" aria-label="Undo" title={history.undoLabel ? `Undo: ${history.undoLabel}` : "Nothing to undo"} disabled={!history.canUndo} onClick={history.undo}><Undo2 size={24} /></button>
-          <button type="button" className="icon-button" aria-label="Redo" title={history.redoLabel ? `Redo: ${history.redoLabel}` : "Nothing to redo"} disabled={!history.canRedo} onClick={history.redo}><Redo2 size={24} /></button>
-          <GifExportMenu />
-          <VideoExportButton />
+        {/* The back arrow, and under it, floating beside the stage, Save and Help. */}
+        <div className="toolbar-start">
+          <Link className="icon-button" href="/" aria-label="All projects"><ChevronLeft size={24} /></Link>
+          <div className="toolbar-side">
+            <SaveMenu>
+              <VideoExportButton />
+              <GifExportMenu />
+            </SaveMenu>
+            <HelpButton />
+          </div>
         </div>
+        {/* The animation's name: not shown, but screen readers say which animation this is. */}
+        <h1 className="project-name visually-hidden">{projectName ?? ""}</h1>
       </header>
 
       <StorageNotice />
@@ -112,7 +133,7 @@ export function Studio() {
         <div className={`stage-frame${capturing ? " is-capturing" : ""}`}>
           {camera.stream ? (
             <>
-              <CameraView stream={camera.stream} onVideo={onVideo} />
+              <CameraView stream={camera.stream} onVideo={onVideo} framing={framing} />
               {stageMode === "camera" && <OnionSkin mode="camera" />}
               {stageMode === "playing" && <StagePicture />}
               <SafeZone />
@@ -139,7 +160,7 @@ export function Studio() {
 
       <SidePanel active={panelTab} onChange={editorStore.getState().setPanelTab}>
         <PanelTab id="camera" label="Camera" icon={<Camera size={31} />}>
-          <CameraPanel camera={camera} canCapture={canCapture} onCapture={capture} capturing={capturing}>
+          <CameraPanel camera={camera} canCapture={canCapture} onCapture={capture} capturing={capturing} framing={framing} onFraming={setFraming} lock={cameraLock}>
             <CaptureSoundToggle on={captureSound} onChange={setCaptureSound} />
           </CameraPanel>
         </PanelTab>
@@ -158,7 +179,11 @@ export function Studio() {
         </PanelTab>
       </SidePanel>
 
-      <Timeline onOverlays={commands.setOverlays} onSounds={commands.setSounds} onDelete={commands.deletePictures} onDuplicate={commands.duplicatePictures} onResize={commands.resizePictures} onReorder={commands.reorderPictures} onNudge={commands.nudgePictures} addPhotos={<PhotoImportButton photos={photos} disabled={status !== "ready"} />} />
+      <Timeline onOverlays={commands.setOverlays} onSounds={commands.setSounds} onAddEmpty={() => void addEmptyPicture()} onDelete={commands.deletePictures} onDuplicate={commands.duplicatePictures} onResize={commands.resizePictures} onReorder={commands.reorderPictures} onNudge={commands.nudgePictures} addPhotos={<PhotoImportButton photos={photos} disabled={status !== "ready"} />}
+        undoRedo={<>
+          <button type="button" className="icon-button is-small" aria-label="Undo" title={history.undoLabel ? `Undo: ${history.undoLabel}` : "Nothing to undo"} disabled={!history.canUndo} onClick={history.undo}><Undo2 size={20} /></button>
+          <button type="button" className="icon-button is-small" aria-label="Redo" title={history.redoLabel ? `Redo: ${history.redoLabel}` : "Nothing to redo"} disabled={!history.canRedo} onClick={history.redo}><Redo2 size={20} /></button>
+        </>} />
 
       <PhotoDrop photos={photos} enabled={status === "ready"} />
 

@@ -19,7 +19,9 @@ test("with a picture selected, new pictures go right after it, in the order they
   await studio.takePictures(3);
   const [a, b, c] = await studio.order();
 
-  await studio.picture(1).click();
+  // Picked with the keys, so the camera stays on (a click opens the Picture tab, turning it off).
+  await studio.track().focus();
+  await page.keyboard.press("Home");
   await expect(page.locator(".frame.is-insert-point")).toHaveCount(1);   // the marker shows where
   await studio.takePictures(2);
   const now = await studio.order();

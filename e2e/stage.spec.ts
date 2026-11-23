@@ -10,7 +10,11 @@ test("with the camera off, the stage shows the selected picture, drawn from the 
 
   const stage = page.getByRole("img", { name: /^Picture \d+$/ });
   await expect(stage).toHaveAccessibleName("Picture 2");   // nothing selected: the last picture
-  await studio.picture(1).click();
+  // Nothing covers the picture: turning the camera back on is in the camera box beside it (the
+  // Camera tab, open until a picture is clicked).
+  await expect(page.getByRole("button", { name: "Turn on camera" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Turn camera on" })).toBeVisible();
+  await studio.picture(1).click();   // and the Picture tab opens
   await expect(stage).toHaveAccessibleName("Picture 1");
 
   // The seeded pictures are strongly coloured: once decoded, the stage shows that colour, not the
@@ -23,10 +27,6 @@ test("with the camera off, the stage shows the selected picture, drawn from the 
 
   // The safe zone: the edge band the video leaves out, veiled, with its dotted line.
   await expect(page.locator(".safe-zone .edge")).toBeVisible();
-
-  // Nothing covers the picture: turning the camera back on is in the camera box beside it.
-  await expect(page.getByRole("button", { name: "Turn on camera" })).toBeHidden();
-  await expect(page.getByRole("button", { name: "Turn camera on" })).toBeVisible();
 });
 
 test("on a phone, where there's no camera box, the stage keeps a small bar to turn the camera on", async ({ studio, page }) => {
@@ -41,7 +41,10 @@ test("with the camera on, the stage stays live even with a picture selected", as
   await studio.open();
   await studio.cameraOn();
   await studio.takePictures(1);
-  await studio.picture(1).click();
+  // Selected with the keys (a click opens the Picture tab, which turns the camera off).
+  await studio.track().focus();
+  await page.keyboard.press("End");
+  await expect(studio.picture(1)).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("video")).toBeVisible();
   await expect(page.locator(".stage-picture")).toHaveCount(0);
   await expect(page.locator(".safe-zone")).toBeVisible();   // over the live camera too, to frame the shot
@@ -172,4 +175,28 @@ test("the safe zone can be set from 0 to 60 px; it's saved with the animation an
   await page.getByRole("slider", { name: "Safe zone" }).fill("0");
   await page.getByRole("slider", { name: "Safe zone" }).press("Tab");   // leaving the slider saves too
   await expect(page.locator(".safe-zone")).toHaveCount(0);              // 0: the whole picture is filmed
+});
+
+// The Help window (instead of roadmap step 30): how to make an animation, and every shortcut.
+test("Help shows how to use the studio and its keys; ? opens it, Escape closes it", async ({ studio, page }) => {
+  await studio.withoutCamera();
+  await studio.open();
+  const help = page.getByRole("dialog", { name: "How to use the studio" });
+  // The Help button sits under the Save button, under the back arrow.
+  const saveBox = (await page.getByRole("button", { name: "Save", exact: true }).boundingBox())!;
+  const helpBox = (await page.getByRole("button", { name: "Help" }).boundingBox())!;
+  expect(helpBox.y).toBeGreaterThan(saveBox.y + saveBox.height);
+  expect(Math.abs(helpBox.x - saveBox.x)).toBeLessThan(2);
+  await page.getByRole("button", { name: "Help" }).click();
+  await expect(help).toBeVisible();
+  await expect(help.getByRole("heading", { name: "Making an animation" })).toBeVisible();
+  for (const section of ["Anywhere in the studio", "Camera tab", "Timeline", "Picture tab, on the stage", "Objects tab, on the stage"]) await expect(help.getByRole("region", { name: section, exact: true })).toBeVisible();
+  await expect(help.getByText("Undo", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(help).toBeHidden();
+
+  await page.keyboard.press("?");
+  await expect(help).toBeVisible();
+  await help.getByRole("button", { name: "Close" }).click();
+  await expect(help).toBeHidden();
 });

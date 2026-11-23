@@ -45,8 +45,8 @@ export function renderPicture(ctx: CanvasRenderingContext2D | OffscreenCanvasRen
 
 // A picture with its objects, then the given overlays.
 function drawPicture(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, scene: Scene, images: ImageSource, frameIndex: number, overlays: readonly Overlay[]): RenderResult {
-  clear(ctx, scene);
   const frame = scene.frames[frameIndex];
+  clear(ctx, scene, frame?.empty === true);   // an empty picture stays see-through: no background behind it
   if (!frame) return { frameIndex, missing: false };
   const image = images(frame.imageId);
   if (!image) return { frameIndex, missing: true };
@@ -154,11 +154,15 @@ export function onionOpacity(opacity: number, back: number): number {
   return Math.min(1, Math.max(0, opacity)) * 0.5 ** (back - 1);
 }
 
-function clear(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, scene: Scene): void {
+// The background behind a picture, or nothing at all (see-through) behind an empty one.
+function clear(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, scene: Scene, seeThrough = false): void {
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = scene.background ?? "#000000";
-  ctx.fillRect(0, 0, scene.width, scene.height);
+  ctx.clearRect(0, 0, scene.width, scene.height);
+  if (!seeThrough) {
+    ctx.fillStyle = scene.background ?? "#000000";
+    ctx.fillRect(0, 0, scene.width, scene.height);
+  }
   ctx.restore();
 }
 

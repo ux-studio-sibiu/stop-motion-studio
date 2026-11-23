@@ -15,7 +15,8 @@
     "test:e2e:dev": "playwright test --config playwright.dev.config.ts --project=chromium",
     "test:e2e:all": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "sync:cardboard": "node scripts/sync-cardboard-letters.mjs"
   },
   "dependencies": {
     "dexie": "^4.4.7",

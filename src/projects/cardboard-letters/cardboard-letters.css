@@ -1,0 +1,274 @@
+/* A copy of the cardboard letters font (casedeschise/fonts/cardboard letters/cardboard-letters.css),
+   for the home page's title and cards; its pictures are in public/cardboard-letters/bases/ (the paths
+   below point there). Made by scripts/sync-cardboard-letters.mjs: change the font, then run
+   npm run sync:cardboard (don't edit this copy). */
+
+/* Cardboard letters: a letter painted on a cardboard tile, cut from a photo of real blank tiles.
+
+   <span class="nsc-cardboard-letter base-3" style="--paint: #d9302a; --ink: #fff">A</span>
+
+   Layers, bottom to top:
+     the base   a blank cardboard tile (bases/base-N.png), its own uneven edge, see-through around it
+     the paint  --paint, a straight-cut rectangle a little inside the edge; transparent = bare cardboard
+     the letter the element's own text, in --ink
+     the grain  the cardboard's grain (bases/grain-N.png) in soft-light, so it shows through paint and ink
+   and the shadow the tile casts, which follows its edge (drop-shadow, not box-shadow).
+
+   Settings (custom properties, on the tile or anything around it, e.g. a whole word):
+     --paint   the face's colour (default: transparent, the cardboard shows)
+     --ink     the letter's colour
+     --size    the tile's height (its width follows the base's shape)
+     --paint-inset  how far in from the edge the paint stops (default 4.5% of the height)
+     --paint-shift  moves the paint up (negative) or down (default -2px)
+     --font    the letter's typeface (default Lilita One), --weight its weight, --letter-scale its size,
+               --letter-shift how far down (em) to move it so its capitals sit in the middle
+     --tilt    this tile's lean, -1 to 1, times --tilt-max, the largest angle (e.g. 5deg)
+   The base is a class: base-1 ... base-10. A wide letter (M, W) takes the class
+   is-wide too, so it stays on the paint (CSS can't tell which letter is in a tile).
+   is-cut: the letter is cut out of the paper, so the cardboard shows through in its shape. */
+
+/* Shared by every piece of cardboard (letters, word cards, sheets) and by anything that wants to
+   look like it (a page's cards, its buttons):
+     --cardboard-shadow  the shadow a piece casts: light from the top left, a close darker shadow and
+                         a soft one further out (a filter, so it follows the piece's edge)
+     --cardboard-ink     the dark of the letters (the default --ink)
+     --cardboard-paper   the white paper pasted on cardboard */
+:root {
+  --cardboard-shadow:
+    drop-shadow(0.0625rem 0.125rem 0.0625rem rgb(45 30 15 / 0.35))
+    drop-shadow(0.125rem 0.3rem 0.3rem rgb(45 30 15 / 0.2));
+  --cardboard-ink: #1f1c19;
+  --cardboard-paper: #f7f4ee;
+}
+
+/* The settings aren't declared on the tile, only read with a default (var(--x, default)), so a
+   value set on a parent (a word, the page) reaches every tile in it. */
+.nsc-cardboard-letter {
+  position: relative;
+  isolation: isolate;   /* the paint and grain blend with this tile only */
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  height: var(--size, 10rem);
+  aspect-ratio: var(--ratio, 0.75);
+  /* The capital centred on the paint: moved by the font's own correction (--letter-shift, in em:
+     how far its capitals sit above the middle of the line; Lilita One's are right on it) and by as
+     much as the paint is moved (--paint-shift). Padding on one side moves the letter half as far. */
+  --letter-move: calc(var(--letter-shift, 0) * 1em + var(--paint-shift, -2px));
+  padding-top: max(0px, calc(2 * var(--letter-move)));
+  padding-bottom: max(0px, calc(-2 * var(--letter-move)));
+  vertical-align: bottom;
+  /* The paint: a sheet of coloured paper on the cardboard, under the letter: a near perfect
+     rectangle, straight as if cut with a cutter, kept a little in from the tile's edge
+     (--paint-inset), so a band of cardboard shows round it, and a touch up (--paint-shift).
+     A background layer of the tile's own (over the cardboard), so a cut-out letter (is-cut) can
+     show the cardboard through it. */
+  --paint-layer:
+    linear-gradient(var(--paint, transparent), var(--paint, transparent))
+    center calc(50% + var(--paint-shift, -2px)) /
+    calc(100% - 2 * var(--paint-inset, calc(var(--size, 10rem) * 0.045)))
+    calc(100% - 2 * var(--paint-inset, calc(var(--size, 10rem) * 0.045)))
+    no-repeat;
+  --cardboard-layer: var(--base, url("/cardboard-letters/bases/base-1.png")) center / 100% 100% no-repeat;
+  background: var(--paint-layer), var(--cardboard-layer);
+  color: var(--ink, var(--cardboard-ink));
+  font-family: var(--font, "Lilita One", "Fredoka", system-ui, sans-serif);
+  /* By the tile's height only, so a letter is the same size on every base (a narrow one included);
+     wide letters take is-wide (below), so they still fit the narrowest base. */
+  font-size: calc(var(--size, 10rem) * 0.695 * var(--letter-scale, 1.05) * var(--wide-fit, 1));
+  font-weight: var(--weight, 400);   /* Lilita One comes in one weight, already heavy */
+  line-height: 1;
+  user-select: none;
+  /* Laid down by hand: a lean of --tilt (this tile's own, -1 to 1) times --tilt-max (an angle, often
+     set on a whole group). Neither set: straight. */
+  rotate: calc(var(--tilt, 0) * var(--tilt-max, 0deg));
+  /* A layer of its own on the graphics card: a rotated tile with a drop-shadow filter otherwise
+     loses its letter, wholly or in strips, in Chrome when drawn on the graphics card (not in
+     software drawing, so tests without a GPU don't show it). */
+  will-change: transform;
+  /* The photo's shadow: light from the top left, a close darker one and a soft one further out. */
+  filter: var(--cardboard-shadow);
+
+  /* A cut-out letter: cut from the paper, so the cardboard shows through in its shape, a shade
+     darker (the paper's edge shades it, a little below the paper). --ink isn't used. */
+  &.is-cut {
+    color: transparent;
+    background:
+      linear-gradient(rgb(40 25 10 / 0.14), rgb(40 25 10 / 0.14)),
+      var(--cardboard-layer),
+      var(--paint-layer),
+      var(--cardboard-layer);
+    -webkit-background-clip: text, text, border-box, border-box;
+    background-clip: text, text, border-box, border-box;
+  }
+
+  /* The grain: over paint and letter, neutral grey, so it only adds the cardboard's texture. */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--grain, url("/cardboard-letters/bases/grain-1.png")) center / 100% 100% no-repeat;
+    mix-blend-mode: soft-light;
+    pointer-events: none;
+  }
+
+  /* A wide letter (M, W): a little smaller, so it doesn't run past the paint on a narrow base. */
+  &.is-wide { --wide-fit: var(--wide-scale, 0.8); }   /* --wide-scale: a font with an extra wide W sets less */
+}
+
+/* Cardboard of any size, cut from one big piece of cardboard (bases/sheet-*.webp, tools/make-sheet.cjs):
+   its corners and corrugated edges come from the piece (border-image, repeated along the sides, not
+   stretched), its surface is a patch of the piece's middle repeated with no seam, at the cardboard's
+   own scale, so a card of any size looks like a real one. Paint, ink, the shadow and the lean work as
+   on a letter; the paint is a layer above the edges here, so a cut-out (is-cut) is filled with a
+   darker cardboard colour, the grain over it giving it texture.
+   --edge: how wide the corners and edges are drawn (the surface scales with it). */
+:is(.nsc-cardboard-word, .nsc-cardboard-sheet) {
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  vertical-align: bottom;
+  border: var(--edge) solid transparent;
+  border-image: url("/cardboard-letters/bases/sheet-edges.webp") 14 / var(--edge) / 0 repeat;
+  background: url("/cardboard-letters/bases/sheet-surface.webp") 0 0 / calc(var(--edge) * 28.57) repeat padding-box;   /* the 400 px tile, at the edges' scale (14 px drawn --edge wide) */
+  color: var(--ink, var(--cardboard-ink));
+  font-family: var(--font, "Lilita One", "Fredoka", system-ui, sans-serif);
+  font-weight: var(--weight, 400);
+  line-height: 1;
+  rotate: calc(var(--tilt, 0) * var(--tilt-max, 0deg));
+  will-change: transform;   /* see .nsc-cardboard-letter: a rotated card with a filter loses its text otherwise */
+  filter: var(--cardboard-shadow);
+
+  /* The paint: over the cardboard, under the words; --paint-inset in from the card's edge (the box's
+     inner edge is --edge in from it). */
+  &::before {
+    content: "";
+    position: absolute;
+    inset: calc(var(--paint-inset, calc(var(--edge) * 0.6)) - var(--edge));
+    z-index: -1;
+    translate: 0 var(--paint-shift, -2px);
+    border-radius: 1px;
+    background: var(--paint, transparent);
+  }
+
+  /* Cut out: in the cardboard's own colour, a shade darker, its grain over it. */
+  &.is-cut { color: rgb(152 118 80); }
+
+  /* The grain, over paint and words, lined up with the surface (the same tile, the same scale). */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: url("/cardboard-letters/bases/sheet-grain.webp") 0 0 / calc(var(--edge) * 28.57) repeat;
+    mix-blend-mode: soft-light;
+    pointer-events: none;
+  }
+}
+
+/* Experimental: a word card, a whole word (or a few) on one card that grows to fit it.
+     <span class="nsc-cardboard-word" style="--paint: #f3b915">Hello</span>
+   --size: its height; --word-pad: room between the words and the paint's ends (a fifth of the height). */
+.nsc-cardboard-word {
+  --edge: calc(var(--size, 10rem) * 0.07);
+  --letter-move: calc(var(--letter-shift, 0) * 1em + var(--paint-shift, -2px));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--size, 10rem);
+  min-width: calc(var(--size, 10rem) * 0.7);   /* a single letter: about a letter tile */
+  padding:
+    max(0px, calc(2 * var(--letter-move)))
+    calc(var(--word-pad, calc(var(--size, 10rem) * 0.2)) - var(--edge))
+    max(0px, calc(-2 * var(--letter-move)));
+  font-size: calc(var(--size, 10rem) * 0.695 * var(--letter-scale, 1.05));
+  letter-spacing: 0.02em;
+  white-space: nowrap;   /* one line: the card grows instead */
+  user-select: none;
+}
+
+/* A sheet: a cardboard panel of a given size (--sheet-width, --sheet-height: 300 x 400 px), its
+   content centred.
+     <div class="nsc-cardboard-sheet" style="--paint: #f4f1ea">...</div> */
+.nsc-cardboard-sheet {
+  --edge: var(--sheet-edge, 9px);
+  display: inline-grid;
+  place-items: center;
+  width: var(--sheet-width, 300px);
+  height: var(--sheet-height, 400px);
+  font-size: var(--sheet-font-size, 1.5rem);
+}
+
+/* Symbols: drawn shapes in the letter's place, sized like a capital and centred on the paint, in
+   --ink (or cut out of the paper with is-cut), for characters a font draws badly or as a coloured
+   emoji: pause, play, stop (also inside an O-like circle, to stand in for an O), record, heart, star.
+     <span class="nsc-cardboard-letter base-3 is-symbol symbol-pause-o">⏸⃝</span>
+   The character stays in the tile (for copying and screen readers), not shown. */
+.nsc-cardboard-letter.is-symbol {
+  font-size: 0;   /* the character itself isn't shown (an emoji would ignore --ink) */
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: var(--ink, var(--cardboard-ink));
+    -webkit-mask: var(--symbol, none) center calc(50% + var(--paint-shift, -2px)) / auto calc(var(--size, 10rem) * 0.52 * var(--symbol-scale, 1)) no-repeat;
+    mask: var(--symbol, none) center calc(50% + var(--paint-shift, -2px)) / auto calc(var(--size, 10rem) * 0.52 * var(--symbol-scale, 1)) no-repeat;
+  }
+
+  /* Cut out: the cardboard shows through in the symbol's shape, a shade darker. */
+  &.is-cut {
+    background: var(--paint-layer), var(--cardboard-layer);
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+
+    &::before { background: linear-gradient(rgb(40 25 10 / 0.14), rgb(40 25 10 / 0.14)), var(--cardboard-layer); }
+  }
+}
+
+/* A cardboard burst (or any outline cardboard-shape.js draws): the drawing, <svg class="burst-art">,
+   fills the box (its own width / height); the content sits in its middle. The whole piece casts the
+   cardboard's shadow, which follows its outline.
+   <div class="nsc-cardboard-burst" style="aspect-ratio: 700 / 560">{burstSvg(...)}<div class="burst-content">…</div></div> */
+.nsc-cardboard-burst {
+  position: relative;
+  display: grid;
+  place-items: center;
+  filter: var(--cardboard-shadow);
+
+  .burst-art {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .burst-content { position: relative; }
+}
+
+/* symbols:start (written by tools/make-symbols.cjs) */
+.nsc-cardboard-letter.symbol-pause-o { --symbol: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Cpath%20fill-rule%3D'evenodd'%20d%3D'M50%200a50%2050%200%201%200%200%20100a50%2050%200%201%200%200-100zm0%2017a33%2033%200%201%201%200%2066a33%2033%200%201%201%200-66z'%2F%3E%3Crect%20x%3D'35'%20y%3D'31'%20width%3D'10'%20height%3D'38'%20rx%3D'3'%2F%3E%3Crect%20x%3D'55'%20y%3D'31'%20width%3D'10'%20height%3D'38'%20rx%3D'3'%2F%3E%3C%2Fsvg%3E"); }   /* Pause in a circle: U+23F8 U+20DD */
+.nsc-cardboard-letter.symbol-play-o { --symbol: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Cpath%20fill-rule%3D'evenodd'%20d%3D'M50%200a50%2050%200%201%200%200%20100a50%2050%200%201%200%200-100zm0%2017a33%2033%200%201%201%200%2066a33%2033%200%201%201%200-66z'%2F%3E%3Cpath%20d%3D'M43%2036%20L64%2050%20L43%2064Z'%20stroke%3D'black'%20stroke-width%3D'9'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E"); }   /* Play in a circle: U+25B6 U+20DD */
+.nsc-cardboard-letter.symbol-stop-o { --symbol: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Cpath%20fill-rule%3D'evenodd'%20d%3D'M50%200a50%2050%200%201%200%200%20100a50%2050%200%201%200%200-100zm0%2017a33%2033%200%201%201%200%2066a33%2033%200%201%201%200-66z'%2F%3E%3Crect%20x%3D'37'%20y%3D'37'%20width%3D'26'%20height%3D'26'%20rx%3D'3'%2F%3E%3C%2Fsvg%3E"); }   /* Stop in a circle: U+23F9 U+20DD */
+.nsc-cardboard-letter.symbol-pause { --symbol: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Crect%20x%3D'20'%20y%3D'6'%20width%3D'22'%20height%3D'88'%20rx%3D'6'%2F%3E%3Crect%20x%3D'58'%20y%3D'6'%20width%3D'22'%20height%3D'88'%20rx%3D'6'%2F%3E%3C%2Fsvg%3E"); }   /* Pause: U+23F8 */
+.nsc-cardboard-letter.symbol-play { --symbol: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Cpath%20d%3D'M20%2010%20L86%2050%20L20%2090Z'%20stroke%3D'black'%20stroke-width%3D'9'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E"); }   /* Play: U+25B6 */
+.nsc-cardboard-letter.symbol-stop { --symbol: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Crect%20x%3D'8'%20y%3D'8'%20width%3D'84'%20height%3D'84'%20rx%3D'9'%2F%3E%3C%2Fsvg%3E"); }   /* Stop: U+23F9 */
+.nsc-cardboard-letter.symbol-record { --symbol: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Ccircle%20cx%3D'50'%20cy%3D'50'%20r%3D'46'%2F%3E%3C%2Fsvg%3E"); }   /* Record: U+23FA */
+.nsc-cardboard-letter.symbol-heart { --symbol: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Cpath%20d%3D'M50%2090C20%2068%204%2052%204%2032C4%2017%2015%207%2029%207c9%200%2016%205%2021%2012c5-7%2012-12%2021-12c14%200%2025%2010%2025%2025c0%2020-16%2036-46%2058z'%2F%3E%3C%2Fsvg%3E"); }   /* Heart: U+2665 */
+.nsc-cardboard-letter.symbol-star { --symbol: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Cpath%20d%3D'M50%208%20L61%2037%20L92%2038%20L68%2057%20L76%2088%20L50%2070%20L24%2088%20L32%2057%20L8%2038%20L39%2037Z'%20stroke%3D'black'%20stroke-width%3D'9'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E"); }   /* Star: U+2605 */
+/* symbols:end */
+
+/* The bases, for single letters, each with its own shape (--ratio: the picture's width / height). */
+/* bases:start (written by tools/make-bases.cjs) */
+.nsc-cardboard-letter.base-1 { --base: url("/cardboard-letters/bases/base-1.png"); --grain: url("/cardboard-letters/bases/grain-1.png"); --ratio: 0.775; }   /* tile-01.png of ref.png, 117 x 151 */
+.nsc-cardboard-letter.base-2 { --base: url("/cardboard-letters/bases/base-2.png"); --grain: url("/cardboard-letters/bases/grain-2.png"); --ratio: 0.732; }   /* tile-02.png of ref.png, 109 x 149 */
+.nsc-cardboard-letter.base-3 { --base: url("/cardboard-letters/bases/base-3.png"); --grain: url("/cardboard-letters/bases/grain-3.png"); --ratio: 0.748; }   /* tile-04.png of ref.png, 113 x 151 */
+.nsc-cardboard-letter.base-4 { --base: url("/cardboard-letters/bases/base-4.png"); --grain: url("/cardboard-letters/bases/grain-4.png"); --ratio: 0.788; }   /* tile-05.png of ref.png, 123 x 156 */
+.nsc-cardboard-letter.base-5 { --base: url("/cardboard-letters/bases/base-5.png"); --grain: url("/cardboard-letters/bases/grain-5.png"); --ratio: 0.705; }   /* tile-07.png of ref.png, 110 x 156 */
+.nsc-cardboard-letter.base-6 { --base: url("/cardboard-letters/bases/base-6.png"); --grain: url("/cardboard-letters/bases/grain-6.png"); --ratio: 0.699; }   /* tile-08.png of ref.png, 109 x 156 */
+.nsc-cardboard-letter.base-7 { --base: url("/cardboard-letters/bases/base-7.png"); --grain: url("/cardboard-letters/bases/grain-7.png"); --ratio: 0.764; }   /* tile-09.png of ref.png, 120 x 157 */
+.nsc-cardboard-letter.base-8 { --base: url("/cardboard-letters/bases/base-8.png"); --grain: url("/cardboard-letters/bases/grain-8.png"); --ratio: 0.728; }   /* tile-12.png of ref.png, 123 x 169 */
+.nsc-cardboard-letter.base-9 { --base: url("/cardboard-letters/bases/base-9.png"); --grain: url("/cardboard-letters/bases/grain-9.png"); --ratio: 0.735; }   /* tile-13.png of ref.png, 125 x 170 */
+.nsc-cardboard-letter.base-10 { --base: url("/cardboard-letters/bases/base-10.png"); --grain: url("/cardboard-letters/bases/grain-10.png"); --ratio: 0.671; }   /* tile-15.png of ref.png, 114 x 170 */
+/* bases:end */

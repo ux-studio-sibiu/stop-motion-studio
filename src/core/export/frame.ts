@@ -18,12 +18,14 @@ export function drawExportFrame({ full, crop, out }: ExportCanvases, scene: Scen
   const result = renderAt(full, scene, images, tick);
   crop.save();
   crop.setTransform(1, 0, 0, 1, 0, 0);
+  crop.clearRect(0, 0, crop.canvas.width, crop.canvas.height);   // an empty picture is see-through: nothing of the one before may stay
   crop.drawImage(full.canvas, -rect.x, -rect.y);
   crop.restore();
   out.save();
   out.setTransform(1, 0, 0, 1, 0, 0);
   out.imageSmoothingEnabled = true;
   out.imageSmoothingQuality = "high";
+  out.clearRect(0, 0, out.canvas.width, out.canvas.height);
   out.drawImage(crop.canvas, 0, 0, out.canvas.width, out.canvas.height);
   out.restore();
   return result;

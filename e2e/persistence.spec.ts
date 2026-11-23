@@ -35,7 +35,9 @@ test("a new project starts empty and doesn't see another project's pictures", as
 });
 
 test("going home and pressing Back returns to the same project", async ({ studio, page }) => {
+  await studio.withoutCamera();
   await studio.open();
+  await studio.seedPictures(1);   // an animation without pictures isn't kept
   const url = page.url();
   await page.getByRole("link", { name: "All projects" }).click();
   await expect(page).toHaveURL(/\/$/);   // wait for the home page, or Back would leave the studio itself

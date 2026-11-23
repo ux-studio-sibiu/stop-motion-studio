@@ -1,15 +1,17 @@
+import { BACKGROUND_MUSIC } from "./music";
 import { RECORDED_SOUNDS } from "./recorded";
 import { notesLength, type Note } from "./sounds";
 
-// The sound effects a child can put on the timeline (step 29b), by category. Two kinds:
+// The sounds a child can put on the timeline (step 29b), by category. Three kinds:
 //   made      by the synthesiser from notes (MADE_SOUNDS, below): nothing to load
 //   recorded  a file in public/sounds/ (recorded.ts), with its length in seconds
-// Both are read the same way (soundSeconds, and soundBuffer in the adapter). Ids are
+//   music     a longer tune, also a file (music.ts), that starts quieter (`volume`)
+// All are read the same way (soundSeconds, and soundBuffer in the adapter). Ids are
 // "category/name" and are what a project stores, so they never change once shipped.
 
-export type SoundEntry = { id: string; name: string; category: SoundCategory } & ({ notes: readonly Note[] } | { file: string; seconds: number });
-export type SoundCategory = "Cartoon" | "Whooshes" | "Bangs" | "Magic" | "Animals" | "People" | "Footsteps" | "Vehicles" | "Machines" | "Home" | "Nature" | "Water" | "Music";
-export const SOUND_CATEGORIES: readonly SoundCategory[] = ["Cartoon", "Whooshes", "Bangs", "Magic", "Animals", "People", "Footsteps", "Vehicles", "Machines", "Home", "Nature", "Water", "Music"];
+export type SoundEntry = { id: string; name: string; category: SoundCategory; volume?: number } & ({ notes: readonly Note[] } | { file: string; seconds: number });
+export type SoundCategory = "Background" | "Cartoon" | "Whooshes" | "Bangs" | "Magic" | "Animals" | "People" | "Footsteps" | "Vehicles" | "Machines" | "Home" | "Nature" | "Water" | "Music";
+export const SOUND_CATEGORIES: readonly SoundCategory[] = ["Background", "Cartoon", "Whooshes", "Bangs", "Magic", "Animals", "People", "Footsteps", "Vehicles", "Machines", "Home", "Nature", "Water", "Music"];
 
 const note = (frequency: number, start: number, duration: number, wave: Note["wave"], volume: number, to?: number): Note => ({ frequency, start, duration, wave, volume, ...(to ? { to } : {}) });
 
@@ -38,8 +40,13 @@ export const MADE_SOUNDS: readonly SoundEntry[] = [
   { id: "music/drum-roll", name: "Drumroll", category: "Music", notes: [...Array.from({ length: 16 }, (_, i) => note(200, i * 0.05, 0.04, "noise", 0.25)), note(150, 0.8, 0.3, "noise", 0.45)] },
 ];
 
-// Every sound in the Sounds tab: the made ones first, then the recorded ones.
-export const SOUND_LIBRARY: readonly SoundEntry[] = [...MADE_SOUNDS, ...RECORDED_SOUNDS];
+// Every sound in the Sounds tab: the made ones first, then the recorded ones and the music.
+export const SOUND_LIBRARY: readonly SoundEntry[] = [...MADE_SOUNDS, ...RECORDED_SOUNDS, ...BACKGROUND_MUSIC];
+
+// How loud a sound is when it's added: music quieter, so the sound effects stay heard over it.
+export function startingVolume(id: string): number {
+  return soundById(id)?.volume ?? 1;
+}
 
 export function soundById(id: string): SoundEntry | undefined {
   return SOUND_LIBRARY.find((entry) => entry.id === id);

@@ -51,6 +51,10 @@ export type Frame = {
   transform: Transform;
   adjust: Adjust;
   elements: Element[];     // speech bubbles and the like, on this picture only (step 23)
+  // An empty picture (no photo): see-through, so behind it the stage shows a checkerboard and a
+  // GIF is transparent. Its image is a fully see-through PNG, so it's stored, copied and backed up
+  // like any picture. Missing: a photo.
+  empty?: boolean;
 };
 
 export type StoredImage = {

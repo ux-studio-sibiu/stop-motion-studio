@@ -1,4 +1,4 @@
-import { coverCrop } from "@/core/render/fit";
+import { coverCrop, framedCrop, NO_FRAMING, type Framing } from "@/core/render/fit";
 
 export type Capture = { image: Blob; thumb: Blob; width: number; height: number };
 
@@ -9,11 +9,12 @@ const THUMB_QUALITY = 0.8;
 // Takes one picture from the live video: cover-cropped to the project's shape and resized
 // to its working resolution, so a 4:3 or 4K webcam both give a 1280x720 JPEG. The thumbnail
 // is made from that picture, not from the video, so it shows exactly the same crop.
-export async function captureFrame(video: HTMLVideoElement, size: { width: number; height: number }): Promise<Capture> {
+// `framing`: the camera's zoom and framing (core/render/fit), the same the stage shows.
+export async function captureFrame(video: HTMLVideoElement, size: { width: number; height: number }, framing: Framing = NO_FRAMING): Promise<Capture> {
   if (!video.videoWidth || !video.videoHeight) throw new Error("The camera picture isn't ready yet.");
 
   const picture = canvas(size.width, size.height);
-  const crop = coverCrop(video.videoWidth, video.videoHeight, size.width, size.height);
+  const crop = framedCrop(coverCrop(video.videoWidth, video.videoHeight, size.width, size.height), framing);
   draw(picture, video, crop);
 
   const thumbHeight = Math.round((THUMB_WIDTH * size.height) / size.width);

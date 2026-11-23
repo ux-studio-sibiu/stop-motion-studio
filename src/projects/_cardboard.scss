@@ -1,0 +1,38 @@
+@use "sass:math";
+
+// A piece of the cardboard letters' big cardboard (cardboard-letters.css, public/cardboard-letters/
+// bases/sheet-*.webp), for the home page's cards and buttons: its corners and corrugated edges round
+// the box (border-image), its surface inside, repeated at the edges' scale, and the cardboard's own
+// shadow (--cardboard-shadow, from the font), which follows the edge.
+
+$edge-slice: 14;      // px of the edge picture used for each corner and edge
+$surface-tile: 400;   // px: the surface tile's size in the picture
+$surface: url("/cardboard-letters/bases/sheet-surface.webp");
+
+// The surface alone (for a hover that would otherwise paint over it).
+@mixin cardboard-surface {
+  background: $surface 0 0 / calc(var(--edge) * #{math.div($surface-tile, $edge-slice)}) repeat padding-box;
+}
+
+// $edge: how wide the edges are drawn (the surface scales with it).
+@mixin cardboard($edge) {
+  --edge: #{$edge};
+  border: var(--edge) solid transparent;
+  border-radius: 0;
+  border-image: url("/cardboard-letters/bases/sheet-edges.webp") $edge-slice / var(--edge) / 0 repeat;
+  @include cardboard-surface;
+  filter: var(--cardboard-shadow);
+}
+
+// Picked up: lifted a little and tilted, its shadow longer, for a piece under the pointer (the home
+// page's buttons and cards). Instantly, no easing: this is stop motion, a jump from one pose to the
+// next. Not with reduced motion.
+@mixin cardboard-lift {
+  translate: 0 -2px;
+  rotate: -1deg;
+  filter:
+    drop-shadow(0.125rem 0.25rem 0.125rem rgb(45 30 15 / 0.3))
+    drop-shadow(0.25rem 0.6rem 0.5rem rgb(45 30 15 / 0.18));
+
+  @media (prefers-reduced-motion: reduce) { translate: none; rotate: none; }
+}

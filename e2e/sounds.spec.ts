@@ -129,3 +129,26 @@ test("recorded sounds (files in public/sounds) are heard and added like the made
   // As long as the recording: 2.37 s at 8 pictures a second is 19 ticks of 20 px.
   await expect.poll(async () => Math.round((await bar.boundingBox())!.width)).toBe(19 * 20);
 });
+
+test("background music comes in quiet, so the sound effects stay heard over it", async ({ studio, page }) => {
+  await studio.dragSound("Ukulele", { tick: 0 });
+  await expect(page.getByRole("group", { name: "Sound Layer" }).getByRole("button", { name: "Ukulele sound, at 0 s" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Picked sound" }).getByRole("button", { name: "Quiet" })).toHaveAttribute("aria-pressed", "true");
+});
+
+test("a click plays at most 5 seconds of a sound, and a click on another stops it", async ({ studio, page }) => {
+  await page.evaluate(() => {
+    // Records each sound's stop: when it was asked for, after its start (null: straight away).
+    const log: (number | null)[] = [];
+    Object.assign(window, { stops: log });
+    const stop = AudioBufferSourceNode.prototype.stop;
+    AudioBufferSourceNode.prototype.stop = function (when?: number) { log.push(when === undefined ? null : when - this.context.currentTime); return stop.call(this, when); };
+  });
+  const stops = () => page.evaluate(() => (window as unknown as { stops: (number | null)[] }).stops);
+  await page.getByRole("tab", { name: "Sounds" }).click();
+  await studio.soundTile("Ukulele").click();   // a 30 s tune
+  await expect.poll(async () => (await stops()).length).toBe(1);
+  expect((await stops())[0]).toBeCloseTo(5, 0);   // stops after 5 s, not 30
+  await studio.soundTile("Meow").click();
+  await expect.poll(async () => (await stops()).filter((when) => when === null).length).toBe(1);   // the tune stops straight away
+});

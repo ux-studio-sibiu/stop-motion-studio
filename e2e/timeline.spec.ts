@@ -36,19 +36,25 @@ test("clicking selects a picture; arrow keys, Home and End move the selection", 
   await expect(studio.selected()).toHaveCount(0);
 });
 
-test("the previous and next buttons step through the pictures, round past either end", async ({ studio, page }) => {
-  const next = page.getByRole("button", { name: "Next picture" });
-  const previous = page.getByRole("button", { name: "Previous picture" });
-  await previous.click();   // nothing selected: Previous goes to the last picture
-  await expect(studio.picture(3)).toHaveAttribute("aria-selected", "true");
-  await next.click();
-  await expect(studio.picture(1)).toHaveAttribute("aria-selected", "true");   // round to the start
-  await next.click();
+test("clicking a picture from the Camera tab opens the Picture tab; the arrows go on through the pictures", async ({ studio, page }) => {
+  const tab = (name: string) => page.getByRole("tab", { name });
+  await expect(tab("Camera")).toHaveAttribute("aria-selected", "true");
+  await studio.picture(1).click();
+  await expect(tab("Picture")).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("ArrowRight");   // the Picture tab's arrows (nudging the picture) don't take over
   await expect(studio.picture(2)).toHaveAttribute("aria-selected", "true");
-  await previous.click();
-  await previous.click();
-  await expect(studio.picture(3)).toHaveAttribute("aria-selected", "true");   // round to the end
-  await expect(studio.selected()).toHaveCount(1);
+
+  // With nothing focused, the arrows still go from picture to picture.
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press("ArrowRight");
+  await expect(studio.picture(3)).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("ArrowLeft");
+  await expect(studio.picture(2)).toHaveAttribute("aria-selected", "true");
+
+  // From the picture's other tabs, a click keeps the tab.
+  await tab("Draw").click();
+  await studio.picture(1).click();
+  await expect(tab("Draw")).toHaveAttribute("aria-selected", "true");
 });
 
 test("the timeline takes focus for the keys but never shows a focus ring", async ({ studio, page }) => {
@@ -144,8 +150,27 @@ test("each animation remembers which pictures were selected", async ({ studio, p
   expect(await studio.selectedOrder()).toEqual((await studio.order()).slice(1, 3));
 });
 
-test("the timeline's buttons come in four groups: layers, zoom, previous and next, then duplicate, add photos and delete", async ({ page }) => {
+test("the timeline's buttons come in four groups: layers, zoom, undo and redo, then duplicate, add photos and delete", async ({ page }) => {
   const tools = page.locator(".timeline-tools").locator("button, .tools-gap");
   const names = await tools.evaluateAll((items) => items.map((item) => (item.classList.contains("tools-gap") ? "|" : item.getAttribute("aria-label"))));
-  expect(names).toEqual(["Timeline layers", "|", "Zoom out", "Zoom in", "|", "Previous picture", "Next picture", "|", "Duplicate picture", "Add photos", "Delete picture"]);
+  expect(names).toEqual(["Timeline layers", "|", "Zoom out", "Zoom in", "|", "Undo", "Redo", "|", "Duplicate picture", "Add photos", "Delete picture"]);
+});
+
+// An empty picture (no photo): the next-picture slot adds one, see-through, shown on a checkerboard.
+test("the next-picture slot adds an empty picture after the selected one, one undo step, on a checkerboard", async ({ studio, page }) => {
+  const before = await studio.order();
+  await studio.picture(1).click();
+  await page.getByRole("button", { name: "Add an empty picture" }).click();
+  await expect(studio.pictures()).toHaveCount(4);
+  await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Add empty picture");
+  const order = await studio.order();
+  expect([order[0], order[2], order[3]]).toEqual(before);   // in second place, after the selected one
+  await expect(studio.picture(2)).toHaveClass(/is-empty/);   // the checkerboard on the timeline...
+  await page.getByRole("tab", { name: "Picture" }).click();   // the camera off, so the stage shows the picture
+  await studio.picture(2).click();
+  await expect(page.locator(".stage-picture")).toHaveClass(/is-empty/);   // ...and on the stage
+  await expect(studio.picture(1)).not.toHaveClass(/is-empty/);
+
+  await page.reload();   // saved, and still empty
+  await expect(studio.picture(2)).toHaveClass(/is-empty/);
 });

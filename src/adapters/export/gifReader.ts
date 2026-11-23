@@ -1,5 +1,6 @@
 // Reads a GIF back the way a viewer shows it: its size, whether it loops, and each picture with
-// its delay and what's on screen once it's drawn (see-through pixels keep what was there). For
+// its delay and what's on screen once it's drawn (see-through pixels keep what was there, unless
+// the picture before asked to be cleared: then they're see-through, alpha 0). For
 // tests only (the writer's unit tests and export.spec); nothing in the app imports it.
 
 export type ReadGif = {
@@ -55,6 +56,7 @@ export function readGif(bytes: Uint8Array): ReadGif {
       read.delays.push(control.delay);
       read.kept.push(control.dispose === 1);
       read.frames.push(screen.slice());
+      if (control.dispose === 2) screen.fill(0);   // "restore to background": cleared (see-through) before the next picture
     } else {
       throw new Error(`unexpected block at ${at}`);
     }

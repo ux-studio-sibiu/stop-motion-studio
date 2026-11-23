@@ -9,6 +9,7 @@ import { SHUTTER } from "@/core/sound";
 import { editorStore } from "@/store/useEditor";
 import { isTextEntry, ownsKey } from "./keyboard";
 import { thumbs } from "./media";
+import { remembered } from "./remembered";
 import { checkStorage } from "./useStorageWatch";
 
 // Taking a picture: grab the live video, save the photo, its thumbnail and a new frame right
@@ -18,10 +19,11 @@ import { checkStorage } from "./useStorageWatch";
 // Space does the same, unless the child is typing or a button has focus (Space already
 // presses that button). So does Tab while the camera is on: a wireless presenter's "hyperlink"
 // button sends Tab, so a child can take pictures from a distance. That gives up Tab moving the
-// focus while the camera is on (on purpose: the user's call); Shift+Tab still moves it back, and
-// Tab in a text field is left alone.
+// focus (on purpose: the user's call); Shift+Tab still moves it back, and Tab in a text field is
+// left alone. While the camera can't take a picture (another tab, or the camera off), Tab calls
+// `onTabWhileOff` instead (useTabToCamera: the Camera tab, the camera on, then the picture).
 // With `sound` on, a shutter click says the picture was saved (step 29).
-export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: boolean, run: (command: Command) => Promise<unknown>, sound = true) {
+export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: boolean, run: (command: Command) => Promise<unknown>, sound = true, onTabWhileOff?: () => void) {
   const [capturing, setCapturing] = useState(false);
   const busy = useRef(false);
   const previous = useRef<{ selection: readonly string[]; frameId: string } | null>(null);
@@ -35,7 +37,7 @@ export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: b
     busy.current = true;
     setCapturing(true);
     try {
-      const shot = await captureFrame(element, project);
+      const shot = await captureFrame(element, project, remembered.cameraFraming(project.id).read());   // as framed in the Camera tab
       if (editorStore.getState().project?.id !== project.id) return;   // left the project meanwhile
 
       const imageId = newId();
@@ -69,14 +71,19 @@ export function useCapture(video: RefObject<HTMLVideoElement | null>, enabled: b
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const space = event.code === "Space" && !ownsKey(event.target);
-      const tab = event.key === "Tab" && enabled && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && !isTextEntry(event.target);
-      if (!(space || tab)) return;
+      const tabKey = event.key === "Tab" && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && !isTextEntry(event.target);
+      if (tabKey && !enabled && onTabWhileOff) {
+        event.preventDefault();
+        if (!event.repeat) onTabWhileOff();
+        return;
+      }
+      if (!(space || (tabKey && enabled))) return;
       event.preventDefault();   // don't scroll the page, or move the focus
       if (!event.repeat) void capture();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [capture, enabled]);
+  }, [capture, enabled, onTabWhileOff]);
 
   return { capture, capturing };
 }

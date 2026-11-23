@@ -41,7 +41,7 @@ export function GifExportMenu() {
         rect,
         size: gifSize(rect, size),
         frames: gifFrames(frames, overlays, project.fps),
-        encoding: GIF_ENCODING[quality],
+        encoding: { ...GIF_ENCODING[quality], transparent: frames.some((frame) => frame.empty) },   // empty pictures stay see-through
         loadImage: (imageId) => bitmaps.load(imageId),
         onProgress,
         signal,

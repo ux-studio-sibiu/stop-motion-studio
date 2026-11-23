@@ -51,6 +51,26 @@ npm run dev
 
 The webcam needs a secure context: `localhost` works, a LAN IP over plain `http://` does not.
 
+## Cardboard letters
+
+The home page's title, burst and cardboard cards come from the cardboard letters font, a project of
+its own next to this one (`casedeschise/fonts/cardboard letters/`). `npm run sync:cardboard` copies
+in its CSS (`src/projects/cardboard-letters/`), its shape module for bursts, and the pictures the
+studio uses (`public/cardboard-letters/bases/`): only the big piece's edges and surface. Everything
+else stays in the font project and can be brought in again when it's needed:
+
+- **Cardboard letter tiles, word cards, cardboard bursts**: their pictures (`base-N.png`,
+  `grain-N.png`, `sheet-grain.webp`, `sheet-strip.webp`). Add them to `PICTURES` in
+  `scripts/sync-cardboard-letters.mjs` and run the sync; the CSS and the shape module already point
+  at them.
+- **Cut-outs** (a camera, a star, a rocket, a robot...: 50 pictures, with their sizes in
+  `cutouts.json`), in the font's `cutouts/`. The home page decorated with them once; the sync would
+  need to copy them again.
+- **The old title's letters** (STOP MOTION START as pictures, before the font), in the font's
+  `ref/old-title-letters/`.
+
+Change the font there, then run the sync; don't edit the copies here.
+
 ## Conventions
 
 `STYLE_GUIDE.md` (synced from the workspace) and `COMPONENT_PATTERNS.md`: `nsc-` on component roots

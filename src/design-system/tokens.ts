@@ -54,6 +54,7 @@ export const TOKENS: readonly Token[] = [
   { name: "--timeline-height", group: "Size", kind: "length", light: "12.25rem", note: "the timeline (less on wider screens, where its tools are a tab)" },
 
   { name: "--shadow-floating", group: "Shadow", kind: "text", light: "0 8px 24px rgb(0 0 0 / 0.15)", note: "menus, notices" },
+  { name: "--shadow-card", group: "Shadow", kind: "text", light: "0 0.375rem 0 rgb(0 0 0 / 0.18)", note: "cards on the page: a solid drop" },
   { name: "--shadow-dragged", group: "Shadow", kind: "text", light: "0 6px 18px rgb(0 0 0 / 0.28)", note: "things being dragged" },
   { name: "--shadow-press", group: "Shadow", kind: "text", light: "0 0.375rem 0 rgb(0 0 0 / 0.18)", note: "a big button's depth" },
   { name: "--shadow-pressed", group: "Shadow", kind: "text", light: "0 0.125rem 0 rgb(0 0 0 / 0.18)", note: "pressed in" },

@@ -27,7 +27,7 @@ type TimelineFrameProps = {
 };
 
 export function TimelineFrame({ frame, number, width, selected, onStage = false, insertAfter, dragging, onPick, onPress, children }: TimelineFrameProps) {
-  const className = `frame${selected ? " is-selected" : ""}${onStage ? " is-on-stage" : ""}${insertAfter ? " is-insert-point" : ""}${dragging ? " is-dragging" : ""}`;
+  const className = `frame${selected ? " is-selected" : ""}${onStage ? " is-on-stage" : ""}${insertAfter ? " is-insert-point" : ""}${dragging ? " is-dragging" : ""}${frame.empty ? " is-empty" : ""}`;   // is-empty: a checkerboard behind the see-through picture
   return (
     <li id={optionId(frame.id)} role="option" aria-selected={selected} aria-current={onStage || undefined} aria-label={`Picture ${number}`} className={className} style={{ width }} onClick={(event) => onPick(frame.id, event)} onPointerDown={(event) => onPress(frame.id, event)}>
       <span className="picture">

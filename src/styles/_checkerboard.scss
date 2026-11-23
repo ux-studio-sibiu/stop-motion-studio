@@ -1,0 +1,8 @@
+// The grey-and-white checkerboard that means "see-through", as in image editors: behind an empty
+// picture on the stage and on the timeline. Fixed colours, the same in light and dark: it's a
+// convention, not part of the theme.
+@mixin checkerboard($square: 16px) {
+  background-color: #ffffff;
+  background-image: repeating-conic-gradient(#cccccc 0 25%, #ffffff 0 50%);
+  background-size: ($square * 2) ($square * 2);
+}

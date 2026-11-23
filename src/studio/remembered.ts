@@ -3,6 +3,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { asBoolean, asNumber, asObject, asOneOf, asString, asStringList, asTimelineView, definePreference, definePreferenceFamily, forgetRetired, type Preference } from "@/adapters/preferences/preferences";
 import { GIF_QUALITIES, GIF_SIZES } from "@/core/export";
+import { clampFraming, type Framing } from "@/core/render";
 import { selectedOverlayId, type EditorState, type OnionSkin } from "@/store/editorStore";
 import { editorStore } from "@/store/useEditor";
 
@@ -29,7 +30,15 @@ export const remembered = {
   gifQuality: definePreference("gif-quality", asOneOf(GIF_QUALITIES)),               //   and low, medium or high quality
   captureSound: definePreference("capture-sound", asBoolean),          // the shutter click when a picture is taken (step 29)
   timelineLayers: definePreference("timeline-layers", asTimelineLayers),   // which of the timeline's extra rows show (objects in time, sounds)
+  cameraFraming: definePreferenceFamily("camera-framing", asFraming),  // each animation's camera zoom and where it's framed, so every picture matches
+  cameraLock: definePreference("camera-lock", asBoolean),              // the camera's focus, exposure and white balance locked
 };
+
+// A remembered camera framing, its values put back in range.
+function asFraming(raw: unknown): Framing | undefined {
+  const value = asObject(raw);
+  return value && clampFraming({ zoom: Number(value.zoom), x: Number(value.x), y: Number(value.y) });
+}
 
 // The timeline's extra rows under the pictures, each shown or hidden from the timeline's Layers
 // button. Both show at first; a missing one counts as shown.
@@ -42,7 +51,8 @@ function asTimelineLayers(raw: unknown): TimelineLayers | undefined {
 
 // Settings the studio used to remember and no longer does, cleared once when it opens:
 //   stage-view  each animation's stage zoom and pan (the view zoom was removed after step 28)
-const RETIRED = ["stage-view"];
+//   home-decor  the home page's cut-outs as arranged in its Decorate panel (both removed)
+const RETIRED = ["stage-view", "home-decor"];
 
 // Forgets everything remembered about one animation, when it's deleted: every per-animation entry
 // above (each preference family), so one added later is forgotten too without another line.

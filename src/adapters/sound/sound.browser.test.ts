@@ -55,4 +55,13 @@ describe("sounds", () => {
     expect(second).toBeGreaterThan(first * 1.3);                    // louder
     expect(await mixSounds([late], 8, 16, RATE)).toBeNull();         // nothing in the animation's time
   });
+
+  it("fades out music still playing where the animation ends, instead of cutting it", async () => {
+    // A 30 s tune in a 3 s animation (24 ticks at 8 per second): full until 2.5 s, then fading to nothing.
+    const mix = await mixSounds([createSoundClip("background/ukulele", 0)], 8, 24, RATE);
+    const samples = mix!.getChannelData(0);
+    const steady = loudest(samples, RATE, 1, 2.4);
+    expect(steady).toBeGreaterThan(0.05);
+    expect(loudest(samples, RATE, 2.95, 3)).toBeLessThan(steady * 0.25);   // nearly silent by the end
+  });
 });

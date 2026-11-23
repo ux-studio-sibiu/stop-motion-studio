@@ -2,7 +2,7 @@
 
 import { createSoundClip, frameStarts, sameSounds, soundsOf, withSoundClip, type SoundClip } from "@/core/model";
 import { orderedFrames } from "@/store/editorStore";
-import { soundById } from "@/core/sound";
+import { soundById, startingVolume } from "@/core/sound";
 import { previewSound } from "@/adapters/sound/sound";
 import { editorStore } from "@/store/useEditor";
 import { ALL_LAYERS, remembered, saveRemembered } from "./remembered";
@@ -54,7 +54,7 @@ export function soundName(sound: string): string {
 // Adds a library sound at `tick`, picks it, and plays it, so the child hears what they added. A
 // hidden sound row is shown again, so they also see where it went.
 export async function addSound(sound: string, tick: number, save: SaveSounds): Promise<void> {
-  const clip = createSoundClip(sound, tick);
+  const clip = createSoundClip(sound, tick, startingVolume(sound));   // music starts quiet
   previewSound(sound);
   const layers = remembered.timelineLayers.read() ?? ALL_LAYERS;
   if (!layers.sounds) saveRemembered(remembered.timelineLayers, { ...layers, sounds: true });

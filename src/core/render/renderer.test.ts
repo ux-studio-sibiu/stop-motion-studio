@@ -59,7 +59,7 @@ describe("adjustFilter", () => {
 function recordingContext() {
   const drawn: string[] = [];
   const ctx = {
-    save() {}, restore() {}, setTransform() {}, fillRect() { drawn.push("background"); },
+    save() {}, restore() {}, setTransform() {}, clearRect() {}, fillRect() { drawn.push("background"); },
     drawImage(image: { name: string }) { drawn.push(image.name); },
     fillStyle: "", filter: "none",
   };
@@ -147,6 +147,13 @@ describe("renderAt", () => {
     const { ctx, drawn } = recordingContext();
     expect(renderAt(ctx, { ...canvas, frames: [] }, images, 0).missing).toBe(false);
     expect(drawn).toEqual(["background"]);
+  });
+
+  it("draws no background behind an empty (see-through) picture", () => {
+    const { ctx, drawn } = recordingContext();
+    const empty = { ...createFrame("p", "img-blank", { empty: true }), id: "e" };
+    renderAt(ctx, { ...canvas, frames: [empty] }, images, 0);
+    expect(drawn).not.toContain("background");
   });
 
   it("finds where a frame starts, to show a selected one", () => {

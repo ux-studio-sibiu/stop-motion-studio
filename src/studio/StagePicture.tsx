@@ -37,7 +37,8 @@ export function StagePicture() {
   }, [frames, overlays, index, isPlaying, playhead, width, height]);
   useCanvasDraw(canvas, draw);
 
-  return <canvas ref={canvas} className="stage-picture" width={width} height={height} role="img" aria-label={index >= 0 ? `Picture ${index + 1}` : "No picture"} />;
+  const empty = frames[index]?.empty === true;   // a see-through picture: a checkerboard behind it
+  return <canvas ref={canvas} className={`stage-picture${empty ? " is-empty" : ""}`} width={width} height={height} role="img" aria-label={index >= 0 ? `Picture ${index + 1}` : "No picture"} />;
 }
 
 // The picture the stage shows when not playing (shownIndex), with every change not saved yet: what

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>30 Help · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 30 · Part 10 Kids, polish and shipping</p>
+  <h1>Help</h1>
+  <p class="intro">A <strong>Help</strong> button (a question mark) at the right of the studio's top bar opens a window with <strong>how to make an animation</strong> and <strong>every keyboard shortcut</strong> the studio has. The <code>?</code> key opens it too. The roadmap's step 30 (accessibility scans, a keyboard-only test run, screenshot tests) was replaced by this on request.</p>
+  <ul>
+    <li><strong>Making an animation</strong>: six short steps, from taking a picture to saving a video.</li>
+    <li><strong>The keys</strong>, by where they work: anywhere, the Camera tab, the timeline, the Objects and Sound layers, the Picture and Objects tabs on the stage, and the side panel. Each shows its keys as key caps, with what they do.</li>
+    <li>Escape, the cross, or a click outside closes it. While it's open, the keyboard stays inside it.</li>
+  </ul>
+  <p>Also in this change: <strong>clicking a sound</strong> in the Sounds tab plays at most 5 seconds of it, fading out (the music is 30 s long). Clicking another sound stops the one playing.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><code>src/studio/HelpButton.tsx</code>: the button, the <code>?</code> key, and the window. It's a modal <code>&lt;dialog&gt;</code>, with its contents written out directly in JSX.</li>
+    <li><code>src/studio/styles/_help.scss</code>: the window, with only its contents scrolling, and the key caps. On a narrow screen the keys go above what they do.</li>
+    <li><code>src/adapters/sound/sound.ts</code>: <code>previewSound</code> plays at most <code>PREVIEW_SECONDS</code> (5) and stops the previous preview. A sound still loading when another is clicked isn't played after all.</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>The list is written by hand</strong>, not read from the code. The shortcuts live in a dozen places (the timeline, the stage, the history), each with its own rules. A shortcut changed in the code has to be changed in <code>HelpButton.tsx</code> too; its comment says so.</li>
+    <li><strong>Ctrl</strong> everywhere, with a note that a Mac uses Cmd.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li>Press <code>?</code>: the window opens. Escape closes it. Do the same with the button.</li>
+    <li>Click Ukulele in the Sounds tab: about 5 seconds, then it fades. Click it again and then Meow: the tune stops at once.</li>
+  </ul>
+  <div class="note">Checked while building: lint and typecheck are clean; the stage, sounds and camera specs pass (26), against the dev server. Not looked at by eye.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>src/studio/HelpButton.tsx</code>, <code>src/studio/styles/_help.scss</code>, <code>src/studio/studio.scss</code>, <code>src/studio/Studio.tsx</code>; <code>src/adapters/sound/sound.ts</code>; <code>e2e/stage.spec.ts</code>, <code>e2e/sounds.spec.ts</code>; <code>CLAUDE.md</code> (the spec map), <code>ROADMAP.md</code>; <code>public/steps/30-help.html</code>, <code>29b-sound-track.html</code> (next link), <code>index.html</code>.</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>End-to-end, <code>stage.spec.ts</code>: Help opens from the button and from <code>?</code>, shows the steps and each group of keys, and closes with Escape or the cross.</li>
+    <li>End-to-end, <code>sounds.spec.ts</code>: a click on a 30 s tune stops it after 5 s; a click on another sound stops it at once.</li>
+  </ul>
+  <p><strong>Tests changed:</strong> none.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li>every shortcut in the code is in the list, and nothing in the list isn't real</li>
+    <li>the window opens with the button and <code>?</code>, closes with Escape, the cross or a click outside</li>
+    <li>a sound preview is at most 5 s, and one at a time</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="29b-sound-track.html">Previous: 29b · Sound track</a>
+    <span>Next: 31 · Performance with long projects</span>
+  </nav>
+</main>
+</body>
+</html>

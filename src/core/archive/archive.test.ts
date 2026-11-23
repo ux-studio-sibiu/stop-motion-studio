@@ -62,6 +62,15 @@ describe("readManifest", () => {
     expect(restore(manifest).project.sounds).toEqual([]);
   });
 
+  it("keeps an empty (see-through) picture empty, and a photo a photo", () => {
+    const { project, frames, images } = animation();
+    frames[1] = { ...frames[1], empty: true };   // picture b: first in the animation's order
+    const restored = restore(archiveManifest(project, frames, images));
+    const byId = new Map(restored.frames.map((frame) => [frame.id, frame]));
+    const ordered = restored.project.frameIds.map((id) => byId.get(id)!);
+    expect(ordered.map((frame) => frame.empty === true)).toEqual([true, false, false]);
+  });
+
   it("gives the animation, its frames and its pictures new ids, so a restore never overwrites", () => {
     const { project, frames, images } = animation();
     const restored = restore(archiveManifest(project, frames, images));

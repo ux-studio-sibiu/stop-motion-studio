@@ -73,6 +73,15 @@ describe("createFrame", () => {
   });
 });
 
+describe("empty pictures", () => {
+  it("are marked empty, and their copies too; a photo isn't", () => {
+    const empty = createFrame("p1", "img-blank", { empty: true });
+    expect(empty.empty).toBe(true);
+    expect(cloneFrame(empty).empty).toBe(true);
+    expect("empty" in createFrame("p1", "img-photo")).toBe(false);
+  });
+});
+
 describe("cloneFrame", () => {
   const source = createFrame("p1", "img-1", { hold: 3, transform: { x: 0.1, scale: 1.4, rotation: 12, flipX: true }, adjust: { brightness: 1.3 }, elements: [createBubble("speech", "Hi")] });
 

@@ -1,33 +1,42 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ALMOST_FULL, estimateStorage, formatBytes, isStoragePersistent, type StorageEstimate } from "@/adapters/storage/storageInfo";
+import { ALMOST_FULL, estimateStorage, formatBytes, type StorageEstimate } from "@/adapters/storage/storageInfo";
 
-// How much of this browser's storage the studio uses. Browsers only give estimates, so the
-// wording says "about". Refreshes when `version` changes (a project added or deleted).
-// Hidden when the browser can't tell.
-export function StorageMeter({ version }: { version: unknown }) {
-  const [info, setInfo] = useState<{ estimate: StorageEstimate; persistent: boolean } | null>(null);
-
+// How much of this browser's storage the studio uses. Browsers only give estimates, so the wording
+// says "about". Refreshes when `version` changes (a project added or deleted). Null while the
+// browser can't tell.
+function useStorageEstimate(version: unknown): StorageEstimate | null {
+  const [estimate, setEstimate] = useState<StorageEstimate | null>(null);
   useEffect(() => {
     let active = true;
-    void Promise.all([estimateStorage(), isStoragePersistent()]).then(([estimate, persistent]) => {
-      if (active) setInfo(estimate ? { estimate, persistent } : null);
-    });
+    void estimateStorage().then((found) => { if (active) setEstimate(found); });
     return () => { active = false; };
   }, [version]);
+  return estimate;
+}
 
-  if (!info) return null;
-  const { estimate, persistent } = info;
+const AlmostFull = () => <p className="warning" role="status"><strong>Almost full.</strong> Delete animations you don&apos;t need to make room for more pictures: each card says how much space it takes.</p>;
+
+// The usage in one small line with a thin bar (in the Settings window). Hidden when the browser
+// can't tell. When it's almost full it says so, and what to do.
+export function StorageMeter({ version }: { version: unknown }) {
+  const estimate = useStorageEstimate(version);
+  if (!estimate) return null;
 
   return (
     <section className="nsc-storage-meter" aria-label="Storage on this device">
-      <p className="usage">
-        Using <strong>{formatBytes(estimate.usage)}</strong> of about {formatBytes(estimate.quota)} on this device
-      </p>
+      <p className="usage">Using <strong>{formatBytes(estimate.usage)}</strong> of about {formatBytes(estimate.quota)} on this device</p>
       <meter min={0} max={1} high={ALMOST_FULL} optimum={0} value={estimate.ratio} aria-label="Storage used" />
-      {estimate.ratio >= ALMOST_FULL && <p className="warning" role="status"><strong>Almost full.</strong> Delete animations you don&apos;t need to make room for more pictures: each card says how much space it takes.</p>}
-      <p className="note">{persistent ? "The browser has promised to keep your animations." : "The browser may clear your animations if the device runs out of space. Back up the ones you love with the download button on their card."}</p>
+      {estimate.ratio >= ALMOST_FULL && <AlmostFull />}
     </section>
   );
+}
+
+// On the home page itself, only when it's almost full: a child has to see that without opening
+// the Settings window.
+export function StorageWarning({ version }: { version: unknown }) {
+  const estimate = useStorageEstimate(version);
+  if (!estimate || estimate.ratio < ALMOST_FULL) return null;
+  return <section className="nsc-storage-meter" aria-label="Storage almost full"><AlmostFull /></section>;
 }

@@ -226,7 +226,7 @@ export class Projects {
 
   readonly newButton = () => this.page.getByRole("button", { name: "New animation" });
   readonly cards = () => this.page.locator(".nsc-project-card");
-  readonly card = (name: string) => this.cards().filter({ has: this.page.getByRole("link", { name, exact: true }) });
+  readonly card = (name: string) => this.cards().filter({ has: this.page.getByRole("button", { name: `Rename ${name}`, exact: true }) });   // its name (a click renames it)
 
   async open(): Promise<void> {
     await this.page.goto("/");
@@ -249,7 +249,11 @@ export const test = base.extend<StudioOptions & { studio: Studio; projects: Proj
     await use(new Studio(page, fakeCamera));
   },
 
+  // With reduced motion, as some children's computers are set: the home page's intro (the title,
+  // its burst, the buttons, the animations sliding in, a frame each) is simply there, so a test can press
+  // New at once. The title's own test turns the motion back on.
   projects: async ({ page }, use) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await use(new Projects(page));
   },
 });

@@ -1,11 +1,12 @@
 "use client";
 
-import { Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Clapperboard, CopyPlus, Download, Eraser, HardDrive, Image as ImageIcon, ImagePlus, Layers, Music, Pause, Pencil, Play, Redo2, RotateCcw, Shapes, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
-import type { CSSProperties, ReactNode } from "react";
-import { bubbleProps, createBubble, createShape, createText, SHAPE, shapeProps, SPEECH_BUBBLE, TEXT, textProps, withProps } from "@/core/model";
+import { Camera, Check, ChevronDown, ChevronLeft, CopyPlus, Download, Eraser, HardDrive, Image as ImageIcon, ImagePlus, Layers, Music, Pause, Pencil, Play, Redo2, RotateCcw, Shapes, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { bubbleProps, createBubble, createProject, createShape, createText, SHAPE, shapeProps, SPEECH_BUBBLE, TEXT, textProps, withProps, type Project } from "@/core/model";
 import { BubbleSettings } from "@/features/objects/BubbleSettings";
 import { SettingsHeader } from "@/features/objects/ObjectSettings";
 import { CameraPanel } from "@/features/camera/CameraPanel";
+import { ProjectCard } from "@/projects/ProjectCard";
 import { CaptureSoundToggle } from "@/features/camera/CaptureSoundToggle";
 import { GifExportMenu } from "@/features/gif-export/GifExportMenu";
 import { VideoExportButton } from "@/features/video-export/VideoExportButton";
@@ -18,6 +19,7 @@ import { LayersMenu } from "@/studio/timeline/LayersMenu";
 import { PanelTab, SidePanel } from "@/studio/SidePanel";
 import type { Camera as CameraState } from "@/studio/useCamera";
 import { FILLS, INKS, Swatches } from "@/studio/Swatches";
+import { colourAction, cursorFor, useCopyKeys } from "./colourCopy";
 import { Section, Specimen, TokenSpecimen } from "./Specimen";
 import { TokenPanel } from "./TokenPanel";
 import { TOKEN_GROUPS, tokensIn } from "./tokens";
@@ -40,6 +42,11 @@ import "./_design.scss";
 // adding a specimen is moving or adding a line.
 
 const nothing = () => {};
+
+// A sample animation and its cover, for the project card specimen (a fixed id and date, so the
+// page renders the same on the server and in the browser).
+const SAMPLE_PROJECT: Project = { ...createProject({ name: "My animation", now: Date.UTC(2026, 10, 17, 12) }), id: "sample", frameIds: Array.from({ length: 24 }, (_, i) => `sample-${i}`) };
+const SAMPLE_COVER = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 90"><rect width="160" height="90" fill="#d9d4cb"/><rect y="62" width="160" height="28" fill="#b9b2a6"/><circle cx="70" cy="34" r="9" fill="#a27b55"/><rect x="62" y="43" width="16" height="22" rx="5" fill="#a27b55"/><circle cx="120" cy="22" r="8" fill="#f2c94c"/></svg>')}`;
 // A live camera with a choice of two, for the Camera tab specimen (no real camera on this page).
 const TWO_CAMERAS: CameraState = {
   status: "live", settled: true, stream: null, deviceId: "usb", start: nothing, stop: nothing, selectDevice: nothing,
@@ -52,14 +59,37 @@ const photo = (index: number): CSSProperties => ({ background: `linear-gradient(
 
 export function DesignPage() {
   const tokens = useTokenTweaks();
+  // Copying colours between tokens (colourCopy.ts): Alt+click copies, Ctrl+Alt+click pastes, on the
+  // token board here and in the panel; a note says what happened.
+  const keys = useCopyKeys();
+  const [copied, setCopied] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const noteTimer = useRef(0);
+  const colourClick = (event: MouseEvent, name: string): string | null => {
+    const action = colourAction(event, name, tokens.values[name] ?? "", copied);
+    if (action.kind === "none") return null;
+    event.preventDefault();
+    event.stopPropagation();
+    if (action.kind === "copy") setCopied(action.value);
+    if (action.kind === "paste") tokens.set(name, action.value);
+    return action.message;
+  };
+  const say = (text: string) => { setNote(text); window.clearTimeout(noteTimer.current); noteTimer.current = window.setTimeout(() => setNote(""), 2200); };
+  const onBoardClick = (event: MouseEvent) => {
+    const name = (event.target as Element).closest<HTMLElement>("[data-colour-token]")?.dataset.colourToken;
+    const message = name ? colourClick(event, name) : null;
+    if (message) say(message);
+  };
+  const copyCursor = cursorFor(keys, copied);
   return (
     <TokenValues.Provider value={tokens.values}>
-    <TokenPanel {...tokens} />
-    <main className="nsc-design">
+    <TokenPanel {...tokens} onColourClick={colourClick} colourCursor={copyCursor} />
+    <main className="nsc-design" onClickCapture={onBoardClick} style={copyCursor ? ({ "--ds-copy-cursor": copyCursor } as CSSProperties) : undefined}>
+      {note && <p className="ds-copy-note" role="status">{note}</p>}
       <header className="ds-masthead">
         <p className="ds-eyebrow">Stop-motion Studio</p>
         <h1>Design system</h1>
-        <p className="ds-lede">Every part of the studio&apos;s interface, as it looks in the studio, in one place. Nothing here does anything. Tune the design tokens in the floating panel (Shift+T): everything follows.</p>
+        <p className="ds-lede">Every part of the studio&apos;s interface, as it looks in the studio, in one place. Nothing here does anything. Tune the design tokens in the floating panel (Shift+T): everything follows. Alt+click a colour token to copy it, Ctrl+Alt+click another to paste it there.</p>
         <nav className="ds-contents" aria-label="Sections">
           {[["tokens", "Tokens"], ["words", "Words"], ["controls", "Controls"], ["panel", "Side panel"], ["objects", "Objects"], ["stage", "Stage"], ["timeline", "Timeline"], ["bars", "Bars and menus"], ["projects", "Projects"]].map(([id, name]) => <a key={id} href={`#${id}`}>{name}</a>)}
         </nav>
@@ -288,7 +318,7 @@ export function DesignPage() {
       </Section>
 
       <Section id="timeline" title="Timeline">
-        <Specimen label="The timeline" note="tools (the real Layers menu first), ruler, pictures (selected, on the stage, long), the grip, objects in time, sounds" wide studio>
+        <Specimen label="The timeline" note="tools (the real Layers menu first, zoom, undo and redo), ruler, pictures (selected, on the stage, long), the grip, objects in time, sounds" wide studio>
           <section className="timeline ds-timeline">
             <div className="timeline-tools">
               <LayersMenu layers={ALL_LAYERS} onChange={nothing} />
@@ -296,8 +326,8 @@ export function DesignPage() {
               <button type="button" className="icon-button is-small"><ZoomOut size={20} /></button>
               <button type="button" className="icon-button is-small"><ZoomIn size={20} /></button>
               <span className="tools-gap" />
-              <button type="button" className="icon-button is-small"><ChevronLeft size={20} /></button>
-              <button type="button" className="icon-button is-small"><ChevronRight size={20} /></button>
+              <button type="button" className="icon-button is-small" aria-label="Undo"><Undo2 size={20} /></button>
+              <button type="button" className="icon-button is-small" aria-label="Redo"><Redo2 size={20} /></button>
               <span className="tools-gap" />
               <button type="button" className="icon-button is-small"><CopyPlus size={20} /></button>
               <button type="button" className="icon-button is-small"><ImagePlus size={20} /></button>
@@ -371,20 +401,10 @@ export function DesignPage() {
       </Section>
 
       <Section id="projects" title="Projects">
-        <Specimen label="A project card" note="cover, name, details, actions">
+        <Specimen label="A project card" note="the real ProjectCard: the cover across the top, name, details, actions; the controls' line and --shadow-card">
           <ul className="ds-cards">
-            <li className="nsc-project-card">
-              <a className="cover" href="#projects" aria-label="Open My animation"><Clapperboard size={40} aria-hidden="true" /></a>
-              <div className="details">
-                <a className="name" href="#projects">My animation</a>
-                <p className="meta">24 pictures · <span className="size">3.1 MB</span> · 17 Nov</p>
-              </div>
-              <div className="actions">
-                <button type="button" className="icon-button" aria-label="Back up"><Download size={20} /></button>
-                <button type="button" className="icon-button" aria-label="Rename"><Pencil size={20} /></button>
-                <button type="button" className="icon-button" aria-label="Delete"><Trash2 size={20} /></button>
-              </div>
-            </li>
+            <ProjectCard project={SAMPLE_PROJECT} coverUrl={SAMPLE_COVER} size={3_250_000} onDelete={nothing} onBackUp={nothing} />
+            <ProjectCard project={{ ...SAMPLE_PROJECT, id: "sample-empty", name: "A new one", frameIds: [] }} size={0} onDelete={nothing} onBackUp={nothing} />
           </ul>
         </Specimen>
       </Section>

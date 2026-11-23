@@ -21,7 +21,7 @@ fast, logic is never "trust the edit".
   Chromium against the dev server, which skips the production build
   (`npm run test:e2e:dev -- e2e/picture.spec.ts e2e/stage.spec.ts`, about 8-12 s for one spec; it reuses
   the `next dev` on port 3000, or starts one). Which spec covers what:
-  - `camera.spec`: the camera, capture, the capture sound; `stage.spec`: the stage, see-through, safe zone, side panel tabs;
+  - `camera.spec`: the camera, capture, the capture sound; `stage.spec`: the stage, see-through, safe zone, side panel tabs, the Help window;
   - `picture.spec`: moving, snapping, zoom, brightness and contrast (the Picture tab);
   - `timeline.spec`, `frames.spec`, `resize.spec`, `reorder.spec`: the timeline, delete and duplicate,
     lengths, reordering;

@@ -1,39 +1,111 @@
 @use "@/styles/breakpoints" as *;
+@use "cardboard" as *;
 
-// The studio's page colour behind the home page too.
-body:has(#nsc--home) { background-color: var(--color-studio); }
+// The full-screen backdrop behind the home page: the studio's page colour and its faint graph-paper
+// texture (studio.scss), across the whole window whatever the page's width, behind both columns.
+.nsc-home-page {
+  position: relative;
+  isolation: isolate;   // keeps the texture behind the page's content
+  min-height: 100dvh;
+  background-color: var(--color-studio);
 
-// The projects page (home). It fits the window: the title and buttons, the storage meter and the
-// notes stay put, and only the list of animations scrolls, inside its own area.
-#nsc--home {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  max-width: 72rem;
-  height: 100dvh;
-  margin: 0 auto;
-  padding: var(--space-4) var(--space-3);
-  isolation: isolate;   // keeps the texture below behind the page's content
-
-  @include respond-to("tablet") { padding: var(--space-4); }
-
-  > * { flex: none; }
-
-  // The studio's background texture (studio.scss): faint graph paper across the whole window,
-  // whatever the page's width.
   &::before {
     content: "";
-    position: fixed;
+    position: absolute;
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    background-color: var(--color-ink);
+    background-color: var(--color-ink);   // the lines in the text colour: dark on light, light on dark
     -webkit-mask: url("/textures/graph-paper.svg") 0 0 / 90px 90px repeat;
     mask: url("/textures/graph-paper.svg") 0 0 / 90px 90px repeat;
     opacity: 0.1;
   }
 
+  // The page's contents (the backdrop shows straight away): hidden until the animations are listed,
+  // then faded in, all at once (ProjectsPage).
+  #nsc--home { opacity: 0; }
+
+  &.is-ready #nsc--home {
+    opacity: 1;
+    transition: opacity 0.2s ease-out;
+
+    @media (prefers-reduced-motion: reduce) { transition: none; }
+  }
+}
+
+// The projects page (home). From tablet width on, two columns filling the window: on the left,
+// fixed, the title and buttons with the storage line and notes at the bottom; on the right the
+// animations, scrolling on their own. On a phone, one column and the page scrolls.
+#nsc--home {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 80rem;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-3);
+
+  @include respond-to("tablet") {
+    // The animations in a column against the right edge of the window, the whole height, one card
+    // under another, --cards-gap from the window's edge; the left column takes the rest of the
+    // width, with as much room on its left, so the title and buttons are centred as on a page with
+    // the same margin on both sides. The tilted column runs past the window's top and bottom: cut
+    // off there.
+    --cards-gap: 70px;
+    grid-template-columns: minmax(0, 1fr) calc(260px + var(--cards-gap));
+    gap: 0;
+    max-width: none;
+    height: 100dvh;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+
+    .home-side { padding: var(--space-4) var(--space-4) var(--space-4) var(--cards-gap); }
+  }
+
+  // The left column: the title and buttons in the middle of the height, the small print at the
+  // bottom.
+  .home-side {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: var(--space-4);
+    min-height: 0;
+
+    .masthead { align-self: center; }
+  }
+
+  .home-footer {
+    display: grid;
+    gap: var(--space-2);
+    min-height: 1.75rem;   // room for the storage warning (when it's almost full), kept so nothing above it moves
+  }
+
+  // The right column: only this scrolls (from tablet width on).
+  .home-projects {
+    min-height: 0;
+
+    // A strip of cards laid on the table at a slant (2.5°, its top to the right), running past the
+    // window's top and bottom (taller by --overhang at each end, cut off by the page), so no corner
+    // shows; it scrolls along its own slant. No scrollbar (it would slant too): the wheel anywhere on
+    // the page scrolls it (useWheelScrolls), and so does dragging.
+    @include respond-to("tablet") {
+      --overhang: 2.5rem;
+      height: calc(100dvh + 2 * var(--overhang));
+      margin-block: calc(-1 * var(--overhang));
+      overflow-y: auto;
+      scrollbar-width: none;
+      padding: calc(var(--space-4) + var(--overhang)) var(--cards-gap) calc(var(--space-4) + var(--overhang)) var(--space-3);
+      rotate: 2.5deg;
+      // The intro slides it up into place (--slide: how far below it still is, in windows; ProjectsPage).
+      translate: 0 calc(var(--slide, 0) * 110dvh);
+      scroll-behavior: auto;   // scrolling jumps, never glides (stop motion)
+
+      &::-webkit-scrollbar { display: none; }
+    }
+  }
+
   .masthead {
+    --size: clamp(3.15rem, min(6.3vw, 9.5dvh), 4.9rem);   // a title card's height (the burst round the title follows it); by the height too, so the burst and buttons fit a short window
     display: grid;
     justify-items: center;
     gap: var(--space-3);
@@ -41,29 +113,104 @@ body:has(#nsc--home) { background-color: var(--color-studio); }
     text-align: center;
   }
 
-  h1 {
+  // The title: STOP, MOTION and START in cardboard letters (HomeTitle, cardboard-letters.css), a
+  // word a row, centred, the cards a little apart, as if laid out by hand. The whole title is one
+  // button (a click plays it again), with no look of its own.
+  .title {
+    --cardboard-shadow: none;   // the cards lie flat on the page, no shadow
     margin: 0;
-    font-size: clamp(2rem, 6vw, 3.5rem);
-    font-weight: 900;
-    line-height: 1.05;
-    text-transform: uppercase;   // shown in capitals; the words themselves stay as written (for screen readers)
   }
 
-  // The two buttons, side by side, the studio's own (like Play and See-through): New animation,
-  // green, and Load project (a backup, step 27), the plain default one.
+  .title-replay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: calc(var(--size) * 0.14);   // rows close together, but never touching: each card rests up to ~4 px off its place and ~3.5° crooked
+    padding: 0.25rem;
+    border: 0;
+    border-radius: var(--radius-small);
+    background: none;
+    font: inherit;
+    cursor: pointer;
+
+    &:focus-visible { outline: var(--line-width) solid var(--color-focus); outline-offset: 0.25rem; }
+  }
+
+  .title-word {
+    display: flex;
+    gap: calc(var(--size) * 0.16);   // the cards apart, so two leaning towards each other still don't touch
+
+    &.is-white .nsc-cardboard-letter { --paint: var(--cardboard-paper); }
+    &.is-blue .nsc-cardboard-letter,
+    .nsc-cardboard-letter.is-blue { --paint: #1e6fd0; --ink: #ffffff; }   // START, and STOP's pause O: blue paper, white letters
+
+    // Here the cards are their coloured paper alone: no cardboard under it (the paper fills the tile)
+    // and none of the cardboard's grain over it.
+    .nsc-cardboard-letter {
+      --paint-inset: 0px;
+      --paint-shift: 0px;
+      background: var(--paint-layer);
+
+      &::after { content: none; background: none; }   // and not its picture either: the browser would still fetch it
+    }
+  }
+
+  // The two buttons, side by side, the studio's own (like Play and See-through), well below the
+  // title: New animation, green, and Load project (a backup, step 27), the plain one, its icon only.
+  // The burst round the title: --burst-cards title cards wide (TITLE_BURST in ProjectsPage, with its shape).
+  .title-burst { width: calc(var(--size) * var(--burst-cards)); }
+
+
   .ctas {
+    margin-top: 1rem;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: var(--space-3);
-  }
 
-  // The animations: the part that takes the space left, and scrolls when there are many.
-  .project-list {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    padding: var(--space-1);   // room for the cards' focus rings inside the scrolling area
+    // Each a piece of cardboard (the cards' and the title's: its corrugated edges, its surface) with
+    // paper pasted on it: green for New animation, white for Load project. Hovered, it lifts a
+    // little and tilts, its shadow longer; pressed, it goes back down. Instantly, with no easing:
+    // this is stop motion, things jump from one pose to the next.
+    .icon-button,
+    .icon-button.is-go {
+      @include cardboard(10px);
+      --paint: var(--cardboard-paper);
+      position: relative;
+      min-width: calc(var(--hit) * 1.5);   // half as big again as the studio's buttons
+      min-height: calc(var(--hit) * 1.5);
+      padding: 0 calc(var(--space-3) * 1.5);
+      gap: calc(var(--space-2) * 1.5);
+      isolation: isolate;
+      color: var(--cardboard-ink);
+
+      // The paper, over the edge strip up to the corrugated rim (as on the cards).
+      &::before {
+        content: "";
+        position: absolute;
+        inset: calc(var(--edge) * -0.4);
+        z-index: -1;
+        border-radius: 1px;
+        background: var(--paint);
+      }
+
+      &:hover:not(:disabled) {
+        @include cardboard-surface;   // not the plain buttons' hover grey
+        @include cardboard-lift;
+      }
+
+      &:active:not(:disabled) { translate: 0 1px; rotate: 0deg; }
+    }
+
+    .icon-button.is-go { --paint: var(--color-go); color: var(--color-on-strong); }
+
+    // NEW, large, in the title's typeface (its name for screen readers: New animation).
+    .new-button {
+      font-family: "Lilita One", var(--font-ui), sans-serif;
+      font-size: 2.4375rem;
+      font-weight: 400;
+      letter-spacing: 0.04em;
+    }
   }
 
   .archive-note {
@@ -95,12 +242,6 @@ body:has(#nsc--home) { background-color: var(--color-studio); }
     p { margin: 0; font-size: var(--text-title); }
   }
 
-  .section-title {
-    margin: 0 0 var(--space-3);
-    font-size: 1.25rem;
-    font-weight: 800;
-  }
-
   .projects {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
@@ -109,37 +250,90 @@ body:has(#nsc--home) { background-color: var(--color-studio); }
     padding: 0;
     list-style: none;
   }
-
-  .notes {
-    margin: 0;
-    color: var(--color-muted);
-    text-align: center;
-  }
 }
 
-// The cover, then the name and details across the card, then its actions (back up, rename,
-// delete) in a row of their own, so the name keeps the card's width.
+// The cover, then the name (a click renames it) and details across the card, then its actions
+// (back up, delete) in a row of their own, so the name keeps the card's width.
 .nsc-project-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "cover" "details" "actions";
   gap: var(--space-2);
-  padding: var(--space-2);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  // A piece of cardboard (the cardboard letters' big piece, cardboard-letters.css): its corners and
+  // corrugated edges round the card, its surface inside; its shadow follows the edge. The text on
+  // it stays dark in both themes, on the card's paper and cardboard alike.
+  @include cardboard(9px);
+  // How far the paper reaches out from the content: through the padding and most of the edge strip
+  // (a pixel more on the top and left, where the edges look thicker).
+  --reach: calc(-0.625rem - var(--edge) * 0.4);
+  --reach-top-left: calc(var(--reach) - 1px);
+  padding: 0.625rem 0.625rem var(--space-2);
+  color: var(--cardboard-ink);
+  will-change: transform;   // drawn rotated (the slanted column) with a filter: without a layer of its own, Chrome can lose its text (as on the title's cards)
 
+  // Under the pointer, picked up like the buttons.
+  &:hover { @include cardboard-lift; }
+
+  // A sheet of white paper pasted on the cardboard, under everything on the card (the cover, the
+  // name, the buttons), reaching over the card's edge strip up to its corrugated rim on every side,
+  // as the paint does on the letter tiles (6/10 of the edge in from the outside, the font's
+  // --paint-inset).
+  &::before {
+    content: "";
+    grid-column: 1;
+    grid-row: 1 / -1;   // every row
+    z-index: -1;
+    margin: var(--reach-top-left) var(--reach) calc(-1 * var(--space-2) - var(--edge) * 0.4) var(--reach-top-left);
+    border-radius: 1px;
+    background: var(--cardboard-paper);
+    box-shadow: 0 1px 1px rgb(45 30 15 / 0.18), 0 1px 3px rgb(45 30 15 / 0.12);
+  }
+
+  // The picture across the top of the paper, 2px in from its top and sides.
   .cover {
     grid-area: cover;
+    margin: calc(var(--reach-top-left) + 2px) calc(var(--reach) + 2px) 0 calc(var(--reach-top-left) + 2px);
     display: grid;
     place-items: center;
     aspect-ratio: 16 / 9;
     overflow: hidden;
-    border-radius: var(--radius-small);
+    position: relative;
+    border-radius: 1px;
     background: var(--color-stage);
     color: var(--color-stage-ink);
 
     img { width: 100%; height: 100%; object-fit: cover; }
+
+    // The animation playing over the still cover, while hovered (useCardPreview).
+    .preview {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      pointer-events: none;
+
+      &.is-playing { opacity: 1; }
+    }
+  }
+
+  // How many pictures, on the card's bottom left, beside the buttons (off the cover, so it doesn't
+  // hide the animation playing there), only while the card is hovered or has the keyboard
+  // (ProjectCard). Still there for screen readers when it isn't shown.
+  .picture-count {
+    grid-area: actions;
+    align-self: center;
+    justify-self: start;
+    z-index: 1;
+    margin-left: var(--space-1);
+    padding: 0.125rem var(--space-2);
+    border-radius: 999px;
+    background: rgb(20 18 16 / 0.72);
+    color: #fff;
+    font-size: var(--text-hint);
+    font-weight: 700;
+    pointer-events: none;
   }
 
   .details {
@@ -148,32 +342,62 @@ body:has(#nsc--home) { background-color: var(--color-studio); }
     padding: 0 var(--space-1);
   }
 
+  // The name: a button that looks like the name (a click renames it), exactly the field's size, so
+  // the card doesn't move when one turns into the other.
   .name {
     display: block;
-    overflow: hidden;
-    font-size: var(--text-title);
-    font-weight: 800;
-    text-decoration: none;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .name-input {
     width: 100%;
-    min-height: 2.5rem;
-    padding: 0 var(--space-2);
-    border: 2px solid var(--color-focus);
-    border-radius: var(--radius-small);
-    background: var(--color-bg);
-    color: var(--color-ink);
+    height: 1.5em;   // the name's line, as the field below
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: inherit;
     font: inherit;
     font-size: var(--text-title);
     font-weight: 800;
+    line-height: 1.5;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: text;
+
+    &:focus-visible { outline: var(--line-width) solid var(--color-focus); outline-offset: 2px; }
+  }
+
+  // Renaming: the name turns into a text field in place, so it shows it can be typed in: a white box
+  // with an outline and room round the text, drawn without taking room (a shadow, not a border; its
+  // padding taken back by as much negative margin), so the text stays exactly where it was and the
+  // card keeps its size. It lies over what's round it while it's open.
+  .name-input {
+    position: relative;
+    z-index: 1;
+    display: block;
+    box-sizing: content-box;
+    width: 100%;
+    height: 1.5em;   // the name's line
+    margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-2));
+    padding: var(--space-2);
+    border: 0;
+    border-radius: var(--radius-small);
+    outline: none;
+    background: #ffffff;
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--cardboard-ink) 55%, transparent);
+    color: inherit;   // dark, on the paper
+    font: inherit;
+    font-size: var(--text-title);
+    font-weight: 800;
+    line-height: 1.5;
+
+    &:focus,
+    &:focus-visible { outline: none; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--cardboard-ink) 85%, transparent); }
   }
 
   .meta {
     margin: var(--space-1) 0 0;
-    color: var(--color-muted);
+    color: color-mix(in srgb, var(--cardboard-ink) 62%, transparent);   // muted, on the paper
     font-size: var(--text-hint);
   }
 
@@ -182,25 +406,38 @@ body:has(#nsc--home) { background-color: var(--color-studio); }
     display: flex;
     justify-content: flex-end;
     gap: var(--space-1);
+    padding: 0 var(--space-1);
+
+    // White, on the paper, dark on it in both themes, like the rest of the card.
+    .icon-button {
+      background: #ffffff;
+      color: var(--cardboard-ink);
+      border-color: color-mix(in srgb, var(--cardboard-ink) 75%, transparent);
+
+      &:hover { background: #f1ede5; }
+    }
   }
 }
 
+// One small line and a thin bar under it, as wide as the line, no box.
 .nsc-storage-meter {
   display: grid;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+  gap: var(--space-1);
   color: var(--color-muted);
+  font-size: var(--text-caption);
+  text-align: center;
 
   p { margin: 0; }
-  .note { font-size: var(--text-hint); }
-  .warning { margin: 0; color: var(--color-ink); font-size: var(--text-small); }
+  .warning { color: var(--color-ink); font-size: var(--text-hint); }
 
-  meter { width: 100%; height: 0.75rem; }
+  meter { width: 100%; height: 0.375rem; }
 }
 
-.nsc-delete-dialog {
+.nsc-delete-dialog,
+.nsc-settings-dialog {
   max-width: min(26rem, calc(100vw - 2rem));
   padding: var(--space-4);
   border: 0;
@@ -232,5 +469,18 @@ body:has(#nsc--home) { background-color: var(--color-studio); }
     display: flex;
     justify-content: center;
     gap: var(--space-2);
+  }
+}
+
+// The settings window: its title, the storage line (and its bar, wider here), the Close button.
+.nsc-settings-dialog {
+  width: min(24rem, calc(100vw - 2rem));
+
+  .nsc-storage-meter {
+    width: 100%;
+    margin-bottom: var(--space-4);
+    font-size: var(--text-hint);
+
+    p { margin: 0; }
   }
 }

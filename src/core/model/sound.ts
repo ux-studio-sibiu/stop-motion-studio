@@ -14,8 +14,9 @@ export type SoundClip = { id: string; start: number; sound: string; volume: numb
 export const VOLUMES = [0.5, 1, 1.5] as const;
 export const VOLUME_NAMES: Readonly<Record<number, string>> = { 0.5: "Quiet", 1: "Normal", 1.5: "Loud" };
 
-export function createSoundClip(sound: string, start: number): SoundClip {
-  return cleanSoundClip({ id: newId(), start, sound, volume: 1 });
+// `volume` one of VOLUMES (music starts quiet); anything else becomes normal.
+export function createSoundClip(sound: string, start: number, volume = 1): SoundClip {
+  return cleanSoundClip({ id: newId(), start, sound, volume });
 }
 
 // Whole ticks, never before the start; a volume that isn't one of VOLUMES becomes normal.

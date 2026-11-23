@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import { readGif } from "../src/adapters/export/gifReader";
 import { expect, test } from "./fixtures";
 
-// Save as GIF (step 25): the toolbar button downloads a GIF of the animation, at the size picked
+// Save as GIF (step 25), in the Save menu under the back arrow: downloads a GIF of the animation, at the size picked
 // in its options, with its quality (both remembered). The file is read back here: its size, its pictures and their delays.
 
 test.beforeEach(async ({ studio }) => {
@@ -11,7 +11,14 @@ test.beforeEach(async ({ studio }) => {
   await studio.open();
 });
 
+// The ways to save are in the Save menu, under the back arrow: open it (if it isn't).
+async function openSave(page: Page) {
+  const save = page.getByRole("button", { name: "Save", exact: true });
+  if ((await save.getAttribute("aria-expanded")) !== "true") await save.click();
+}
+
 async function saveGif(page: Page) {
+  await openSave(page);
   const downloading = page.waitForEvent("download");
   await page.getByRole("button", { name: "Save as GIF" }).click();
   const download = await downloading;
@@ -21,6 +28,7 @@ async function saveGif(page: Page) {
 }
 
 test("Save as GIF downloads the animation: inside the safe zone, every picture as long as it's held", async ({ studio, page }) => {
+  await openSave(page);
   await expect(page.getByRole("button", { name: "Save as GIF" })).toBeDisabled();   // nothing to save yet
   await studio.seedPictures(3);   // one tick each at 8 per second
   const { name, gif } = await saveGif(page);
@@ -32,6 +40,7 @@ test("Save as GIF downloads the animation: inside the safe zone, every picture a
 
 test("the GIF size is picked in its options and remembered", async ({ studio, page }) => {
   await studio.seedPictures(2);
+  await openSave(page);
   await page.getByRole("button", { name: "GIF options" }).click();
   const sizes = page.getByRole("group", { name: "GIF size" });
   await expect(sizes.getByRole("button", { name: /^Medium/ })).toHaveAttribute("aria-pressed", "true");
@@ -41,6 +50,7 @@ test("the GIF size is picked in its options and remembered", async ({ studio, pa
   await page.reload();
   expect(await saveGif(page).then(({ gif }) => [gif.width, gif.height])).toEqual([320, 180]);
 
+  await openSave(page);
   await page.getByRole("button", { name: "GIF options" }).click();
   await expect(sizes.getByRole("button", { name: "Full size 1208 px wide" })).toBeVisible();   // as it is, inside the safe zone
   await sizes.getByRole("button", { name: /^Full size/ }).click();
@@ -55,6 +65,7 @@ test("the quality slider makes the file smaller when the pictures barely change,
   await page.keyboard.press("ControlOrMeta+d");
   await expect(studio.pictures()).toHaveCount(3);
 
+  await openSave(page);
   await page.getByRole("button", { name: "GIF options" }).click();
   const quality = page.getByRole("slider", { name: "Quality" });
   await expect(quality).toHaveAttribute("aria-valuetext", "medium");   // the default
@@ -64,6 +75,7 @@ test("the quality slider makes the file smaller when the pictures barely change,
   const high = await saveGif(page);
 
   await page.reload();
+  await openSave(page);
   await page.getByRole("button", { name: "GIF options" }).click();
   await expect(page.getByRole("slider", { name: "Quality" })).toHaveAttribute("aria-valuetext", "high, biggest file");   // remembered
   await page.getByRole("slider", { name: "Quality" }).fill("1");
@@ -77,12 +89,14 @@ test("the quality slider makes the file smaller when the pictures barely change,
 // Save as video (step 26): the file is read back with Mediabunny's own reader.
 test("Save as video downloads the animation: its full exported size, as long as it plays, a frame per change", async ({ studio, page }) => {
   const { ALL_FORMATS, BufferSource, Input } = await import("mediabunny");
+  await openSave(page);
   await expect(page.getByRole("button", { name: "Save as video" })).toBeDisabled();   // nothing to save yet
   await studio.seedPictures(3);   // one tick each at 8 per second: 0.375 s
   await studio.picture(2).click();
   for (let i = 0; i < 3; i++) await page.keyboard.press("]");   // picture 2 held for 4 ticks: one frame, half a second
 
   const downloading = page.waitForEvent("download");
+  await openSave(page);
   await page.getByRole("button", { name: "Save as video" }).click();
   const download = await downloading;
   expect(download.suggestedFilename()).toMatch(/\.(mp4|webm)$/);
@@ -105,6 +119,7 @@ test("Save as video carries the sounds as an audio track", async ({ studio, page
   await expect(page.getByRole("group", { name: "Sound Layer" }).getByRole("button")).toHaveCount(1);
 
   const downloading = page.waitForEvent("download");
+  await openSave(page);
   await page.getByRole("button", { name: "Save as video" }).click();
   const bytes = await readFile((await (await downloading).path())!);
   using input = new Input({ formats: ALL_FORMATS, source: new BufferSource(bytes) });
@@ -112,4 +127,21 @@ test("Save as video carries the sounds as an audio track", async ({ studio, page
   expect(audio).not.toBeNull();
   expect(["aac", "opus"]).toContain(audio!.codec);
   expect(await input.computeDuration()).toBeCloseTo(0.5, 1);
+});
+
+test("the Save button sits under the back arrow and lists Save as video, then Save as GIF with its options", async ({ studio, page }) => {
+  await studio.seedPictures(1);
+  const back = (await page.getByRole("link", { name: "All projects" }).boundingBox())!;
+  const save = page.getByRole("button", { name: "Save", exact: true });
+  const box = (await save.boundingBox())!;
+  expect(box.y).toBeGreaterThan(back.y + back.height);   // under it...
+  expect(Math.abs(box.x - back.x)).toBeLessThan(2);       // ...lined up with it
+  await expect(page.getByRole("button", { name: "Save as video" })).toBeHidden();
+  await save.click();
+  const list = page.getByRole("group", { name: "Save as" });
+  const names = await list.locator(":scope > .export-menu > .toggle").evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label")));
+  expect(names).toEqual(["Save as video", "Save as GIF"]);
+  await expect(list.getByRole("button", { name: "GIF options" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(list).toBeHidden();
 });

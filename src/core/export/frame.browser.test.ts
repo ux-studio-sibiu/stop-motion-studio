@@ -51,4 +51,18 @@ describe("drawExportFrame", () => {
     drawExportFrame({ full: context(W, H), crop: context(rect.width, rect.height), out }, scene, () => image, 0, rect);
     expect(pixel(out, 1, 1)).toEqual([255, 0, 0]);
   });
+  it("leaves an empty picture see-through, with nothing of the picture before it left behind", () => {
+    const blank = context(W, H).canvas;   // a see-through picture
+    const photo = createFrame("p", "photo");
+    const empty = { ...createFrame("p", "blank", { empty: true }), id: "empty" };
+    const scene = { width: W, height: H, frames: [photo, empty] };
+    const rect = exportRect(scene, 20);
+    const canvases = { full: context(W, H), crop: context(rect.width, rect.height), out: context(60, 26) };
+    const images = (id: string) => (id === "photo" ? banded() : blank) as DrawableImage;
+    drawExportFrame(canvases, scene, images, 0, rect);   // the photo first...
+    expect(canvases.out.getImageData(30, 13, 1, 1).data[3]).toBe(255);
+    drawExportFrame(canvases, scene, images, 1, rect);   // ...then the empty one
+    expect(canvases.out.getImageData(30, 13, 1, 1).data[3]).toBe(0);
+    expect(canvases.out.getImageData(0, 0, 1, 1).data[3]).toBe(0);
+  });
 });

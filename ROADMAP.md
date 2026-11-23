@@ -679,6 +679,10 @@ inside the band.
   (pixel diff with a threshold, the diff image in the report), and how to review a changed baseline.
 - **Check:** complete capture → resize → reorder → add a bubble → play → export using only the keyboard;
   axe reports no serious issues; a deliberate CSS change shows up as a screenshot diff.
+- **As built (replaced on request):** only a **Help** button in the studio's top bar (and the `?`
+  key), opening a window with how to make an animation and every keyboard shortcut the studio
+  has. No axe scans, keyboard-only run, screenshot tests or contrast pass: those can come back
+  later as their own step.
 
 ### 31 · Performance with long projects
 - **Builds:** timeline virtualisation once a project exceeds ~200 frames (by time range, since widths
@@ -755,7 +759,7 @@ feature folder of its own.
 - [x] 28 Import photos ([page](public/steps/28-import-photos.html))
 - [x] 29 Kid-friendly capture, cut down to the capture sound ([page](public/steps/29-capture-sound.html))
 - [x] 29b Sound track: sound effects in time ([page](public/steps/29b-sound-track.html))
-- [ ] 30 Accessibility and keyboard map
+- [x] 30 Accessibility and keyboard map, replaced by a Help window ([page](public/steps/30-help.html))
 - [ ] 31 Performance with long projects
 - [ ] 32 Offline (PWA)
 - [ ] 33 Ship

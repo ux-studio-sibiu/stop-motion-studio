@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cameraStatusFromError, isBuiltInCamera, isMissingDevice, preferredCamera, videoConstraints } from "@/adapters/camera/camera";
+import { cameraLockSupport, cameraStatusFromError, isBuiltInCamera, isMissingDevice, NO_LOCK, preferredCamera, setCameraLock, videoConstraints } from "@/adapters/camera/camera";
 
 describe("cameraStatusFromError", () => {
   it.each([
@@ -62,5 +62,52 @@ describe("preferring a plugged-in camera", () => {
 
   it("can't tell cameras apart without their names (before permission)", () => {
     expect(preferredCamera([{ deviceId: "a", label: "" }, { deviceId: "b", label: "" }], "a")).toBeNull();
+  });
+});
+
+// A camera track as the lock sees it: what it can do, where it is now, and the constraints applied.
+function fakeTrack(capabilities: Record<string, unknown> | null, settings: Record<string, unknown> = {}, refuse = false) {
+  const applied: unknown[] = [];
+  return {
+    applied,
+    getCapabilities: capabilities ? () => capabilities : undefined,
+    getSettings: () => settings,
+    applyConstraints: async (constraints?: MediaTrackConstraints) => { if (refuse) throw new Error("OverconstrainedError"); applied.push(constraints); },
+  };
+}
+
+describe("locking the camera's focus, exposure and white balance", () => {
+  const all = { focusMode: ["continuous", "manual"], exposureMode: ["continuous", "manual"], whiteBalanceMode: ["continuous", "manual"] };
+
+  it("knows what a camera can lock: the settings it can set by hand", () => {
+    expect(cameraLockSupport(fakeTrack(all))).toEqual({ focus: true, exposure: true, whiteBalance: true });
+    expect(cameraLockSupport(fakeTrack({ focusMode: ["continuous"], exposureMode: ["continuous", "manual"] }))).toEqual({ focus: false, exposure: true, whiteBalance: false });
+    expect(cameraLockSupport(fakeTrack(null))).toEqual(NO_LOCK);   // a browser without getCapabilities
+    expect(cameraLockSupport(null)).toEqual(NO_LOCK);
+  });
+
+  it("locks what it can at the current values", async () => {
+    const track = fakeTrack(all, { focusDistance: 0.3, exposureTime: 120, colorTemperature: 4500 });
+    expect(await setCameraLock(track, true)).toEqual({ focus: true, exposure: true, whiteBalance: true });
+    expect(track.applied).toEqual([{ advanced: [{ focusMode: "manual", focusDistance: 0.3, exposureMode: "manual", exposureTime: 120, whiteBalanceMode: "manual", colorTemperature: 4500 }] }]);
+  });
+
+  it("locks only what the camera supports", async () => {
+    const track = fakeTrack({ exposureMode: ["continuous", "manual"] }, { exposureTime: 80, focusDistance: 1 });
+    expect(await setCameraLock(track, true)).toEqual({ focus: false, exposure: true, whiteBalance: false });
+    expect(track.applied).toEqual([{ advanced: [{ exposureMode: "manual", exposureTime: 80 }] }]);
+  });
+
+  it("unlocks back to automatic", async () => {
+    const track = fakeTrack(all, { focusDistance: 0.3 });
+    expect(await setCameraLock(track, false)).toEqual(NO_LOCK);
+    expect(track.applied).toEqual([{ advanced: [{ focusMode: "continuous", exposureMode: "continuous", whiteBalanceMode: "continuous" }] }]);
+  });
+
+  it("does nothing on a camera that can't lock, and reports nothing locked when the camera refuses", async () => {
+    const none = fakeTrack({ focusMode: ["continuous"] });
+    expect(await setCameraLock(none, true)).toEqual(NO_LOCK);
+    expect(none.applied).toEqual([]);
+    expect(await setCameraLock(fakeTrack(all, {}, true), true)).toEqual(NO_LOCK);
   });
 });

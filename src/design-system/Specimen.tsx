@@ -49,7 +49,7 @@ export function TokenSpecimen({ token }: { token: Token }) {
     Font: <span className="ds-sample" style={{ fontFamily: v }}>Aa</span>,
   }[token.group as string] ?? <span className="ds-length" style={{ width: `min(${v}, 4rem)` }} />;
   return (
-    <div className="ds-token" tabIndex={0} aria-describedby={`tip${token.name}`}>
+    <div className="ds-token" tabIndex={0} aria-describedby={`tip${token.name}`} data-colour-token={token.kind === "colour" ? token.name : undefined}>
       {look}
       <code className="ds-name">{token.name}</code>
       <span className="ds-tip" role="tooltip" id={`tip${token.name}`}>

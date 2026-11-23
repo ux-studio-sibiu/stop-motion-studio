@@ -48,9 +48,9 @@ export function createProject({ name = DEFAULT_NAME, width = DEFAULT_WIDTH, heig
   };
 }
 
-type FrameOptions = { hold?: number; transform?: Partial<Transform>; adjust?: Partial<Adjust>; elements?: Element[] };
+type FrameOptions = { hold?: number; transform?: Partial<Transform>; adjust?: Partial<Adjust>; elements?: Element[]; empty?: boolean };
 
-export function createFrame(projectId: string, imageId: string, { hold = 1, transform, adjust, elements = [] }: FrameOptions = {}): Frame {
+export function createFrame(projectId: string, imageId: string, { hold = 1, transform, adjust, elements = [], empty = false }: FrameOptions = {}): Frame {
   return {
     id: newId(),
     projectId,
@@ -59,6 +59,7 @@ export function createFrame(projectId: string, imageId: string, { hold = 1, tran
     transform: { ...DEFAULT_TRANSFORM, ...transform },
     adjust: { ...DEFAULT_ADJUST, ...adjust },
     elements: cloneElements(elements),
+    ...(empty ? { empty: true } : {}),
   };
 }
 

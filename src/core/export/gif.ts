@@ -34,7 +34,9 @@ export const BIG_GIF_BYTES = 20 * 1024 * 1024;   // above this, the studio says 
 //   low     the same with more allowance, 128 colours, in coarser steps: smallest, a little rougher.
 export type GifQuality = "low" | "medium" | "high";
 export const GIF_QUALITIES: readonly GifQuality[] = ["low", "medium", "high"];
-export type GifEncoding = { colours: number; format: "rgb565" | "rgb444"; tolerance: number };   // tolerance 0: every picture whole
+// tolerance 0: every picture whole. transparent: the animation has empty (see-through) pictures, so
+// the GIF keeps their see-through pixels (every picture whole then, cleared before the next).
+export type GifEncoding = { colours: number; format: "rgb565" | "rgb444"; tolerance: number; transparent?: boolean };
 export const GIF_ENCODING: Readonly<Record<GifQuality, GifEncoding>> = {
   high: { colours: 256, format: "rgb565", tolerance: 0 },
   medium: { colours: 256, format: "rgb565", tolerance: 8 },

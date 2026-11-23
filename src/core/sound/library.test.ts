@@ -1,7 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { MADE_SOUNDS, RECORDED_SOUNDS, SOUND_CATEGORIES, SOUND_LIBRARY, notesLength, soundById, soundSeconds } from ".";
+import { BACKGROUND_MUSIC, MADE_SOUNDS, RECORDED_SOUNDS, SOUND_CATEGORIES, SOUND_LIBRARY, notesLength, soundById, soundSeconds, startingVolume } from ".";
+import { VOLUMES } from "@/core/model";
 
 describe("the sound library", () => {
+  it("has background music: tunes of up to a minute, each its own file, starting quieter than the sound effects", () => {
+    expect(BACKGROUND_MUSIC.length).toBeGreaterThanOrEqual(10);
+    expect(new Set(BACKGROUND_MUSIC.map((track) => track.file)).size).toBe(BACKGROUND_MUSIC.length);
+    for (const track of BACKGROUND_MUSIC) {
+      expect(track.category, track.id).toBe("Background");
+      expect(track.file, track.id).toMatch(/^music-[a-z0-9-]+\.mp3$/);
+      expect(track.seconds, track.id).toBeGreaterThan(25);
+      expect(track.seconds, track.id).toBeLessThanOrEqual(60);
+      expect(VOLUMES as readonly number[], track.id).toContain(track.volume);
+      expect(startingVolume(track.id), track.id).toBeLessThan(1);
+    }
+    expect(startingVolume("cartoon/boing")).toBe(1);   // a sound effect: normal
+  });
+
   it("has unique ids named after their category, unique names, and every category has sounds", () => {
     const ids = SOUND_LIBRARY.map((entry) => entry.id);
     expect(new Set(ids).size).toBe(ids.length);

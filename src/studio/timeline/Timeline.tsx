@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
-import { Camera, ChevronLeft, ChevronRight, CopyPlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
+import { Camera, CopyPlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { formatSeconds, formatTicks, inOrder, objectLabel, neighbourAfterDelete, pxPerTick, rulerScale, ticksToSeconds, totalTicks } from "@/core/model";
 import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, selectedOverlayId, withPreview } from "@/store/editorStore";
 import { editorStore, useEditor, useShownFrames, useShownOverlays } from "@/store/useEditor";
@@ -27,7 +27,9 @@ type TimelineProps = {
   onNudge: (moved: string[], direction: -1 | 1) => void;   // Ctrl+arrow: one place along, from the saved order
   onOverlays: SaveOverlays;   // the overlay track's changes (step 24)
   onSounds: SaveSounds;       // the sound row's changes (step 29b)
+  onAddEmpty: () => void;     // the next-picture slot: adds an empty (see-through) picture
   addPhotos: ReactNode;       // Add photos, placed by Studio between Duplicate and Delete
+  undoRedo: ReactNode;        // Undo and Redo, placed by Studio after the zoom (the arrow keys go from picture to picture)
 };
 
 // The timeline, drawn to time: a picture is as wide as it lasts (hold ticks × px per tick), and a
@@ -41,7 +43,7 @@ type TimelineProps = {
 //   OverlayTrack          the objects that live in time, under the pictures (step 24)
 //   SoundTrack            the sounds in time, the bottom row (step 29b)
 //   LayersMenu            which of those two rows show, remembered
-export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, onOverlays, onSounds, addPhotos }: TimelineProps) {
+export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, onOverlays, onSounds, onAddEmpty, addPhotos, undoRedo }: TimelineProps) {
   const shown = useShownFrames();   // with any move, brightness or object change not saved yet, for the thumbnails
   const holdPreview = useEditor((state) => state.holdPreview);
   const frames = useMemo(() => withPreview(shown, "hold", holdPreview), [shown, holdPreview]);   // and any resize in progress
@@ -73,7 +75,13 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
 
   const onPick = (id: string, event: MouseEvent) => {
     if (reorder.takeClick()) return;   // this click ended a drag
-    editorStore.getState().pause();    // picking a picture while it plays stops there
+    const state = editorStore.getState();
+    state.pause();    // picking a picture while it plays stops there
+    // From the Camera tab (the stage shows the camera there, not the picture), the Picture tab
+    // opens, so the picture picked shows on the stage, ready to adjust; the camera turns off with
+    // it, even while shooting (the user's call: to pick where new pictures go and keep shooting,
+    // select with the keys). The picture's other tabs (Objects, Draw) and Sounds stay as they are.
+    if ((state.panelTab ?? "camera") === "camera") state.setPanelTab("picture");
     if (event.shiftKey) select.extendTo(id);
     else if (event.ctrlKey || event.metaKey) select.toggle(id);
     else select.selectOnly(id);
@@ -118,7 +126,6 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
   // from the saved order when it runs, so quick presses add up even before the screen catches up.
   const moveSelection = (direction: -1 | 1) => { if (selection.length > 0) onNudge(inOrder(order, selection), direction); };
 
-  const step = (direction: -1 | 1) => { editorStore.getState().pause(); select.moveFocus(direction, { wrap: true }); };
 
   // The keys, while the timeline has the keyboard. "Mod" is Ctrl, or Cmd on a Mac; Shift with
   // the arrows, Home and End grows the selection.
@@ -137,6 +144,25 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
     Home: (extend) => select.moveFocusTo(0, { extend }),
     End: (extend) => select.moveFocusTo(order.length - 1, { extend }),
   };
+  // ← and → go from picture to picture also when nothing has the keyboard (after a click on the
+  // stage's background, say). When something does (the timeline, a field, the picture or an object
+  // being moved on the stage), it decides what the arrows do.
+  const arrows = useRef({ order, moveFocus: select.moveFocus });
+  useEffect(() => { arrows.current = { order, moveFocus: select.moveFocus }; });
+  useEffect(() => {
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      if (document.activeElement && document.activeElement !== document.body) return;
+      if (arrows.current.order.length === 0) return;
+      event.preventDefault();
+      editorStore.getState().pause();
+      arrows.current.moveFocus(event.key === "ArrowLeft" ? -1 : 1, { extend: event.shiftKey });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const onKeyDown = (event: KeyboardEvent<HTMLOListElement>) => {
     if (order.length === 0) return;
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
@@ -161,8 +187,7 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
         <button type="button" className="icon-button is-small" aria-label="Zoom out" disabled={zoom <= MIN_TIMELINE_ZOOM} onClick={() => zoomTo(zoom / ZOOM_STEP)}><ZoomOut size={20} /></button>
         <button type="button" className="icon-button is-small" aria-label="Zoom in" disabled={zoom >= MAX_TIMELINE_ZOOM} onClick={() => zoomTo(zoom * ZOOM_STEP)}><ZoomIn size={20} /></button>
         <span className="tools-gap" />
-        <button type="button" className="icon-button is-small" aria-label="Previous picture" title="Previous picture (←)" disabled={order.length === 0} onClick={() => step(-1)}><ChevronLeft size={20} /></button>
-        <button type="button" className="icon-button is-small" aria-label="Next picture" title="Next picture (→)" disabled={order.length === 0} onClick={() => step(1)}><ChevronRight size={20} /></button>
+        {undoRedo}
         <span className="tools-gap" />
         <button type="button" className="icon-button is-small" aria-label={`Duplicate ${pictures}`} title={`Duplicate ${pictures} (Ctrl + D)`} disabled={count === 0} onClick={duplicateSelected}><CopyPlus size={20} /></button>
         {addPhotos}
@@ -185,9 +210,12 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
             </TimelineFrame>
           ))}
           {reorder.drag && <li className="drop-marker" aria-hidden="true" style={{ left: reorder.drag.markerX }} />}
-          <li ref={next} className="next-slot" aria-hidden={frames.length > 0}>
-            <Camera size={24} />
-            {frames.length === 0 && <span className="next-hint">Your pictures appear here</span>}
+          {/* Where the next picture goes; pressed, it adds an empty (see-through) picture there. */}
+          <li ref={next} className="next-slot" role="presentation">
+            <button type="button" className="next-button" aria-label="Add an empty picture" title="Add an empty picture: see-through, for a title or a drawing" onClick={onAddEmpty}>
+              <Camera size={24} aria-hidden="true" />
+              {frames.length === 0 && <span className="next-hint">Your pictures appear here</span>}
+            </button>
           </li>
         </ol>
 

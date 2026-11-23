@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "cardboard-letters",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:/Users/razvan.turcanu/Desktop/casedeschise/fonts/cardboard letters/serve.cjs"],
+      "port": 5174
     }
   ]
 }

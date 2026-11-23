@@ -27,7 +27,7 @@ export const ARCHIVE_LIMITS = {
 } as const;
 
 export type ArchiveImage = { id: string; file: string; width: number; height: number };
-export type ArchiveFrame = { image: string; hold: number; transform: Transform; adjust: Frame["adjust"]; elements: Element[] };
+export type ArchiveFrame = { image: string; hold: number; transform: Transform; adjust: Frame["adjust"]; elements: Element[]; empty?: boolean };   // empty: a see-through picture
 export type ArchiveManifest = {
   format: typeof ARCHIVE_FORMAT;
   version: number;
@@ -50,7 +50,7 @@ export function archiveManifest(project: Project, frames: readonly Frame[], imag
     version: ARCHIVE_VERSION,
     schemaVersion: project.schemaVersion,
     project: { name: project.name, width: project.width, height: project.height, fps: project.fps, safeMargin: project.safeMargin, overlays: project.overlays ?? [], sounds: project.sounds ?? [], createdAt: project.createdAt, updatedAt: project.updatedAt },
-    frames: ordered.map((frame) => ({ image: frame.imageId, hold: frame.hold, transform: frame.transform, adjust: frame.adjust, elements: frame.elements ?? [] })),
+    frames: ordered.map((frame) => ({ image: frame.imageId, hold: frame.hold, transform: frame.transform, adjust: frame.adjust, elements: frame.elements ?? [], ...(frame.empty ? { empty: true } : {}) })),
     images: images.filter((image) => used.has(image.id)).map((image) => ({ ...image, file: imageFile(image.id) })),
   };
 }
@@ -109,6 +109,7 @@ export function readManifest(raw: unknown, { files, now = Date.now(), makeId = n
       transform: cleanTransform(frame.transform),
       adjust: clampAdjust(record(frame.adjust) ?? {}),
       elements: list(frame.elements, ARCHIVE_LIMITS.objects).flatMap((element) => cleanElement(element) ?? []),
+      ...(frame.empty === true ? { empty: true } : {}),
     };
   });
 

@@ -13,7 +13,7 @@
   <h1>Sound track</h1>
   <p class="intro">Animations can have <strong>sound effects</strong>. A new <strong>Sounds</strong> tab lists them; one press adds a sound to a new <strong>bottom row of the timeline</strong>, under the objects in time. It plays when playback reaches it, and it's in the <strong>video</strong>.</p>
   <ul>
-    <li><strong>The Sounds tab</strong>: 76 sounds in 13 groups (Cartoon, Whooshes, Bangs, Magic, Animals, People, Footsteps, Vehicles, Machines, Home, Nature, Water, Music): 18 made by the synthesiser, and 58 recordings. Each is a small pill, so many fit. A click plays it. Dragging it onto the stage adds it at the selected picture (or the start); dragging it onto the Sound Layer adds it where it's dropped. Either way it's picked and played, and a hidden Sound Layer shows as soon as the drag starts.</li>
+    <li><strong>The Sounds tab</strong>: 91 sounds in 14 groups. <strong>Background</strong> comes first: 15 tunes, about 30 s each, that come in Quiet so the sound effects stay heard over them. Then Cartoon, Whooshes, Bangs, Magic, Animals, People, Footsteps, Vehicles, Machines, Home, Nature, Water and Music: 18 sounds made by the synthesiser and 58 recordings. A sound still playing where the animation ends fades out over half a second, in playback and in the video, instead of being cut. Each is a small pill, so many fit. A click plays it. Dragging it onto the stage adds it at the selected picture (or the start); dragging it onto the Sound Layer adds it where it's dropped. Either way it's picked and played, and a hidden Sound Layer shows as soon as the drag starts.</li>
     <li><strong>Timeline layers</strong>: a stacked-layers button with a caret, first in the timeline's buttons, opens a list below it, over the timeline. Its two switches show or hide the <em>Objects Layer</em> and the <em>Sound Layer</em>. Both show at first, and the choice is remembered (<code>timelineLayers</code> in <code>remembered.ts</code>). A hidden row still plays and still goes in the video, and adding a sound shows the Sounds row again.</li>
     <li><strong>The sound row</strong>: each sound is a bar as long as it sounds. Drag it to move it in time, or use the arrow keys; click it to pick it and hear it. Overlapping sounds go in rows of their own.</li>
     <li><strong>The picked sound</strong>, at the top of the tab: Quiet, Normal or Loud, and Delete sound. Adding, moving, volume and deleting are one undo step each.</li>
@@ -48,6 +48,7 @@
   <h2>Decisions</h2>
   <ul>
     <li><strong>Recorded sounds added after review</strong>: 58 CC0 recordings from BigSoundBank, in <code>public/sounds/</code> (7.5 MB) and listed in <code>src/core/sound/recorded.ts</code>, with the length of each file. They're fetched and decoded the first time they're used (<code>soundBuffer</code>). The site blocked further automated downloads, so 34 more from the list are still to fetch by hand; 7 long background recordings were left out.</li>
+    <li><strong>Background music added after review</strong>: 15 public-domain tunes from FreePD, taken from the Internet Archive's copy because the site closed in 2025. Each is the start of the track, cut to 30 s at MP3 frame boundaries (no re-encoding); the two loops are whole. They're in <code>public/sounds/music-*.mp3</code> (17 MB) and <code>src/core/sound/music.ts</code>.</li>
     <li><strong>Made by the synthesiser at first</strong>: nothing is downloaded or licensed yet. The 137 recorded CC0 candidates in <code>SOUND_EFFECTS.md</code> need downloading and a listen first. They'll join as library entries with a file; a project only stores the sound's id, so nothing else changes.</li>
     <li><strong>Dragged to add, clicked to hear</strong> (changed after review): a sound goes where it's put, on the stage or on the Sound Layer, like objects. A click only plays it, so a child can try sounds without adding them. Two sounds dropped quickly both stay: each change builds on the last one saved (<code>soundEditing.ts</code>).</li>
     <li><strong>Start in ticks, length in seconds</strong>: a speed change keeps a sound on the same picture, and it still sounds as long.</li>
@@ -119,7 +120,7 @@
 
   <nav class="pager">
     <a href="29-capture-sound.html">Previous: 29 · Capture sound</a>
-    <span>Next: 30 · Accessibility and keyboard map</span>
+    <a href="30-help.html">Next: 30 · Help</a>
   </nav>
 </main>
 </body>

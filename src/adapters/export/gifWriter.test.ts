@@ -86,4 +86,18 @@ describe("createGifWriter", () => {
     // is written again, a little closer)
     for (let i = 0; i < gif.frames[0].length; i++) expect(Math.abs(gif.frames[1][i] - gif.frames[0][i])).toBeLessThanOrEqual(18);
   });
+  it("with empty pictures, see-through pixels stay see-through, and nothing of the picture before shows through", () => {
+    const red = solid(4, 2, [220, 30, 30]);
+    const holes = solid(4, 2, [30, 30, 220]);
+    for (const p of [0, 1, 4, 5]) holes[p * 4 + 3] = 0;   // the left half of an empty picture with a blue drawing on the right
+    const writer = createGifWriter({ ...GIF_ENCODING.medium, transparent: true });
+    writer.add(red, 4, 2, 10);
+    writer.add(holes, 4, 2, 10);
+    const gif = readGif(writer.finish());
+    expect(gif.frames).toHaveLength(2);
+    expect(Array.from(gif.frames[0].subarray(0, 4))).toEqual([220, 30, 30, 255]);   // the red picture, whole
+    expect(gif.frames[1][3]).toBe(0);                                                 // left: see-through, not red
+    expect(gif.frames[1][4 * 4 + 3]).toBe(0);
+    expect(Array.from(gif.frames[1].subarray(2 * 4, 2 * 4 + 4))).toEqual([30, 30, 220, 255]);   // right: the drawing
+  });
 });

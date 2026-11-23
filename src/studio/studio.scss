@@ -5,6 +5,7 @@
 @use "./styles/playback";
 @use "./styles/option-menu";
 @use "./styles/export";
+@use "./styles/help";
 @use "./timeline/timeline";
 @use "./timeline/frame";
 
@@ -45,10 +46,21 @@
     grid-template-areas: "toolbar" "stage" "panel" "playback" "timeline";
   }
 
+  // Desktop: no top bar. The back arrow, Save and Help float in a column at the top left, and the
+  // stage and the side panel start at the top of the screen; the stage keeps clear of that column.
   @include respond-to("desktop") {
     grid-template-columns: minmax(0, 1fr) 20.75rem;   // the panel, plus room for its tab ears
-    grid-template-rows: auto minmax(0, 1fr) auto var(--timeline-height);
-    grid-template-areas: "toolbar toolbar" "stage panel" "playback playback" "timeline timeline";
+    grid-template-rows: minmax(0, 1fr) auto var(--timeline-height);
+    grid-template-areas: "stage panel" "playback playback" "timeline timeline";
+
+    .toolbar {
+      position: absolute;
+      top: var(--space-3);
+      left: var(--space-3);
+      z-index: 15;
+    }
+
+    .stage { padding-left: calc(var(--hit) + var(--space-3)); }
   }
 
   // Hidden until it looks as it was left (useReady in Studio.tsx), then faded in.
@@ -98,6 +110,63 @@
   .toolbar-actions {
     display: flex;
     gap: var(--space-2);
+  }
+
+  // The back arrow, with Save and Help floating under it, one under the other, beside the stage.
+  .toolbar-start {
+    position: relative;
+    flex: none;
+
+    .toolbar-side {
+      position: absolute;
+      top: calc(100% + var(--space-3));
+      left: 0;
+      z-index: 15;
+      display: grid;
+      justify-items: start;
+      gap: var(--space-3);
+    }
+  }
+
+  .nsc-save-menu {
+    // The save icon and a small caret, so it reads as a dropdown.
+    .save-button {
+      gap: 0.125rem;
+      padding-inline: var(--space-2) var(--space-1);
+
+      .caret { stroke-width: 2.75; }
+    }
+
+    // The list: the two ways to save, one under the other, as plain rows (no button outline), each
+    // with its full label, a grey highlight under the pointer. The GIF's settings arrow is part of
+    // its row, highlighted on its own.
+    > .options {
+      left: 0;
+      right: auto;
+      gap: 0.125rem;
+      min-width: 16rem;
+      padding: var(--space-1);
+
+      &[hidden] { display: none; }
+
+      .export-menu { width: 100%; }
+      .desktop-only { display: inline; }
+
+      .export-menu > .icon-button {
+        min-height: 2.75rem;
+        border-color: transparent;
+        border-radius: var(--radius-small);
+        background: transparent;
+        box-shadow: none;
+
+        &:hover:not(:disabled) { background: color-mix(in srgb, var(--color-ink) 8%, transparent); }
+        &:focus-visible { outline: 3px solid var(--color-focus); outline-offset: -3px; }
+      }
+
+      .export-menu > .toggle { flex: 1; justify-content: flex-start; }
+      .export-menu > .more { margin-left: 0; }
+      .export-menu > .more::before { display: none; }   // no divider line between the halves
+    }
   }
 
 }

@@ -112,6 +112,55 @@ test("Tab takes a picture while the camera is on (a wireless presenter's button)
   await expect(studio.pictures()).toHaveCount(2);
 });
 
+test("Tab from another tab, or with the camera off, opens the Camera tab, turns the camera on and takes a picture", async ({ studio, page }) => {
+  await studio.open();
+  await studio.cameraOn();
+  await studio.takePictures(1);
+  await studio.picture(1).click();   // the Picture tab: the camera goes off
+  await expect(page.getByRole("tab", { name: "Picture" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("button", { name: "Turn camera off" })).toHaveCount(0);
+
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("tab", { name: "Camera" })).toHaveAttribute("aria-selected", "true");
+  await expect(studio.pictures()).toHaveCount(2, { timeout: 15_000 });   // once the camera shows a picture
+  await expect(page.getByRole("button", { name: "Turn camera off" })).toBeVisible();
+
+  // In the Camera tab with the camera turned off: Tab turns it back on and takes one.
+  await page.getByRole("button", { name: "Turn camera off" }).click();
+  await expect(page.getByRole("button", { name: "Turn camera off" })).toHaveCount(0);
+  await page.locator("body").focus();
+  await page.keyboard.press("Tab");
+  await expect(studio.pictures()).toHaveCount(3, { timeout: 15_000 });
+});
+
+test("the Camera tab zooms in and moves the frame, per animation; a camera that can't lock says so", async ({ studio, page }) => {
+  await studio.open();
+  await studio.cameraOn();
+  const zoom = page.getByRole("slider", { name: /Zoom/ });
+  const right = page.getByRole("button", { name: "Move the frame right" });
+  const transform = () => studio.video().evaluate((video) => getComputedStyle(video).transform);
+
+  await expect(zoom).toHaveValue("1");
+  await expect(right).toBeDisabled();   // nothing to move at no zoom
+  await zoom.fill("2");
+  await expect(page.getByText("Zoom: 2.0×")).toBeVisible();
+  await expect.poll(transform).toMatch(/^matrix\(2, 0, 0, 2,/);   // the live picture, scaled
+  await right.click();
+  await expect(page.getByRole("button", { name: "Centre the frame" })).toBeEnabled();
+  const moved = await transform();
+
+  await studio.takePictures(1);   // a picture still comes, framed
+
+  // The test camera can't lock its settings: a note instead of the switch.
+  await expect(page.getByText("This camera can't lock its settings")).toBeVisible();
+
+  // Kept for this animation after a reload.
+  await page.reload();
+  await expect(studio.captureButton()).toBeEnabled({ timeout: 15_000 });   // it was on: it comes back on by itself
+  await expect(zoom).toHaveValue("2");
+  await expect.poll(transform).toBe(moved);
+});
+
 test("with a laptop camera and a plugged-in one, the plugged-in one is used; the arrow picks another", async ({ studio, page }) => {
   const canStream = await page.evaluate(() => "captureStream" in HTMLCanvasElement.prototype);
   test.skip(!canStream, "This browser build has no media streams (Playwright's WebKit on Windows).");

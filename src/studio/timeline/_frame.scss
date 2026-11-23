@@ -1,4 +1,5 @@
 @use "@/styles/breakpoints" as *;
+@use "@/styles/checkerboard" as *;
 
 // One picture on the timeline: its slot, thumbnail, selection, grip, length bubble and number.
 .nsc-studio {
@@ -75,6 +76,8 @@
       border-radius: calc(var(--frame-radius) - var(--thumb-inset) / 2);
       background-color: var(--color-stage);
     }
+
+    &.is-empty .thumb { @include checkerboard(6px); }   // an empty picture: see-through
 
     // While an overlay is selected (step 24): the picture the stage shows, a quiet dashed ring, so
     // it reads as "on the stage", not as selected.

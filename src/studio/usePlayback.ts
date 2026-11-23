@@ -40,7 +40,7 @@ export function usePlayback() {
     let ended = false;
     let request = 0;
     const clips = soundsOf(state.project);
-    const sounds = (tick: number) => playSounds(soundsFrom(clips, tick, total, fps, (clip) => soundSeconds(clip.sound)));
+    const sounds = (tick: number) => playSounds(soundsFrom(clips, tick, total, fps, (clip) => soundSeconds(clip.sound)), (total - tick) / fps);   // music fades out at the end
     let stopSounds = sounds(from);
     let last = from;
 

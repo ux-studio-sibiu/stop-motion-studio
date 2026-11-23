@@ -111,6 +111,27 @@
 
   .ds-token-board { columns: 14rem; column-gap: var(--space-4); }
 
+  // While Alt or Ctrl+Alt is held, the cursor over a colour token says what a click will do
+  // (colourCopy.ts: an eyedropper to copy, a syringe to paste).
+  .ds-token[data-colour-token] { cursor: var(--ds-copy-cursor, default); }
+
+  // What Alt+click copied, or Ctrl+Alt+click pasted: a small note at the bottom of the window.
+  .ds-copy-note {
+    position: fixed;
+    bottom: var(--space-4);
+    left: 50%;
+    z-index: 30;
+    margin: 0;
+    padding: var(--space-2) var(--space-4);
+    border-radius: 999px;
+    background: var(--color-ink);
+    color: var(--color-surface);
+    font-size: var(--text-hint);
+    font-weight: 700;
+    translate: -50% 0;
+    pointer-events: none;
+  }
+
   .ds-token-group {
     break-inside: avoid;
     margin-bottom: var(--space-4);

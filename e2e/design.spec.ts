@@ -33,6 +33,23 @@ test("a token changed in the panel restyles the page, not the panel; reset puts 
   await expect.poll(border).toBe("rgb(51, 51, 51)");
 });
 
+test("Alt+click copies a colour token, Ctrl+Alt+click pastes it on another, as a tweak", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/design");
+  const panel = page.getByRole("dialog", { name: "Design tokens" });
+  const border = () => page.locator("#bars .toolbar .icon-button").first().evaluate((element) => getComputedStyle(element).borderTopColor);
+  const ink = page.locator('[data-colour-token="--color-ink"]');
+  const borderToken = page.locator('[data-colour-token="--color-border"]');
+
+  await borderToken.click({ modifiers: ["Control", "Alt"] });   // nothing copied yet
+  await expect(page.getByRole("status").filter({ hasText: "Nothing copied yet" })).toBeVisible();
+  await ink.click({ modifiers: ["Alt"] });
+  await borderToken.click({ modifiers: ["Control", "Alt"] });
+  await expect.poll(border).toBe("rgb(31, 36, 51)");   // --color-ink, #1f2433
+  await expect(panel.getByRole("textbox", { name: "--color-border", exact: true })).toHaveValue("#1f2433");
+  await expect(panel.getByText("1 changed")).toBeVisible();
+});
+
 test("picking an element lists only the tokens it uses", async ({ page }) => {
   await page.goto("/design");
   const panel = page.getByRole("dialog", { name: "Design tokens" });
