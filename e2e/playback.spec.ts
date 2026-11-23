@@ -58,7 +58,12 @@ test("dragging along the ruler scrubs: the picture under the pointer is selected
   await page.mouse.down();
   await page.mouse.up();
   await expect(studio.picture(2)).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator(".playhead")).toHaveCount(1);
+  // The playhead: a block over that whole picture.
+  const playhead = (await page.locator(".playhead").boundingBox())!;
+  const picked = (await studio.picture(2).boundingBox())!;
+  expect(Math.abs(playhead.x - picked.x)).toBeLessThan(8);
+  expect(playhead.width).toBeGreaterThanOrEqual(picked.width);
+  expect(playhead.width).toBeLessThan(picked.width + 12);
 });
 
 test("the loop setting is remembered after a reload", async ({ page }) => {

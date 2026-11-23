@@ -29,7 +29,7 @@ export const remembered = {
   gifSize: definePreference("gif-size", asOneOf(GIF_SIZES)),                     // Save as GIF: small, medium or full size (step 25)
   gifQuality: definePreference("gif-quality", asOneOf(GIF_QUALITIES)),               //   and low, medium or high quality
   captureSound: definePreference("capture-sound", asBoolean),          // the shutter click when a picture is taken (step 29)
-  timelineLayers: definePreference("timeline-layers", asTimelineLayers),   // which of the timeline's extra rows show (objects in time, sounds)
+  timelineLayers: definePreference("timeline-layers", asTimelineLayers),   // which of the timeline's extra rows show (objects in time, sounds), and the ruler's gradations
   cameraFraming: definePreferenceFamily("camera-framing", asFraming),  // each animation's camera zoom and where it's framed, so every picture matches
   cameraLock: definePreference("camera-lock", asBoolean),              // the camera's focus, exposure and white balance locked
 };
@@ -42,11 +42,12 @@ function asFraming(raw: unknown): Framing | undefined {
 
 // The timeline's extra rows under the pictures, each shown or hidden from the timeline's Layers
 // button. Both show at first; a missing one counts as shown.
-export type TimelineLayers = { objects: boolean; sounds: boolean };
-export const ALL_LAYERS: TimelineLayers = { objects: true, sounds: true };
+// And the ruler's gradations (its second marks and times), hidden at first.
+export type TimelineLayers = { objects: boolean; sounds: boolean; ruler: boolean };
+export const DEFAULT_LAYERS: TimelineLayers = { objects: true, sounds: true, ruler: false };
 function asTimelineLayers(raw: unknown): TimelineLayers | undefined {
   const value = asObject(raw);
-  return value && { objects: value.objects !== false, sounds: value.sounds !== false };
+  return value && { objects: value.objects !== false, sounds: value.sounds !== false, ruler: value.ruler === true };
 }
 
 // Settings the studio used to remember and no longer does, cleared once when it opens:

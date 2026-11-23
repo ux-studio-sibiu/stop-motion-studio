@@ -18,7 +18,7 @@
 
   // Hovered: the same surface, a little darker (in both themes: the stage colour is dark in both).
   &:hover:not(:disabled) { background: color-mix(in srgb, var(--color-stage) 7%, var(--color-surface)); }
-  &:disabled { opacity: 0.45; cursor: not-allowed; }
+  &:disabled { opacity: 0.45; cursor: default; }   // the normal pointer: no red "not allowed" sign
 
   // Secondary tools (timeline zoom): smaller, but still a comfortable 40 px.
   &.is-small {
@@ -69,7 +69,7 @@
   box-shadow: var(--shadow-press);
 
   &:active:not(:disabled) { transform: translateY(0.25rem); box-shadow: var(--shadow-pressed); }
-  &:disabled { opacity: 0.45; cursor: not-allowed; }
+  &:disabled { opacity: 0.45; cursor: default; }   // the normal pointer: no red "not allowed" sign
 
   &.is-capture { background: var(--color-accent); color: var(--color-on-strong); }
 }
@@ -124,7 +124,7 @@ input[type="range"] {
   }
 
   &:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 4px; border-radius: 999px; }
-  &:disabled { opacity: 0.45; cursor: not-allowed; }
+  &:disabled { opacity: 0.45; cursor: default; }   // the normal pointer: no red "not allowed" sign
 }
 
 // Dropdowns: the browser's own arrow can't be sized or placed, so it's hidden and the split buttons'
@@ -161,7 +161,7 @@ input[type="radio"] {
 
   &:checked { background-color: var(--color-go); }
   &:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
-  &:disabled { opacity: 0.45; cursor: not-allowed; }
+  &:disabled { opacity: 0.45; cursor: default; }   // the normal pointer: no red "not allowed" sign
 }
 
 input[type="checkbox"]:checked {

@@ -25,11 +25,10 @@
     .objects { position: absolute; inset: 0; width: 100%; height: 100%; }
   }
 
-  // The slot is exactly as wide as the picture lasts. The picture inside stops 5 px early, so
+  // The slot is exactly as wide as the picture lasts. The picture inside stops --frame-gap (10 px) early, so
   // there's a gap after every picture without pushing the next one off its time on the ruler.
   .frame {
-    --frame-gap: 5px;
-    --frame-radius: 6px;
+    --frame-radius: 6px;   // (--frame-gap, the space after each picture: on .timeline-scroll, which the playhead reads too)
     --thumb-inset: 4px;   // between the dotted outline and the thumbnail
 
     position: relative;
@@ -51,16 +50,8 @@
       padding: var(--thumb-inset);   // the thumbnail sits inside the dotted line, never over it
       border-radius: var(--frame-radius);
       overflow: hidden;
-      background: color-mix(in srgb, var(--color-line) 55%, var(--color-surface));   // the time after the thumbnail
-
-      // The picture's whole time: a dotted outline, around the thumbnail too.
-      &::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        border: 2px dotted var(--color-border);
-        border-radius: inherit;
-      }
+      background: #fff;   // the time after the thumbnail: pure white, no outline
+      box-shadow: 0.0625rem 0.125rem 0.25rem rgb(45 30 15 / 0.25);   // lying on the timeline, as the paper pieces do
     }
 
     // The thumbnail, once: as wide as the project's shape allows at this height, never wider
@@ -90,44 +81,53 @@
       outline-offset: -2px;
     }
 
-    // The selection ring goes over the thumbnail and the dotted part alike.
-    &.is-selected .picture::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      box-shadow: inset 0 0 0 3px var(--color-go);
-      pointer-events: none;
-    }
+    // Selected: the playhead's red block behind it shows it (_timeline.scss), no ring of its own.
 
-    // The resize grip: a 24 px hit area on the right edge, mostly inside the picture and only
-    // 4 px over the next one (more would cover a narrow neighbour, which then couldn't be
-    // clicked), drawn as a small pill. A tap on it without dragging counts as a click.
+    // The resize grip: a hit area up to 24 px wide over the gap after the picture and its last part,
+    // up to where the next picture starts and not over it (a narrow neighbour stays clickable). Drawn as a chunky tab of white paper on the right side of the picture's red playhead
+    // block, centred on its edge (in the middle of the gap): an ink outline, a solid drop shadow (as
+    // stop motion: no blur), three ink ridges across its middle to take hold of. A tap on it without
+    // dragging counts as a click.
     .grip {
       position: absolute;
       top: 0;
-      right: calc(var(--frame-gap) - 4px);   // its pill centred on the picture's visible edge
+      right: 0;   // up to the next picture
       bottom: 0;
       width: clamp(10px, 50%, 24px);   // finger-sized, but on a narrow picture only its right half: the left half drags it to a new place
       cursor: ew-resize;
       touch-action: none;   // a finger drag resizes instead of scrolling the timeline
       z-index: 3;
 
+      // The tab: 12 × 28 px, always that size, centred on the block's right edge (half a
+      // gap past the picture's).
       &::before {
         content: "";
         position: absolute;
         top: 50%;
-        right: 0;   // centred on the picture's edge
-        width: 8px;
-        height: 55%;
-        max-height: 2rem;
-        border: 2px solid var(--color-go);
+        right: calc(var(--frame-gap) / 2 - 6px);   // its middle on the block's edge, half a gap in from the slot's end
+        box-sizing: border-box;
+        width: 12px;
+        height: 1.75rem;   // always this size, however tall the pictures are
+        border: 2px solid var(--cardboard-ink, #1f1c19);
         border-radius: 4px;
-        background: var(--color-surface);
+        background: var(--cardboard-paper, #fff);
+        box-shadow: 1px 2px 0 rgb(0 0 0 / 0.3);
         transform: translateY(-50%);
       }
 
-      &:hover::before { background: var(--color-go); }
+      // The ridges: three short ink lines across the tab's middle.
+      &::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        right: calc(var(--frame-gap) / 2 - 3px);   // in the tab's middle
+        width: 6px;
+        height: 12px;
+        background: repeating-linear-gradient(to bottom, var(--cardboard-ink, #1f1c19) 0 2px, transparent 2px 5px);
+        transform: translateY(-50%);
+      }
+
+      &:hover::before { background: color-mix(in srgb, var(--cardboard-ink, #1f1c19) 10%, var(--cardboard-paper, #fff)); }   // a shade darker, as the other white paper
     }
 
     // The length while dragging, above the picture's right edge.
@@ -138,8 +138,8 @@
       padding: 0.0625rem 0.5rem;
       line-height: 1.2;
       border-radius: 999px;
-      background: var(--color-go);
-      color: var(--color-surface);
+      background: var(--color-accent);   // as the grip and the selection
+      color: var(--color-on-strong);
       font-size: var(--text-label);
       font-weight: 800;
       font-variant-numeric: tabular-nums;
@@ -147,21 +147,6 @@
       margin-right: var(--frame-gap);   // over the picture's visible edge
       transform: translateX(50%);
       z-index: 4;
-      pointer-events: none;
-    }
-
-    // Where the next capture goes: a capture-coloured dot just above the right edge. (A dot, not
-    // a bar down the edge, so it never hides the resize grip that sits there too.)
-    &.is-insert-point::after {
-      content: "";
-      position: absolute;
-      top: -0.5rem;
-      right: calc(var(--frame-gap) / 2 - 4px);   // centred in the gap
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--color-accent);
-      z-index: 2;
       pointer-events: none;
     }
   }

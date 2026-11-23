@@ -25,7 +25,7 @@ export function PlaybackBar({ onSpeed, onSafeMargin, children }: { onSpeed: (fro
     <footer className="playback-bar">
       <div ref={ref} className="nsc-playback-options option-menu">
         <button type="button" className={`icon-button toggle play ${fill}`} aria-label={isPlaying ? "Pause" : "Play"} title={`${isPlaying ? "Pause" : "Play"} (Enter)`} disabled={!hasPictures} onClick={togglePlay}>
-          {isPlaying ? <Pause size={24} /> : <Play size={24} />}
+          {isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}   {/* filled: solid shapes, like a player's */}
           {/* Both words in one spot, only one visible: the button keeps the width of the longer one. */}
           <span className="play-label" aria-hidden="true">
             <span className={isPlaying ? "is-hidden" : undefined}>Play</span>

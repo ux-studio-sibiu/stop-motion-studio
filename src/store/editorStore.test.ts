@@ -113,6 +113,13 @@ describe("ui slice", () => {
     expect(store.getState().timelineZoom).toBe(MAX_TIMELINE_ZOOM);
   });
 
+  it("zooms the timeline in up to 16 times the usual 160 px a second", () => {
+    store.getState().setTimelineZoom(2560);
+    expect(store.getState().timelineZoom).toBe(2560);
+    store.getState().setTimelineZoom(2561);
+    expect(store.getState().timelineZoom).toBe(2560);
+  });
+
   it("survives loading another project (it's about the screen, not the animation)", () => {
     store.getState().setTimelineZoom(200);
     store.getState().loadProject(project, []);

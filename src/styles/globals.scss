@@ -1,28 +1,13 @@
 @use "breakpoints" as *;
 @use "controls";
 @use "fonts";
+@use "colours" as *;
 
-// Design tokens. Light is the default on :root, dark redefines the same names,
-// so no colour exists only inside a media query.
+// Design tokens. The colours, light by default and dark redefining the same names, are in
+// _colours.scss.
 :root {
   --font-ui: "Nunito", "Nunito Fallback";   // self-hosted (_fonts.scss)
-  --color-bg: #fbf7f0;
-  --color-studio: #eeeeee;   // the studio's background, under the graph paper
-  --color-surface: #ffffff;
-  --color-ink: #1f2433;
-  --color-muted: #6a7184;
-  --color-line: #e6e0d5;     // light rules and fills: dividers, the ruler, pushed-back tabs
-  --color-border: #333333;   // the outlines of panels, controls and cards: dark enough to hold them apart on the graph paper
-  --color-faint: #f3ede3;
-  --color-ruler: #999999;    // the timeline ruler's second marks
-  --color-accent: #f2544a;     // capture: the one loud colour
-  --color-go: #24a06b;         // play, and what's on, chosen or selected: on-buttons, sliders, checkboxes, selected pictures and objects
-  --color-on-strong: #ffffff;  // text and icons on the strong colours: accent, go, danger, and the scrim on photos
-  --color-focus: #3b6cf6;      // keyboard focus, and where a drag will land
-  --color-danger: #b3261e;     // deleting; darker than capture red so the two never look alike
-  --color-stage: #15171c;      // behind photos, dark in both schemes
-  --color-stage-ink: #b9bfcc;
-  --color-scrim: rgb(0 0 0 / 0.55);   // behind labels on photos: the stage note, picture numbers
+  @include light-colours;   // _colours.scss
 
   --hit: 3.5rem;               // smallest touch target (56px)
   --hit-big: 5.5rem;           // capture / play
@@ -51,29 +36,10 @@
   --text-body: 1rem;
   --text-title: 1.125rem;      // panel titles
   --text-heading: 1.5rem;      // page headings
-
-  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #14161c;
-    --color-studio: #101217;
-    --color-surface: #1d2029;
-    --color-ink: #eef0f5;
-    --color-muted: #9aa1b2;
-    --color-line: #2c303b;
-    --color-border: #4a5162;
-    --color-faint: #232733;
-    --color-ruler: #5b6172;
-    --color-accent: #ff6559;
-    --color-go: #33b97f;
-    --color-focus: #7d9bff;
-    --color-danger: #e2584f;
-    --color-stage: #0a0b0e;      // darker than the page, so the frame still reads
-
-    color-scheme: dark;
-  }
+  :root { @include dark-colours; }
 }
 
 *,

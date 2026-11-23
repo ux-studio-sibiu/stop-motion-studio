@@ -1,0 +1,25 @@
+@use "@/styles/cardboard" as *;
+
+// The studio in cardboard, like the home page (@/styles/cardboard): the buttons beside the stage
+// (back to the animations, Save, Help) and the ones under it (Play and See-through, each joined to
+// its options arrow) are pieces of cardboard with paper on them. The timeline's own: _timeline.scss.
+.nsc-studio {
+  // Staying where they are under the pointer (only their paper lighter).
+  // All three the same size: the back arrow's (its 30 px chevron, 1rem each side, the 8 px edges).
+  // Only the rail's own three, not the buttons inside the Save menu (its list, the GIF settings).
+  .toolbar-start > a.icon-button,
+  .toolbar-start .save-button,
+  .toolbar-side > button.icon-button {
+    @include cardboard-button(8px, $lift: false);
+    width: 4.875rem;
+  }
+
+  .playback-bar > .option-menu { @include cardboard-split(8px); }
+
+  // Their labels in capitals, like the home page's NEW (their names for screen readers stay as they are).
+  .playback-bar > .option-menu > .toggle { text-transform: uppercase; }
+
+  // See-through, labelled just "See" (its full name for screen readers and in its tooltip): narrow,
+  // a little more room after the word than before the icon.
+  .playback-bar > .nsc-see-through > .toggle { padding-inline: var(--space-2) var(--space-3); }
+}

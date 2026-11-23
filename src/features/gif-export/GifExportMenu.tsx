@@ -12,8 +12,8 @@ import { useExport } from "@/studio/useExport";
 import "./_gif-export.scss";
 
 // Save as GIF (step 25), in the toolbar: the button makes the GIF and downloads it; the arrow
-// beside it opens its options (remembered): the size (small, medium, or full size: the safe zone's
-// part as it is) and the quality, a slider of three steps (GIF_ENCODING: lower squeezes harder).
+// beside it opens its options (remembered): the size, a slider of three steps (small, medium, or full
+// size: the safe zone's part as it is), and the quality, another (GIF_ENCODING: lower squeezes harder).
 // While it's made the button shows how far it got, and a cross stops it (useExport). The GIF is
 // what's inside the dotted line on the stage (the safe zone), every picture as long as it's held,
 // with its objects and the overlays showing then, looping. A big file (over 20 MB) is still saved;
@@ -52,6 +52,7 @@ export function GifExportMenu() {
     failed: "The GIF couldn't be made. Try again, or try Small.",
   });
 
+  const sizeText = `${SIZE_NAMES[size].toLowerCase()}, ${gifSize(exported, size).width} px wide`;
   const percent = Math.round((progress ?? 0) * 100);
   return (
     <div ref={ref} className="nsc-gif-export export-menu option-menu opens-below">
@@ -66,16 +67,10 @@ export function GifExportMenu() {
 
       {open && !busy && (
         <div className="options" role="group" aria-label="GIF options">
-          <div className="option">
-            <span>Size</span>
-            <div className="sizes" role="group" aria-label="GIF size">
-              {GIF_SIZES.map((option) => (
-                <button key={option} type="button" className={`icon-button size-option${option === size ? " is-on" : ""}`} aria-pressed={option === size} onClick={() => setSize(option)}>
-                  {SIZE_NAMES[option]} <span className="size-width">{gifSize(exported, option).width} px wide</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          <label className="option">
+            <span>Size: {sizeText}</span>
+            <input type="range" min={0} max={GIF_SIZES.length - 1} step={1} value={GIF_SIZES.indexOf(size)} aria-label="Size" aria-valuetext={sizeText} onChange={(event) => setSize(GIF_SIZES[Number(event.target.value)])} />
+          </label>
           <label className="option">
             <span>Quality: {QUALITY_NAMES[quality]}</span>
             <input type="range" min={0} max={GIF_QUALITIES.length - 1} step={1} value={GIF_QUALITIES.indexOf(quality)} aria-label="Quality" aria-valuetext={QUALITY_NAMES[quality]} onChange={(event) => setQuality(GIF_QUALITIES[Number(event.target.value)])} />

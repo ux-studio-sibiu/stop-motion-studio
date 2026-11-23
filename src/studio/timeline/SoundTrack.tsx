@@ -60,8 +60,8 @@ export function SoundTrack({ frames, tickWidth, fps, onChange }: { frames: reado
   };
 
   return (
-    <div className="sound-track" data-tick-width={tickWidth} role="group" aria-label="Sound Layer" style={{ width: Math.max(1, length + 8) * tickWidth, "--lanes": rows } as CSSProperties}>
-      {clips.length === 0 && frames.length > 0 && <span className="track-hint">Drag a sound here from the Sounds tab</span>}
+    <div className="sound-track" data-tick-width={tickWidth} role="group" aria-label="Sound Layer" title="Drag a sound here from the Sounds tab" style={{ width: Math.max(1, length + 8) * tickWidth, "--lanes": rows } as CSSProperties}>
+      {clips.length === 0 && frames.length > 0 && <span className="track-hint">Sounds</span>}
       {clips.map((clip) => {
         const name = soundName(clip.sound);
         return (

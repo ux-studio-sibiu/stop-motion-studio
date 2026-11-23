@@ -22,7 +22,9 @@ test("with a picture selected, new pictures go right after it, in the order they
   // Picked with the keys, so the camera stays on (a click opens the Picture tab, turning it off).
   await studio.track().focus();
   await page.keyboard.press("Home");
-  await expect(page.locator(".frame.is-insert-point")).toHaveCount(1);   // the marker shows where
+  // The playhead marks that picture: the new ones go right after it.
+  const marked = (await page.locator(".playhead").boundingBox())!;
+  expect(Math.abs(marked.x - (await studio.picture(1).boundingBox())!.x)).toBeLessThan(8);
   await studio.takePictures(2);
   const now = await studio.order();
   expect(now).toHaveLength(5);
@@ -41,6 +43,7 @@ test("Shift+click selects a range, Ctrl+click adds or removes one; Delete remove
   expect(await studio.selectedOrder()).toEqual([taken[1], taken[3]]);
   await studio.picture(5).click({ modifiers: ["ControlOrMeta"] });
   await expect(studio.deleteButton()).toHaveAccessibleName("Delete 3 pictures");
+  await expect(page.locator(".playhead")).toHaveCount(3);   // the playhead marks each selected picture, gaps and all
 
   await page.keyboard.press("Delete");
   await expect.poll(() => studio.order()).toEqual([taken[0], taken[2]]);

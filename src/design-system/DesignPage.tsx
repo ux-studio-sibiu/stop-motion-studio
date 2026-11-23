@@ -14,7 +14,7 @@ import { ObjectTile } from "@/features/objects/ObjectTile";
 import { ShapeSettings } from "@/features/objects/ShapeSettings";
 import { TextSettings } from "@/features/objects/TextSettings";
 import { ObjectIcon } from "@/studio/ObjectIcon";
-import { ALL_LAYERS } from "@/studio/remembered";
+import { DEFAULT_LAYERS } from "@/studio/remembered";
 import { LayersMenu } from "@/studio/timeline/LayersMenu";
 import { PanelTab, SidePanel } from "@/studio/SidePanel";
 import type { Camera as CameraState } from "@/studio/useCamera";
@@ -95,7 +95,7 @@ export function DesignPage() {
         </nav>
       </header>
 
-      <Section id="tokens" title="Tokens" intro="Every design token in globals.scss (src/design-system/tokens.ts), by family. Hover or focus one for its value and what it's for.">
+      <Section id="tokens" title="Tokens" intro="Every design token in globals.scss and _colours.scss (src/design-system/tokens.ts), by family. Hover or focus one for its value and what it's for.">
         <Specimen label="All tokens" note="light or dark, whichever shows; tweaked in the panel" wide board>
           <div className="ds-token-board">
             {TOKEN_GROUPS.map((group) => (
@@ -321,7 +321,7 @@ export function DesignPage() {
         <Specimen label="The timeline" note="tools (the real Layers menu first, zoom, undo and redo), ruler, pictures (selected, on the stage, long), the grip, objects in time, sounds" wide studio>
           <section className="timeline ds-timeline">
             <div className="timeline-tools">
-              <LayersMenu layers={ALL_LAYERS} onChange={nothing} />
+              <LayersMenu layers={DEFAULT_LAYERS} onChange={nothing} />
               <span className="tools-gap" />
               <button type="button" className="icon-button is-small"><ZoomOut size={20} /></button>
               <button type="button" className="icon-button is-small"><ZoomIn size={20} /></button>

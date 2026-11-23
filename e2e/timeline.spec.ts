@@ -9,6 +9,7 @@ test.beforeEach(async ({ studio }) => {
 });
 
 test("each picture is as wide as it lasts, and the ruler counts seconds", async ({ studio, page }) => {
+  await studio.showGradations();
   for (const number of [1, 2, 3]) expect(await studio.widthOf(studio.picture(number))).toBeCloseTo(20, 0);
   await expect(page.locator(".ruler-label").first()).toHaveText("0s");
   await expect(page.locator(".ruler-label").nth(1)).toHaveText("1s");
@@ -78,26 +79,26 @@ test("zooming changes how wide a second is, not how long pictures last", async (
 test("each animation remembers its own zoom and scroll position after a reload", async ({ studio, page }) => {
   const scroller = page.locator(".timeline-scroll");
   const scrollLeft = () => scroller.evaluate((element) => element.scrollLeft);
-  for (let i = 0; i < 4; i++) await page.getByRole("button", { name: "Zoom in" }).click();   // 640 px/s: 80 px a picture
-  await studio.seedPictures(13);   // 16 pictures, 1280 px: wider than the timeline
+  for (let i = 0; i < 4; i++) await page.getByRole("button", { name: "Zoom in" }).click();   // 810 px/s: 101.25 px a picture
+  await studio.seedPictures(13);   // 16 pictures, 1620 px: wider than the timeline
   await scroller.evaluate((element) => { element.scrollLeft = 300; });
   await page.waitForTimeout(400);   // the scroll is saved once it stops
   const animation = page.url();
 
   await page.reload();
   await expect(studio.pictures()).toHaveCount(16);
-  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(80, 0);
+  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(101.25, 0);
   await expect.poll(scrollLeft).toBeCloseTo(300, -1);
 
   await studio.open();   // a new animation: the last zoom used, scrolled to the start
   await studio.seedPictures(1);
-  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(80, 0);
+  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(101.25, 0);
   await page.getByRole("button", { name: "Zoom out" }).click();   // this one gets its own zoom
-  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(53.3, 0);
+  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(67.5, 0);
 
   await page.goto(animation);   // the first one kept its own view
   await expect(studio.pictures()).toHaveCount(16);
-  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(80, 0);
+  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(101.25, 0);
   await expect.poll(scrollLeft).toBeCloseTo(300, -1);
 });
 
@@ -122,6 +123,7 @@ test("Ctrl + mouse wheel over the timeline zooms too", async ({ studio, page }) 
 });
 
 test("a long picture shows its thumbnail once and a gap before the next, still on time", async ({ studio, page }) => {
+  await studio.showGradations();
   await studio.picture(1).click();
   await studio.dragGrip(1, 300);   // 16 ticks: 2 s, 320 px, much wider than its thumbnail
   await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(320, 0);
@@ -130,10 +132,10 @@ test("a long picture shows its thumbnail once and a gap before the next, still o
   expect(thumb).toBeLessThan(250);   // once, not stretched or repeated along the picture
   expect(await studio.thumbPhoto(1).evaluate((element) => getComputedStyle(element).backgroundRepeat)).toBe("no-repeat");
 
-  // The next picture starts exactly at 2 s on the ruler, and its visible part 5 px after the first ends.
+  // The next picture starts exactly at 2 s on the ruler, and its visible part 10 px after the first ends.
   const [secondSlot, firstPicture, twoSeconds] = await Promise.all([studio.picture(2).boundingBox(), studio.picture(1).locator(".picture").boundingBox(), page.locator(".ruler-label").nth(2).boundingBox()]);
   expect(secondSlot!.x).toBeCloseTo(twoSeconds!.x, 0);
-  expect(secondSlot!.x - (firstPicture!.x + firstPicture!.width)).toBeCloseTo(5, 0);
+  expect(secondSlot!.x - (firstPicture!.x + firstPicture!.width)).toBeCloseTo(10, 0);
 });
 
 test("the thumbnails show the pictures that were taken", async ({ studio }) => {
@@ -173,4 +175,20 @@ test("the next-picture slot adds an empty picture after the selected one, one un
 
   await page.reload();   // saved, and still empty
   await expect(studio.picture(2)).toHaveClass(/is-empty/);
+});
+
+test("the ruler's gradations are off at first; the Layers menu turns them on, and that's remembered", async ({ studio, page }) => {
+  await studio.withoutCamera();
+  await studio.open();
+  await studio.seedPictures(2);
+  const labels = page.locator(".ruler-label");
+  await expect(labels).toHaveCount(0);   // no times, no marks
+
+  await page.getByRole("button", { name: "Timeline layers" }).click();
+  await page.getByRole("checkbox", { name: "Gradations" }).check();
+  await expect(labels.first()).toHaveText("0s");
+  await expect(page.locator(".ruler")).toHaveClass(/has-gradations/);
+
+  await page.reload();
+  await expect(labels.first()).toHaveText("0s");
 });

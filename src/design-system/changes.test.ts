@@ -11,7 +11,7 @@ describe("Copy changes", () => {
     });
     expect(message.split("\n")).toEqual([
       "Design-system tweaks for stop-motion-studio: please make these permanent in",
-      "src/styles/globals.scss (light theme in :root, dark theme in the prefers-color-scheme block),",
+      "src/styles/globals.scss and src/styles/_colours.scss (colours: light-colours, and dark-colours for the dark theme),",
       "and in src/design-system/tokens.ts, so the token test keeps passing:",
       "- --color-border (light): #333333 -> #9d927f   (outlines of panels, controls and cards)",
       "- --color-focus (dark): #7d9bff -> #8fa8ff   (keyboard focus rings, and where a drag will land)",

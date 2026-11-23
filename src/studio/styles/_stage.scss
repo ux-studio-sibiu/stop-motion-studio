@@ -1,34 +1,52 @@
 @use "@/styles/breakpoints" as *;
 @use "@/styles/checkerboard" as *;
+@use "@/styles/cardboard" as *;
 
 // The stage: the 16:9 frame, the live camera, the picture drawn on it, see-through, the capture flash.
 .nsc-studio {
-  // The stage keeps the project's 16:9 frame centred in whatever space the grid gives it.
+  // The stage keeps the project's 16:9 frame centred in whatever space the grid gives it: a sheet of
+  // white paper (the frame's border) on a piece of cardboard (::before, behind it), square, the
+  // paper reaching over the inner part of the cardboard's edge as on the other pieces. --stage-width:
+  // the frame's inside, worked out once for both, leaving room for the paper and the cardboard.
   .stage {
+    --frame-border: 8px;   // the white paper round the picture: thicker than the other lines, the stage is the main thing
+    --stage-edge: 10px;    // the cardboard's edge
+    --stage-margin: calc(var(--stage-edge) * 0.6);   // the cardboard showing past the paper
+    --stage-width: round(down, min(100cqw, 100cqh * 16 / 9) - 2 * (var(--frame-border) + var(--stage-margin)), 16px);   // ×16, so the height (×9/16) is whole too
+
     grid-area: stage;
     display: grid;
     place-items: center;
     min-height: 0;
     container-type: size;
+
+    &::before {
+      @include cardboard(var(--stage-edge));
+      content: "";
+      grid-area: 1 / 1;
+      box-sizing: border-box;
+      width: calc(var(--stage-width) + 2 * (var(--frame-border) + var(--stage-margin)));
+      height: calc(var(--stage-width) * 9 / 16 + 2 * (var(--frame-border) + var(--stage-margin)));
+      pointer-events: none;
+    }
   }
 
   // The 16:9 is the inside (content-box, no padding), in whole pixels, so the camera and pictures
   // (inset 0) fill it exactly: with the border inside the 16:9 or a fractional size, a picture
   // fitted without stretching leaves a 1-2 px sliver where the dark background shows.
   .stage-frame {
-    --frame-border: 8px;   // thicker than the other lines: the stage is the main thing
-
     position: relative;
+    grid-area: 1 / 1;   // over the cardboard (.stage::before)
     display: grid;
     place-items: center;
     box-sizing: content-box;
-    width: round(down, min(100cqw, 100cqh * 16 / 9) - 2 * var(--frame-border), 16px);   // ×16, so the height (×9/16) is whole too
+    width: var(--stage-width);
     aspect-ratio: 16 / 9;
     padding: 0;
     overflow: hidden;
     background: var(--color-stage);
-    border: var(--frame-border) solid var(--color-border);
-    border-radius: var(--radius);
+    border: var(--frame-border) solid var(--cardboard-paper);   // white paper, square (as on the other pieces)
+    border-radius: 0;
     color: var(--color-stage-ink);
     text-align: center;
   }

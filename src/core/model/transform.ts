@@ -50,8 +50,14 @@ export function resetTransform(): Transform {
   return { ...DEFAULT_TRANSFORM };
 }
 
+// The same, or too little apart to see: positions and sizes are fractions of the picture, so a
+// billionth is far under a pixel. (A drag that snaps back to where it started lands there give or
+// take floating-point rounding, and mustn't count as a move.)
+const UNSEEN = 1e-9;
+const near = (a: number, b: number) => Math.abs(a - b) < UNSEEN;
+
 export function sameTransform(a: Transform, b: Transform): boolean {
-  return a.x === b.x && a.y === b.y && a.scale === b.scale && a.rotation === b.rotation && a.flipX === b.flipX && a.flipY === b.flipY;
+  return near(a.x, b.x) && near(a.y, b.y) && near(a.scale, b.scale) && near(a.rotation, b.rotation) && a.flipX === b.flipX && a.flipY === b.flipY;
 }
 
 // The angle (degrees, clockwise) from `centre` to `point`: for the rotate handle.

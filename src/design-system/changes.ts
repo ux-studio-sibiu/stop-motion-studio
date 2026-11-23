@@ -5,7 +5,7 @@ import { TOKENS } from "./tokens";
 // it had and the new one, and what the token is for, so the change can be made, and checked, from
 // the message alone. Only real changes: a tweak back at the token's value isn't one.
 //
-// Which theme a line is for follows how globals.scss works: a token the dark theme doesn't
+// Which theme a line is for follows how the tokens work (globals.scss, colours in _colours.scss): a token the dark theme doesn't
 // override has one value for both, so a light tweak of it changes both themes; a dark tweak of it
 // adds a dark override.
 
@@ -28,7 +28,7 @@ export function changesMessage(tweaks: Tweaks): string {
   if (lines.length === 0) return "";
   return [
     "Design-system tweaks for stop-motion-studio: please make these permanent in",
-    "src/styles/globals.scss (light theme in :root, dark theme in the prefers-color-scheme block),",
+    "src/styles/globals.scss and src/styles/_colours.scss (colours: light-colours, and dark-colours for the dark theme),",
     "and in src/design-system/tokens.ts, so the token test keeps passing:",
     ...lines,
   ].join("\n");

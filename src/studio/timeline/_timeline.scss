@@ -1,28 +1,36 @@
+@use "sass:math";
 @use "@/styles/breakpoints" as *;
+@use "@/styles/cardboard" as *;
+@use "@/styles/colours" as *;
 
 // The timeline: tools, ruler, playhead, the track, dragging and the next-picture slot.
 .nsc-studio {
-  // Docked to the bottom of the screen: it reaches down through the studio's padding, with
-  // square bottom corners and its scrollbar along the very bottom edge.
+  // A piece of bare cardboard (@/styles/cardboard, no paper on it), square, docked to the bottom
+  // of the screen and running from edge to edge: it reaches through the studio's padding down and
+  // to both sides, so only its top edge shows, the cardboard right to the window's sides, and its
+  // scrollbar along the very bottom. Its shadow isn't a filter: the picture being dragged is
+  // fixed to the window, and a filter would make it follow the timeline.
   .timeline {
     grid-area: timeline;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     gap: var(--space-1);
     min-width: 0;
-    margin-bottom: calc(-1 * var(--space-3));
-    padding: var(--space-2) 0 0;   // no side padding: the pictures scroll right up to the borders
-    background: var(--color-surface);
-    border: var(--line-width) solid var(--color-border);
-    border-bottom: none;
-    border-radius: var(--radius) var(--radius) 0 0;
+    margin: 0 calc(-1 * var(--space-3)) calc(-1 * var(--space-3));   // the studio's padding (a space-3 all round)
+    padding: 0;   // no side padding: the pictures scroll right up to the window's sides; the top's is inside the scroller (and the phone's tools row), so the playhead reaches the top edge's inside
+    @include cardboard(8px, $shadow: box);   // as the tools' tab, which is part of the same piece
+    @include light-colours;   // what's on it keeps the light colours in both themes: dark ink on the cardboard
+    color: var(--cardboard-ink);
+    --row-line: color-mix(in srgb, var(--cardboard-ink) 40%, transparent);   // the extra rows' dashed dividers and their names, faded ink
+    border-width: var(--edge) 0 0;   // the top edge only
+    border-image-width: var(--edge) 0 0;
   }
 
   .timeline-tools {
     position: relative;
-    z-index: 10;   // above the pictures, the playhead (6) and the rows, so the Layers list covers them all
+    z-index: 10;   // above the pictures, the playhead and the rows, so the Layers list covers them all
     display: flex;
-    padding: 0 var(--space-3);   // on phones, a row inside the timeline (the tab sets its own)
+    padding: var(--space-2) var(--space-3) 0;   // on phones, a row inside the timeline, at its top (the tab sets its own)
     align-items: center;
     gap: var(--space-1);
 
@@ -41,43 +49,69 @@
   }
 
   // From tablet width on, the tools are a tab on the timeline's top-left edge, as wide as its
-  // contents and rounded on its two top corners. It rises into the free space beside the Play
-  // buttons, so the timeline is a tools row shorter and the stage gets that height. (On phones the
-  // Play buttons would collide with it, so it stays a row there.)
+  // contents, of one piece with it: the tab has no bottom edge and comes down over the timeline's top
+  // edge, its left edge running on into the timeline's, its cardboard into the timeline's. (No
+  // shadow of its own: it would fall on the timeline under it.) It
+  // rises into the free space beside the Play buttons, so the timeline is a tools row shorter and
+  // the stage gets that height. (On phones the Play buttons would collide with it, so it stays a row
+  // there.)
   @include respond-to("tablet") {
     --timeline-height: 9.5rem;   // the tools row no longer inside it
 
-    .timeline {
-      position: relative;
-      grid-template-rows: minmax(0, 1fr);
-      border-top-left-radius: 0;   // the tab sits on that corner
-    }
+    .timeline { grid-template-rows: minmax(0, 1fr); }
 
     .timeline-tools {
+      @include cardboard(8px, $shadow: none);
       position: absolute;
-      bottom: 100%;   // measured from inside the timeline's border, so the tab ends exactly over it: one shape
-      left: calc(-1 * var(--line-width));
-      padding: var(--space-2) var(--space-3) var(--space-1);
-      background: var(--color-surface);
-      border: var(--line-width) solid var(--color-border);
-      border-bottom: none;
-      border-radius: var(--radius) var(--radius) 0 0;
+      isolation: isolate;   // its cardboard out under the slant (::before) stays behind its buttons
+      // Down to the inside of the timeline's top edge (measured from inside the timeline), covering
+      // it; at the window's side, as the timeline.
+      bottom: 100%;
+      left: 0;
+      // Its right side is cut at 45°, from its top corner down to the timeline's top edge: no edge of
+      // its own there; its cardboard (::before) reaches out past it and is cut along that line, and the
+      // cut edge (::after) is the edge photo's strip laid along it. A slant as tall as the tab's
+      // inside (--slant: fixed, its buttons' height and its padding), so it can be worked out.
+      --slant: calc(2.5rem + var(--space-1) + var(--space-2));
+      box-sizing: content-box;
+      height: 2.5rem;   // its buttons'
+      padding: var(--space-1) var(--space-2) var(--space-2) var(--space-3);   // the first button as far in as the pictures
+      border-width: var(--edge) 0 0;   // only the top edge: no bottom (it's part of the timeline), no left (at the window's side), the right one slanted
+      border-image-width: var(--edge) 0 0;
 
-      // The inside corner where the tab's right side meets the timeline's top edge: a small
-      // square just outside the tab, filled with the panel colour except for a quarter circle
-      // (centred on its top-right corner), with a 1 px ring in the border colour along the curve.
-      &::after {
-        --r: 12px;
-
+      // Its cardboard's surface, out to the right under the slant and cut along it (out past the tab's
+      // own box nothing else is there), reaching a little under the edge strips so no gap shows.
+      &::before {
         content: "";
         position: absolute;
+        inset: calc(var(--edge) * -#{$paper-reach});
+        right: calc(-1 * (var(--slant) + var(--edge)));
         bottom: 0;
-        left: 100%;
-        width: var(--r);
-        height: var(--r);
-        background: radial-gradient(circle at 100% 0, transparent calc(var(--r) - var(--line-width) - 0.5px), var(--color-border) calc(var(--r) - var(--line-width)), var(--color-border) var(--r), var(--color-surface) calc(var(--r) + 0.5px));
+        z-index: -1;
+        background: $surface 0 0 / calc(var(--edge) * #{math.div($surface-tile, $edge-slice)}) repeat;
+        clip-path: polygon(0 0, calc(100% - var(--slant) - var(--edge)) 0, calc(100% - var(--edge) / 2) 100%, 0 100%);   // its bottom end short of the timeline's edge, which shows up to the slant
         pointer-events: none;
       }
+
+      // The slanted edge: from the tab's top right corner down to the timeline's top edge, where it
+      // meets the timeline's own. Turned about that corner; both its ends cut level (along the tab's
+      // top edge and the timeline's), so the edges meet square: it starts an edge's width earlier on
+      // its inside.
+      &::after {
+        content: "";
+        position: absolute;
+        top: calc(-1 * var(--edge));
+        left: calc(100% - var(--edge));
+        width: calc(var(--slant) * 1.4142 + var(--edge) + 2px);   // 2 px more, into the timeline's edge, so the two join with no gap
+        height: var(--edge);
+        background: cardboard-edge-strip(top);
+        transform-origin: var(--edge) 0;
+        rotate: 45deg;
+        clip-path: polygon(var(--edge) 0, 100% 0, calc(100% - var(--edge)) 100%, 0 100%);
+        pointer-events: none;
+      }
+
+      .tools-gap { width: var(--space-2); }   // narrower than in the row: the tab has to fit beside the Play buttons
     }
   }
 
@@ -87,9 +121,10 @@
   // sums that turn a scroll position into a time (timelineInset).
   .timeline-scroll {
     --timeline-inset: var(--space-3);
+    --frame-gap: 10px;   // the space after each picture (_frame.scss), inside its own time: pictures meet exactly in time, apart on screen
 
     position: relative;   // for the playhead
-    padding: 0 var(--timeline-inset);
+    padding: var(--space-1) var(--timeline-inset) 0;   // the room above the ruler inside the scroller (the playhead covers it): the ruler's gradations centred between the tab and the pictures
     display: grid;
     grid-template-rows: 1.25rem minmax(0, 1fr) auto;   // ruler, pictures, objects in time
     align-content: stretch;
@@ -99,58 +134,61 @@
     overflow-x: scroll;
     overflow-y: hidden;
     overscroll-behavior-x: contain;
+    scrollbar-color: color-mix(in srgb, var(--cardboard-ink) 45%, transparent) transparent;   // its track see-through: the cardboard under it
   }
 
-  // The playhead: a line over ruler and track, with a knob on the ruler.
+  // The playhead, which is the selection too (useScrub): a solid red block behind each selected
+  // picture (one, on the picture playing, while playing), from the ruler down through the rows: red
+  // round the picture and in the gaps beside it, its sides in the middle of the gaps. The first
+  // selected is where Play starts, the last where the next picture goes. It jumps from picture to
+  // picture, no gliding: stop motion. Solid red, over the ruler and its gradations, under the
+  // pictures and the rows (.track and the rows are a layer above it).
   .playhead {
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 2px;
-    margin-left: -1px;
+    z-index: 1;
+    margin-left: calc(var(--frame-gap) / -2);   // its sides in the middle of the gaps either side of the picture (each picture's gap is on its right)
     background: var(--color-accent);
     pointer-events: none;
-    z-index: 6;
-
-    &::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 50%;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--color-accent);
-      transform: translateX(-50%);
-    }
-
-    // Stopped, it stands in the gap before the picture Play starts from (centred in the 5 px gap
-    // at the end of the picture before), not on that picture's edge.
-    &:not(.is-playing) { transform: translateX(-2.5px); }
   }
 
-  // One faint line per mark (every second, finer when zoomed in), drawn as a repeating
-  // background instead of hundreds of elements; the labels are the only nodes.
+  .track,
+  .overlay-track,
+  .sound-track { z-index: 2; }   // over the playhead
+
+  // While playing, the playhead is the only mark: no resize grip.
+  .timeline-scroll:has(.playhead.is-playing) .frame.is-selected .grip { display: none; }
+
+  // The ruler: drag along it to scrub. Its gradations (the second marks, short ticks along the
+  // bottom, and the times) only with the Layers menu's Gradations on (has-gradations); off at first.
   .ruler {
     position: relative;
-    min-width: 100%;
-    cursor: col-resize;   // drag along it to scrub
+    min-width: 100%;   // as wide as the pictures (the grid's column), no wider: no empty room to scroll into
+    cursor: grab;   // the playhead is grabbed and moved
+    &:active { cursor: grabbing; }
     touch-action: none;
-    background-image: linear-gradient(to right, var(--color-ruler) 1px, transparent 1px);   // the second marks
-    background-repeat: repeat-x;
-    background-position: left bottom;
-    border-bottom: 1px solid var(--color-ruler);
+
+    // A line across, halfway between the tab and the pictures (10 px down the ruler's 20, under its
+    // 4 px of room above), the times just above it, and the second marks: short ticks crossing it,
+    // 3 px each side (their spacing: inline, with the line's size).
+    &.has-gradations {
+      background-image:
+        linear-gradient(to right, var(--cardboard-ink) 1px, transparent 1px),
+        linear-gradient(var(--cardboard-ink), var(--cardboard-ink));
+      background-repeat: repeat-x, no-repeat;
+      background-position: 0 7px, 0 10px;
+    }
   }
 
   .ruler-label {
     position: absolute;
-    top: 0;
+    top: -4px;   // just above the line (into the room above the ruler)
     padding-left: 0.25rem;
-    color: var(--color-muted);
+    color: var(--cardboard-ink);
     font-size: var(--text-tiny);
     font-weight: 700;
     line-height: 1;
-    opacity: 0.8;
     pointer-events: none;
   }
 
@@ -180,13 +218,14 @@
 
     position: relative;
     min-width: 100%;
-    height: calc(var(--lanes, 1) * var(--lane-height) + var(--space-1));
-    margin-bottom: var(--space-2);
-    border-radius: var(--radius-small);
-    background: var(--color-faint);
+    // Spaced evenly: the same room above and below its content, the dashed line above it.
+    box-sizing: content-box;
+    height: calc(var(--lanes, 1) * var(--lane-height));
+    padding-block: var(--space-1);
+    border-top: 2px dashed var(--row-line);   // no background: a dashed line above each extra row (they're there only when the Layers menu shows them)
     user-select: none;
 
-    &[data-dropping="true"] { box-shadow: inset 0 0 0 2px var(--color-focus); background: color-mix(in srgb, var(--color-focus) 12%, var(--color-faint)); }
+    &[data-dropping="true"] { box-shadow: inset 0 0 0 2px var(--color-focus); background: color-mix(in srgb, var(--color-focus) 12%, transparent); }
   }
 
   // An empty row's hint (objects in time, sounds), kept in view while the row scrolls.
@@ -195,8 +234,8 @@
     left: var(--space-2);
     display: inline-block;
     padding: 0 var(--space-2);
-    color: var(--color-muted);
-    font-size: var(--text-caption);
+    color: var(--row-line);   // as the dashed lines (what it's for: the row's tooltip)
+    font-size: var(--text-small);
     font-weight: 700;
     line-height: var(--lane-height);
     pointer-events: none;
@@ -205,7 +244,7 @@
   .overlay-bar,
   .sound-bar {
     position: absolute;
-    top: calc(var(--lane, 0) * var(--lane-height) + 2px);
+    top: calc(var(--space-1) + var(--lane, 0) * var(--lane-height) + 2px);   // under the row's room above (its padding)
     box-sizing: border-box;
     height: calc(var(--lane-height) - 4px);
     min-width: 6px;

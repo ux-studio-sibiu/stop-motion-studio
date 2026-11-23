@@ -153,6 +153,23 @@ test("the side panel's tabs switch between camera and picture, and the arrow key
   await expect(page.getByRole("tab", { name: "Picture" })).toHaveAttribute("aria-selected", "true");
 });
 
+test("a new animation always opens on the Camera tab, whichever tab was open last", async ({ studio, projects, page }) => {
+  await studio.withoutCamera();
+  await studio.open();
+  await studio.seedPictures(1);
+  const cameraTab = page.getByRole("tab", { name: "Camera" });
+  await page.getByRole("tab", { name: "Objects" }).click();
+
+  await studio.open();   // a new one, from the studio's own address
+  await expect(cameraTab).toHaveAttribute("aria-selected", "true");
+
+  await page.getByRole("tab", { name: "Objects" }).click();
+  await projects.open();
+  await projects.newButton().click();   // and from New animation on the home page
+  await expect(page).toHaveURL(/\/studio\?project=/);
+  await expect(cameraTab).toHaveAttribute("aria-selected", "true");
+});
+
 test("the safe zone can be set from 0 to 60 px; it's saved with the animation and undoable", async ({ studio, page }) => {
   await studio.withoutCamera();
   await studio.open();

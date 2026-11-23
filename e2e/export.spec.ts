@@ -42,18 +42,18 @@ test("the GIF size is picked in its options and remembered", async ({ studio, pa
   await studio.seedPictures(2);
   await openSave(page);
   await page.getByRole("button", { name: "GIF options" }).click();
-  const sizes = page.getByRole("group", { name: "GIF size" });
-  await expect(sizes.getByRole("button", { name: /^Medium/ })).toHaveAttribute("aria-pressed", "true");
-  await sizes.getByRole("button", { name: /^Small/ }).click();
-  await expect(sizes.getByRole("button", { name: /^Small/ })).toHaveAttribute("aria-pressed", "true");   // the options stay open
+  const size = page.getByRole("slider", { name: "Size" });
+  await expect(size).toHaveAttribute("aria-valuetext", "medium, 640 px wide");   // the default
+  await size.fill("0");
+  await expect(size).toHaveAttribute("aria-valuetext", "small, 320 px wide");   // the options stay open
 
   await page.reload();
   expect(await saveGif(page).then(({ gif }) => [gif.width, gif.height])).toEqual([320, 180]);
 
   await openSave(page);
   await page.getByRole("button", { name: "GIF options" }).click();
-  await expect(sizes.getByRole("button", { name: "Full size 1208 px wide" })).toBeVisible();   // as it is, inside the safe zone
-  await sizes.getByRole("button", { name: /^Full size/ }).click();
+  await size.fill("2");
+  await expect(size).toHaveAttribute("aria-valuetext", "full size, 1208 px wide");   // as it is, inside the safe zone
   await page.keyboard.press("Escape");
   expect(await saveGif(page).then(({ gif }) => [gif.width, gif.height])).toEqual([1208, 680]);
 });

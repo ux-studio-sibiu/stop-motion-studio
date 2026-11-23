@@ -61,6 +61,14 @@ export class Studio {
     await this.page.addInitScript(() => { try { localStorage.setItem("stop-motion-studio:camera-off", "1"); } catch { /* no storage */ } });
   }
 
+  // Turns the ruler's gradations on (the Layers menu's Gradations, off at first), for tests that
+  // read the ruler's times: remembered, then the page reloads.
+  async showGradations(): Promise<void> {
+    await this.page.evaluate(() => localStorage.setItem("stop-motion-studio:timeline-layers", JSON.stringify({ objects: true, sounds: true, ruler: true })));
+    await this.page.reload();
+    await expect(this.page.locator(".ruler-label").first()).toBeVisible();
+  }
+
   // Puts `count` pictures into the open project without the camera: much faster than taking them,
   // for tests about what happens to pictures, not how they're taken. Each is a small generated
   // JPEG (a different colour each, with a white square), saved straight into the app's IndexedDB

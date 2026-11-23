@@ -17,7 +17,6 @@ export const TOKENS: readonly Token[] = [
   { name: "--color-surface", group: "Surfaces", kind: "colour", light: "#ffffff", dark: "#1d2029", note: "panels, buttons, cards" },
   { name: "--color-faint", group: "Surfaces", kind: "colour", light: "#f3ede3", dark: "#232733", note: "quiet backgrounds: settings cards, the overlay track" },
   { name: "--color-line", group: "Surfaces", kind: "colour", light: "#e6e0d5", dark: "#2c303b", note: "light rules and fills: dividers, the ruler, pushed-back tabs" },
-  { name: "--color-ruler", group: "Surfaces", kind: "colour", light: "#999999", dark: "#5b6172", note: "the timeline ruler's second marks" },
   { name: "--color-border", group: "Surfaces", kind: "colour", light: "#333333", dark: "#4a5162", note: "outlines of panels, controls and cards" },
   { name: "--color-ink", group: "Text and icons", kind: "colour", light: "#1f2433", dark: "#eef0f5", note: "text and icons" },
   { name: "--color-muted", group: "Text and icons", kind: "colour", light: "#6a7184", dark: "#9aa1b2", note: "hints, secondary text" },

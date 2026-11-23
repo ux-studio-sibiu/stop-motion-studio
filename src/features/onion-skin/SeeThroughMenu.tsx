@@ -15,7 +15,7 @@ export function SeeThroughMenu() {
   return (
     <div ref={ref} className="nsc-see-through option-menu">
       <button type="button" className={`icon-button toggle${onion.on ? " is-on" : ""}`} aria-label="See-through" aria-pressed={onion.on} title="Show the picture before faintly on top, to line up the next one" onClick={() => set({ on: !onion.on })}>
-        <Layers size={24} /><span className="desktop-only">See-through</span>
+        <Layers size={24} /><span className="desktop-only">See</span>
       </button>
       <button type="button" className={`icon-button more${onion.on ? " is-on" : ""}`} aria-label="See-through options" aria-expanded={open} aria-haspopup="true" onClick={toggle}><ChevronDown size={20} /></button>
 

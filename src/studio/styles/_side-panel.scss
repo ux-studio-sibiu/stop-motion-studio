@@ -1,21 +1,27 @@
 @use "@/styles/breakpoints" as *;
+@use "@/styles/cardboard" as *;
 
 // The side panel beside the stage: its tab ears and panels. Each tab's own controls are styled in
 // its feature folder (src/features/*/_*.scss).
 .nsc-studio {
-  // The side panel, with its tabs as dark "ears" sticking out of its left edge (no bar of their
-  // own). The panel leaves room for them beside the stage.
+  // The side panel, with its tabs as "ears" sticking out of its left edge (no bar of their own).
+  // The panel leaves room for them beside the stage. A piece of cardboard with cream paper on it
+  // (@/styles/cardboard), square; the tabs are small pieces of their own. What's on it keeps the
+  // light colours in both themes (dark ink on light paper). Its shadow isn't a filter: lists in it
+  // (the camera list, the objects' menus) are fixed to the window, and a filter would move them.
   .nsc-side-panel {
     --ear-width: 3.875rem;
+    --panel-edge: 8px;
+    --paper-margin: 2px;   // a little more bare cardboard round the paper (the tabs' too: inherited)
+    --paper: var(--cardboard-paper);
+    --paper-behind: color-mix(in srgb, var(--cardboard-ink) 16%, var(--cardboard-paper));   // the tabs pushed back: a darker shade of the panel's paper
 
-    position: relative;
+    @include cardboard(8px, $shadow: box);
+    @include cardboard-paper;
     grid-area: panel;
     display: grid;
     min-height: 0;
     margin-left: var(--ear-width);
-    background: var(--color-surface);
-    border: var(--line-width) solid var(--color-border);
-    border-radius: var(--radius);
 
     @include respond-to-max("tablet") { display: none; }
 
@@ -36,10 +42,11 @@
       gap: var(--space-1);
     }
 
-    // Every tab is the same size and look: outlined like the panel, a dark icon. The open one is in
-    // front, joined to the panel. The others are light grey and shifted 25 px to the right, with
-    // the part that would be under the panel cut away (clip-path, which also stops it catching
-    // clicks there), so the panel's border runs in front of them: pushed back, behind the panel.
+    // Every tab is the same size and look: a small piece of cardboard with paper on it, no edge on
+    // the side towards the panel, a dark icon. The open one is in front, the panel's paper, covering
+    // the panel's edge where it joins it: one piece. The others have darker paper and are shifted
+    // --tuck to the right, with the part that would be under the panel cut away (clip-path, which
+    // also stops it catching clicks there): pushed back, behind the panel, 35 px of them showing.
     .tab {
       position: relative;
       display: grid;
@@ -50,35 +57,58 @@
       height: var(--ear-width);
       flex: 0 1 auto;          // flatter when the panel is short (see .tabs)
       min-height: var(--tab-min);
-      margin-right: -25px;                                              // pushed 25 px in, under the panel
-      clip-path: inset(-1px calc(25px + var(--line-width)) -1px 0);     // cut off at the panel's outside edge
+      @include cardboard(6px, $shadow: none);
+      @include cardboard-paper(var(--paper-behind));
+      border-right-width: 0;
+      border-image-width: var(--edge) 0 var(--edge) var(--edge);
+      --tuck: 19px;
+      margin-right: calc(-1 * var(--tuck));                                         // pushed in, under the panel
+      clip-path: inset(-1px calc(var(--tuck) + var(--panel-edge)) -1px -1px);      // cut off at the panel's outside edge
       padding: 0;
-      border: none;
-      border-radius: var(--radius-small) 0 0 var(--radius-small);
-      --edge: var(--color-border);   // its outline
-
-      background: var(--color-line);   // the light line colour: pushed back, behind the panel
-      box-shadow: inset var(--line-width) 0 0 var(--edge), inset 0 var(--line-width) 0 var(--edge), inset 0 calc(-1 * var(--line-width)) 0 var(--edge);
-      color: var(--color-ink);
       cursor: pointer;
 
-      &:hover { background: color-mix(in srgb, var(--color-surface) 50%, var(--color-line)); }   // a little lighter, like the buttons; the outline stays
+      &:hover { --paint: color-mix(in srgb, var(--paper) 50%, var(--paper-behind)); }   // a little lighter, towards the panel's paper
 
-      // The open tab is part of the panel: the panel's colour, and nothing on its right, where it
-      // covers the panel's own border so the two read as one shape.
+      // The open tab is part of the panel: the panel's paper, one piece with it. Where the two meet
+      // (::after, over the panel's edge), as on one piece cut that shape: the panel's paper reaches
+      // across to the tab's, and the panel's rim (the part of its edge the paper leaves showing) runs
+      // on into each inside corner as far as the tab's rim, so the two rims meet there.
       &.is-active,
       &.is-active:hover {
+        --paint: var(--paper);
         z-index: 1;
         margin-right: 0;
         clip-path: none;
-        background: var(--color-surface);
-        --edge: var(--color-border);   // hovering the open tab changes nothing
+
+        &::after {
+          --edge: var(--panel-edge);   // the panel's edge is drawn here
+          --tab-edge: 6px;
+          --tab-rim: calc(var(--tab-edge) * 0.6 + var(--paper-margin));   // how much of the tab's edge shows (its paper covers the rest)
+          --reach: calc(var(--panel-edge) * 0.4 - var(--paper-margin));   // how far the panel's paper reaches over its edge
+
+          content: "";
+          position: absolute;
+          top: calc(-1 * var(--tab-edge));
+          right: 0;
+          bottom: calc(-1 * var(--tab-edge));
+          width: var(--panel-edge);
+          background:
+            linear-gradient(var(--paper), var(--paper)) right / var(--reach) 100% no-repeat,
+            cardboard-edge-strip(left);
+          // The paper, the whole height; the panel's rim only as far down as the tab's rim at its top,
+          // and up from its bottom (the tab's own paper in between).
+          mask:
+            linear-gradient(#000, #000) right / var(--reach) 100% no-repeat,
+            linear-gradient(#000, #000) top / 100% var(--tab-rim) no-repeat,
+            linear-gradient(#000, #000) bottom / 100% var(--tab-rim) no-repeat;
+          pointer-events: none;
+        }
       }
     }
 
     // A tab's content, scrolling when it's long. The scrolling area is set in from the panel's
-    // right edge and from its top and bottom (--scroll-inset), so the scrollbar stays inside the
-    // rounded corners instead of running into them; the padding is less by as much, so the
+    // right edge and from its top and bottom (--scroll-inset), so the scrollbar keeps clear of the
+    // paper's corners instead of running into them; the padding is less by as much, so the
     // content stays where it was (the tabs line up with it, above).
     .panel {
       --scroll-inset-x: 0.3125rem;
@@ -91,6 +121,7 @@
       margin: var(--scroll-inset-y) var(--scroll-inset-x) var(--scroll-inset-y) 0;
       padding: calc(var(--space-3) - var(--scroll-inset-y)) calc(var(--space-3) - var(--scroll-inset-x)) calc(var(--space-3) - var(--scroll-inset-y)) var(--space-3);
       overflow: auto;
+      scrollbar-color: color-mix(in srgb, var(--cardboard-ink) 45%, transparent) transparent;   // its track see-through, as the timeline's
 
       &[hidden] { display: none; }
     }

@@ -9,7 +9,7 @@ import { deleteOverlay, duplicateOverlayById, type SaveOverlays } from "../overl
 import { OverlayTrack } from "./OverlayTrack";
 import { SoundTrack } from "./SoundTrack";
 import type { SaveSounds } from "../soundEditing";
-import { ALL_LAYERS, remembered, useRememberedState } from "../remembered";
+import { DEFAULT_LAYERS, remembered, useRememberedState } from "../remembered";
 import { LayersMenu } from "./LayersMenu";
 import { DragGhost, TimelineFrame } from "./TimelineFrame";
 import { useReorder } from "./useReorder";
@@ -54,7 +54,7 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
   const overlay = useShownOverlays().find((item) => item.id === overlayId);
   const fps = useEditor((state) => state.project?.fps ?? 8);
   const projectId = useEditor((state) => state.project?.id);
-  const [layers, setLayers] = useRememberedState(remembered.timelineLayers, ALL_LAYERS);   // the extra rows shown (LayersMenu)
+  const [layers, setLayers] = useRememberedState(remembered.timelineLayers, DEFAULT_LAYERS);   // the extra rows shown (LayersMenu)
   const thumbRatio = useEditor((state) => (state.project ? `${state.project.width} / ${state.project.height}` : "16 / 9"));
 
   const scroller = useRef<HTMLDivElement>(null);
@@ -67,8 +67,9 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
   const tickWidth = pxPerTick(zoom, fps);
   const seconds = ticksToSeconds(totalTicks(frames), fps);
   const { markSeconds, labelSeconds } = rulerScale(zoom);
-  const rulerSeconds = Math.ceil(seconds) + 2;   // a little past the end, under the "next" slot
-  const labels = Array.from({ length: Math.floor(rulerSeconds / labelSeconds) + 1 }, (_, i) => i * labelSeconds);
+  // The times labelled: up to the first label at or past the pictures' end (at least 1s), so a short
+  // animation still shows its first second, and the scroll never grows by more than one label.
+  const labels = Array.from({ length: Math.max(1, Math.ceil(seconds / labelSeconds)) + 1 }, (_, i) => i * labelSeconds);
 
   const select = useTimelineSelection(order, selection);
   const reorder = useReorder(frames, selection, tickWidth, scroller, track, onReorder);
@@ -174,8 +175,6 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
 
   // The next capture goes after the rightmost selected picture. When that isn't the last one,
   // a marker on its right edge shows where.
-  const insertAfter = inOrder(order, selection).at(-1);
-  const markerId = insertAfter !== order[order.length - 1] ? insertAfter : undefined;
   const count = overlay ? 1 : selection.length;
   const pictures = overlay ? objectLabel(overlay.element) : count > 1 ? `${count} pictures` : "picture";
 
@@ -195,14 +194,14 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
       </div>
 
       <div ref={scroller} className="timeline-scroll">
-        {scrub.playFrom !== undefined && <div className={`playhead${scrub.isPlaying ? " is-playing" : ""}`} aria-hidden="true" style={{ left: `calc(var(--timeline-inset) + ${scrub.playFrom * tickWidth}px)` }} />}
-        <div className="ruler" aria-hidden="true" title="Drag along here to scrub through the animation" style={{ width: rulerSeconds * zoom, backgroundSize: `${markSeconds * zoom}px 100%` }} {...scrub.rulerHandlers}>
-          {labels.map((at) => <span key={at} className="ruler-label" style={{ left: at * zoom }}>{formatSeconds(at)}</span>)}
+        {scrub.marks.map((mark) => <div key={mark.id} className={`playhead${scrub.isPlaying ? " is-playing" : ""}`} aria-hidden="true" style={{ left: `calc(var(--timeline-inset) + ${mark.start * tickWidth}px)`, width: mark.ticks * tickWidth }} />)}
+        <div className={`ruler${layers.ruler ? " has-gradations" : ""}`} aria-hidden="true" title="Drag along here to scrub through the animation" style={{ backgroundSize: `${markSeconds * zoom}px 6px, 100% 1px` }} {...scrub.rulerHandlers}>
+          {layers.ruler && labels.map((at) => <span key={at} className="ruler-label" style={{ left: at * zoom }}>{formatSeconds(at)}</span>)}
         </div>
 
         <ol ref={track} className="track" role="listbox" aria-label="Pictures" aria-orientation="horizontal" aria-multiselectable="true" tabIndex={0} aria-activedescendant={select.focusId ? optionId(select.focusId) : undefined} onKeyDown={onKeyDown} style={{ "--thumb-ratio": thumbRatio } as CSSProperties}>
           {frames.map((frame, index) => (
-            <TimelineFrame key={frame.id} frame={frame} number={index + 1} width={frame.hold * tickWidth} selected={!overlay && selection.includes(frame.id)} onStage={Boolean(overlay) && selection.includes(frame.id)} insertAfter={!reorder.drag && frame.id === markerId} dragging={reorder.drag?.ids.includes(frame.id) ?? false} onPick={onPick} onPress={reorder.onFramePointerDown}>
+            <TimelineFrame key={frame.id} frame={frame} number={index + 1} width={frame.hold * tickWidth} selected={!overlay && selection.includes(frame.id)} onStage={Boolean(overlay) && selection.includes(frame.id)} dragging={reorder.drag?.ids.includes(frame.id) ?? false} onPick={onPick} onPress={reorder.onFramePointerDown}>
               {!overlay && selection.includes(frame.id) && (
                 <span className="grip" aria-hidden="true" title="Drag to make it shorter or longer ([ and ] keys)" onPointerDown={(event) => resize.onGripDown(frame.id, event)} onPointerMove={resize.onGripMove} onPointerUp={(event) => resize.onGripUp(frame.id, event)} onPointerCancel={resize.cancel} onClick={(event) => event.stopPropagation()} />
               )}

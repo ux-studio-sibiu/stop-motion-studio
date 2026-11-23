@@ -41,6 +41,13 @@ export function StageEditor({ save }: { save: SaveTransforms }) {
   };
   const outlines = targets.flatMap((id) => { const corners = cornersOf(id); return corners ? [{ id, corners }] : []; });
   const first = outlines[0];
+  // A picture lying exactly over the stage (not moved, sized or turned) gets no outline: it would
+  // only trace the stage's own edge, a dotted line round the whole stage.
+  const onStageEdge = (corners: readonly Point[]) => {
+    const xs = corners.map((p) => p.x), ys = corners.map((p) => p.y);
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs) - width, Math.max(...ys) - height].every((d) => Math.abs(d) < 0.5)
+      && corners.every((p) => (Math.abs(p.x) < 0.5 || Math.abs(p.x - width) < 0.5) && (Math.abs(p.y) < 0.5 || Math.abs(p.y - height) < 0.5));
+  };
   const centre = first && { x: (first.corners[0].x + first.corners[2].x) / 2, y: (first.corners[0].y + first.corners[2].y) / 2 };
   const handle = first && centre && (() => {
     const top = { x: (first.corners[0].x + first.corners[1].x) / 2, y: (first.corners[0].y + first.corners[1].y) / 2 };
@@ -168,7 +175,7 @@ export function StageEditor({ save }: { save: SaveTransforms }) {
       <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
         {guides && guides.x !== null && <line className="guide" data-guide="x" x1={guides.x} y1={0} x2={guides.x} y2={height} />}
         {guides && guides.y !== null && <line className="guide" data-guide="y" x1={0} y1={guides.y} x2={width} y2={guides.y} />}
-        {outlines.map(({ id, corners }) => <polygon key={id} className="outline" points={corners.map((p) => `${p.x},${p.y}`).join(" ")} />)}
+        {outlines.filter(({ corners }) => !onStageEdge(corners)).map(({ id, corners }) => <polygon key={id} className="outline" points={corners.map((p) => `${p.x},${p.y}`).join(" ")} />)}
         {handle && (
           <g data-handle="turn" className="turn-handle">
             <line x1={handle.top.x} y1={handle.top.y} x2={handle.at.x} y2={handle.at.y} />

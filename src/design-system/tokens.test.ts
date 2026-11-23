@@ -2,11 +2,15 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { TOKENS } from "./tokens";
 
-// The one test the token list needs (D2): it matches globals.scss, both themes, so it can't drift.
+// The one test the token list needs (D2): it matches the stylesheets, both themes, so it can't
+// drift. The tokens are in globals.scss (:root), their colours in _colours.scss (light-colours,
+// which :root includes, and dark-colours, for the dark theme).
 
-const scss = readFileSync("src/styles/globals.scss", "utf8").replace(/\/\/[^\n]*/g, "");
-// The custom properties declared directly in the block that starts at `start`.
-function declared(start: string): Record<string, string> {
+const read = (file: string) => readFileSync(file, "utf8").replace(/\/\/[^\n]*/g, "");
+const globals = read("src/styles/globals.scss");
+const colours = read("src/styles/_colours.scss");
+// The custom properties declared directly in the block that starts at `start` in `scss`.
+function declared(scss: string, start: string): Record<string, string> {
   const open = scss.indexOf("{", scss.indexOf(start));
   let depth = 0;
   let end = open;
@@ -18,9 +22,9 @@ function declared(start: string): Record<string, string> {
 }
 
 describe("the token list (design system page)", () => {
-  it("has every token in globals.scss, with the same light and dark values", () => {
-    const light = declared(":root {");
-    const dark = declared("@media (prefers-color-scheme: dark)");
+  it("has every token in globals.scss and _colours.scss, with the same light and dark values", () => {
+    const light = { ...declared(globals, ":root {"), ...declared(colours, "@mixin light-colours") };
+    const dark = declared(colours, "@mixin dark-colours");
     expect(Object.fromEntries(TOKENS.map((token) => [token.name, token.light]))).toEqual(light);
     expect(Object.fromEntries(TOKENS.filter((token) => token.dark).map((token) => [token.name, token.dark]))).toEqual(dark);
   });

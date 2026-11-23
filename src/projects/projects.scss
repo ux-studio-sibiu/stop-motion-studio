@@ -1,5 +1,5 @@
 @use "@/styles/breakpoints" as *;
-@use "cardboard" as *;
+@use "@/styles/cardboard" as *;
 
 // The full-screen backdrop behind the home page: the studio's page colour and its faint graph-paper
 // texture (studio.scss), across the whole window whatever the page's width, behind both columns.
@@ -155,11 +155,11 @@
     }
   }
 
-  // The two buttons, side by side, the studio's own (like Play and See-through), well below the
-  // title: New animation, green, and Load project (a backup, step 27), the plain one, its icon only.
   // The burst round the title: --burst-cards title cards wide (TITLE_BURST in ProjectsPage, with its shape).
   .title-burst { width: calc(var(--size) * var(--burst-cards)); }
 
+  // The three buttons, side by side, below the title: New animation, green, Load project (a backup,
+  // step 27) and Settings, icons only.
 
   .ctas {
     margin-top: 1rem;
@@ -168,38 +168,15 @@
     justify-content: center;
     gap: var(--space-3);
 
-    // Each a piece of cardboard (the cards' and the title's: its corrugated edges, its surface) with
-    // paper pasted on it: green for New animation, white for Load project. Hovered, it lifts a
-    // little and tilts, its shadow longer; pressed, it goes back down. Instantly, with no easing:
-    // this is stop motion, things jump from one pose to the next.
+    // Each a piece of cardboard with paper on it (_cardboard.scss): green for New animation, white
+    // for the others.
     .icon-button,
     .icon-button.is-go {
-      @include cardboard(10px);
-      --paint: var(--cardboard-paper);
-      position: relative;
+      @include cardboard-button(10px);
       min-width: calc(var(--hit) * 1.5);   // half as big again as the studio's buttons
       min-height: calc(var(--hit) * 1.5);
       padding: 0 calc(var(--space-3) * 1.5);
       gap: calc(var(--space-2) * 1.5);
-      isolation: isolate;
-      color: var(--cardboard-ink);
-
-      // The paper, over the edge strip up to the corrugated rim (as on the cards).
-      &::before {
-        content: "";
-        position: absolute;
-        inset: calc(var(--edge) * -0.4);
-        z-index: -1;
-        border-radius: 1px;
-        background: var(--paint);
-      }
-
-      &:hover:not(:disabled) {
-        @include cardboard-surface;   // not the plain buttons' hover grey
-        @include cardboard-lift;
-      }
-
-      &:active:not(:disabled) { translate: 0 1px; rotate: 0deg; }
     }
 
     .icon-button.is-go { --paint: var(--color-go); color: var(--color-on-strong); }

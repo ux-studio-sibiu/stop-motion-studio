@@ -61,8 +61,8 @@ export function OverlayTrack({ frames, tickWidth, fps, onChange }: { frames: rea
 
   const seconds = (ticks: number) => formatTicks(ticks, fps);
   return (
-    <div className="overlay-track" data-overlay-track data-tick-width={tickWidth} role="group" aria-label="Objects Layer" style={{ width: Math.max(1, length + 8) * tickWidth, "--lanes": rows } as CSSProperties}>
-      {overlays.length === 0 && frames.length > 0 && <span className="track-hint">Drop an object here to show it over several pictures</span>}
+    <div className="overlay-track" data-overlay-track data-tick-width={tickWidth} role="group" aria-label="Objects Layer" title="Drop an object here to show it over several pictures" style={{ width: Math.max(1, length + 8) * tickWidth, "--lanes": rows } as CSSProperties}>
+      {overlays.length === 0 && frames.length > 0 && <span className="track-hint">Objects</span>}
       {overlays.map((overlay) => {
         const name = objectLabel(overlay.element);
         const text = objectText(overlay.element);

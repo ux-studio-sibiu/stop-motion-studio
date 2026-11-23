@@ -47,6 +47,7 @@ import { useStorageWatch } from "./useStorageWatch";
 import { useStudioCommands } from "./useStudioCommands";
 import { useTabToCamera } from "./useTabToCamera";
 import { useLeavingIntroSeen } from "@/projects/introSeen";
+import "@/projects/cardboard-letters/cardboard-letters.css";   // the cardboard's colours and shadow (the controls in cardboard: styles/_cardboard.scss)
 import "./studio.scss";
 
 // The studio screen.
@@ -114,7 +115,7 @@ export function Studio() {
       <header className="toolbar">
         {/* The back arrow, and under it, floating beside the stage, Save and Help. */}
         <div className="toolbar-start">
-          <Link className="icon-button" href="/" aria-label="All projects"><ChevronLeft size={24} /></Link>
+          <Link className="icon-button" href="/" aria-label="All projects"><ChevronLeft size={30} strokeWidth={3} /></Link>
           <div className="toolbar-side">
             <SaveMenu>
               <VideoExportButton />
@@ -190,6 +191,8 @@ export function Studio() {
       <PlaybackBar onSpeed={commands.setSpeed} onSafeMargin={commands.setSafeMargin}>
         <SeeThroughMenu />
       </PlaybackBar>
+
+      {/* TEMPORARY: trying the cardboard pieces' colours and places by hand. */}
     </div>
   );
 }

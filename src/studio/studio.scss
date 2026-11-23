@@ -6,6 +6,7 @@
 @use "./styles/option-menu";
 @use "./styles/export";
 @use "./styles/help";
+@use "./styles/cardboard";
 @use "./timeline/timeline";
 @use "./timeline/frame";
 
@@ -16,7 +17,7 @@
   display: grid;
   // minmax(0, ...) so long content (timeline strip, toolbar) can't widen the columns past the screen.
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto var(--timeline-height);
+  grid-template-rows: auto minmax(0, 1fr) auto minmax(var(--timeline-height), auto);
   grid-template-areas: "toolbar" "stage" "playback" "timeline";
   gap: var(--space-3);
   height: 100dvh;
@@ -42,7 +43,7 @@
   }
 
   @include respond-to("tablet") {
-    grid-template-rows: auto minmax(0, 1fr) auto auto var(--timeline-height);
+    grid-template-rows: auto minmax(0, 1fr) auto auto minmax(var(--timeline-height), auto);
     grid-template-areas: "toolbar" "stage" "panel" "playback" "timeline";
   }
 
@@ -50,7 +51,7 @@
   // stage and the side panel start at the top of the screen; the stage keeps clear of that column.
   @include respond-to("desktop") {
     grid-template-columns: minmax(0, 1fr) 20.75rem;   // the panel, plus room for its tab ears
-    grid-template-rows: minmax(0, 1fr) auto var(--timeline-height);
+    grid-template-rows: minmax(0, 1fr) auto minmax(var(--timeline-height), auto);
     grid-template-areas: "stage panel" "playback playback" "timeline timeline";
 
     .toolbar {
@@ -61,6 +62,10 @@
     }
 
     .stage { padding-left: calc(var(--hit) + var(--space-3)); }
+
+    // The side panel reaches down past the stage, beside the Play buttons (which stay centred on the
+    // whole width), to just above the timeline.
+    .nsc-side-panel { grid-row: 1 / 3; }
   }
 
   // Hidden until it looks as it was left (useReady in Studio.tsx), then faded in.
@@ -119,12 +124,12 @@
 
     .toolbar-side {
       position: absolute;
-      top: calc(100% + var(--space-3));
+      top: calc(100% + var(--space-2));
       left: 0;
       z-index: 15;
       display: grid;
       justify-items: start;
-      gap: var(--space-3);
+      gap: var(--space-2);   // close together, as one column of cardboard buttons
     }
   }
 

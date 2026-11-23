@@ -1,0 +1,165 @@
+@use "sass:math";
+@use "@/styles/colours" as *;
+
+// Cardboard, the studio's stop-motion look (the home page, the studio's controls and timeline):
+// pieces of the cardboard letters font's big piece of cardboard (cardboard-letters.css, synced from
+// the font, which also sets --cardboard-shadow, --cardboard-paper and --cardboard-ink;
+// public/cardboard-letters/bases/sheet-*.webp), with paper pasted on them. Square: cardboard is cut
+// straight. Hover and press jump from one pose to the next, with no easing (stop motion).
+//
+//   cardboard($edge)         a piece: corrugated edges round the box, the surface inside, its shadow
+//   cardboard-paper($colour) paper pasted on it, up to the corrugated rim; light colours on it
+//   cardboard-button($edge)  a button: a piece with paper, a shade under the pointer and picked up (or not), pressed down
+//   cardboard-split($edge)   a button joined to its options arrow: one piece, each half its own paper
+//   cardboard-lift           picked up: lifted, tilted, a longer shadow
+
+$edge-slice: 14;      // px of the edge picture used for each corner and edge
+$surface-tile: 400;   // px: the surface tile's size in the picture
+$surface: url("/cardboard-letters/bases/sheet-surface.webp");
+$edges: url("/cardboard-letters/bases/sheet-edges.webp");   // the big piece itself: its corners and edges
+$edges-width: 493;    // px: that picture's width
+$paper-reach: 0.4;    // how far into the edge strip paper reaches (of the edge's width): up to the corrugated rim
+// Under the pointer: white paper a shade darker (lighter would hardly show), coloured paper lighter.
+$darker: linear-gradient(color-mix(in srgb, var(--cardboard-ink) 10%, transparent) 0 0);
+$lighter: linear-gradient(rgb(255 255 255 / 0.3) 0 0);
+
+// The surface alone (for a hover that would otherwise paint over it).
+@mixin cardboard-surface {
+  background: $surface 0 0 / calc(var(--edge) * #{math.div($surface-tile, $edge-slice)}) repeat padding-box;
+}
+
+// $edge: how wide the edges are drawn (the surface scales with it). $shadow: true, the cardboard's
+// own (a filter, following the rim); box, for a piece that holds things fixed to the window (a
+// filter would make them follow the piece): one soft shadow cast from a layer 2 px in (::after),
+// with a 1 px dark ring on the piece's last pixel in: there the edge picture is a pale, half
+// see-through highlight, which round a square piece reads as a sheet of paper under the cardboard;
+// none, for a piece that is part of a larger one (a tab).
+@mixin cardboard($edge, $shadow: true) {
+  --edge: #{$edge};
+  border: var(--edge) solid transparent;
+  border-radius: 0;
+  border-image: $edges $edge-slice / var(--edge) / 0 repeat;
+  @include cardboard-surface;
+
+  @if $shadow == true { filter: var(--cardboard-shadow); }
+  @else if $shadow == box {
+    position: relative;
+    isolation: isolate;
+
+    &::after {
+      content: "";
+      position: absolute;
+      inset: calc(2px - var(--edge));   // the border box, 2 px in: its ring lands on the box's outermost pixel
+      z-index: -2;
+      box-shadow: 0 0 0 1px rgb(70 48 24 / 0.6), 0.125rem 0.25rem 0.5rem rgb(45 30 15 / 0.22);
+      pointer-events: none;
+    }
+  }
+}
+
+// A piece of the big piece's edge, drawn at a piece's edge scale (--edge as the 14 px of the
+// picture), for the inside corners where two pieces meet: $side top (an edge along the top, its
+// outside up) or left (down the left, its outside left), from a stretch away from the corners.
+@function cardboard-edge-strip($side) {
+  $size: calc(var(--edge) * #{math.div($edges-width, $edge-slice)}) auto;
+  @if $side == top { @return $edges calc(var(--edge) * -10) 0 / $size; }
+  @return $edges 0 calc(var(--edge) * -10) / $size;
+}
+
+// Paper pasted on a piece, under everything on it, reaching over the edge strip up to the corrugated
+// rim (as the paint does on the letter tiles). Its colour: --paint (a variant sets it), white by
+// default. --paper-margin (0 by default): that much more bare cardboard round it, on every side. What's
+// on it keeps the light colours in both themes: dark ink on light paper.
+@mixin cardboard-paper($colour: var(--cardboard-paper)) {
+  --paint: #{$colour};
+  @include light-colours;
+  position: relative;
+  isolation: isolate;
+  color: var(--cardboard-ink);
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: calc(var(--edge) * -#{$paper-reach} + var(--paper-margin, 0px));
+    z-index: -1;
+    border-radius: 1px;
+    background: var(--paint);
+    pointer-events: none;
+  }
+}
+
+// Picked up: lifted a little and tilted, its shadow longer, for a piece under the pointer. Not with
+// reduced motion.
+@mixin cardboard-lift {
+  translate: 0 -2px;
+  rotate: -1deg;
+  filter:
+    drop-shadow(0.125rem 0.25rem 0.125rem rgb(45 30 15 / 0.3))
+    drop-shadow(0.25rem 0.6rem 0.5rem rgb(45 30 15 / 0.18));
+
+  @media (prefers-reduced-motion: reduce) { translate: none; rotate: none; }
+}
+
+// Disabled, on cardboard: the paper stays (see-through, the cardboard would show through it), what's
+// on it fades.
+@mixin cardboard-disabled {
+  &:disabled {
+    opacity: 1;
+
+    > * { opacity: 0.45; }
+  }
+}
+
+// A button cut from cardboard with paper on it (an .icon-button, or anything like one): its paper
+// a shade darker under the pointer (coloured paper: lighter), and picked up too ($lift: false keeps
+// it where it is), pressed down
+// when clicked, back down while it's on (an open menu).
+@mixin cardboard-button($edge, $lift: true) {
+  @include cardboard($edge);
+  @include cardboard-paper;
+  @include cardboard-disabled;
+
+  &:hover:not(:disabled) {
+    @include cardboard-surface;   // not the plain buttons' hover grey
+    @if $lift { @include cardboard-lift; }
+
+    &::before { background-image: $darker; }   // its paper a shade darker
+    &.is-go::before { background-image: $lighter; }   // coloured paper: lighter
+  }
+
+  &:active:not(:disabled),
+  &.is-on { translate: 0 1px; rotate: 0deg; }
+}
+
+// A button joined to the arrow for its options (an .option-menu: .toggle and .more): one piece of
+// cardboard, each half its own paper (white, or the button's colour: go, primary, on), a fold
+// between them. It stays where it is under the pointer; the half under it gets its paper a shade
+// darker (white) or lighter (coloured).
+@mixin cardboard-split($edge) {
+  @include cardboard($edge);
+  @include light-colours;
+  isolation: isolate;
+
+  > .icon-button {
+    // Paper up to the corrugated rim: over the piece's edge strip.
+    margin-block: calc(var(--edge) * -#{$paper-reach});
+    border: 0;
+    border-radius: 0;
+    background: var(--cardboard-paper);
+    color: var(--cardboard-ink);
+
+    // The first and last button (of-type: the open options list comes after them, and mustn't change which).
+    &:first-of-type { margin-left: calc(var(--edge) * -#{$paper-reach}); }
+    &:last-of-type { margin-right: calc(var(--edge) * -#{$paper-reach}); }
+    &.is-go { background: var(--color-go); color: var(--color-on-strong); }
+    &.is-primary { background: var(--color-accent); color: var(--color-on-strong); }
+    @include cardboard-disabled;
+    &.is-go:disabled { background: color-mix(in srgb, var(--color-go) 45%, var(--cardboard-paper)); }   // paler paper too, so it doesn't look ready
+    &.is-on:not(.is-go):not(.is-primary) { background: color-mix(in srgb, var(--color-go) 22%, var(--cardboard-paper)); color: var(--color-go); }
+    &:hover:not(:disabled):not(.is-on) { background-image: $darker; }   // white paper a shade darker
+    &:is(.is-go, .is-primary):hover:not(:disabled) { background-image: $lighter; }   // coloured paper lighter (on: as it is)
+  }
+
+  // The fold between the halves: a darker line on white paper (the coloured halves draw their own).
+  > .more:not(.is-go):not(.is-primary) { box-shadow: inset 2px 0 0 color-mix(in srgb, var(--cardboard-ink) 28%, transparent); }
+}

@@ -74,4 +74,10 @@ describe("flip, reset and sameTransform", () => {
     expect(sameTransform(t(), t())).toBe(true);
     expect(sameTransform(t(), t({ flipY: true }))).toBe(false);
   });
+
+  it("counts a difference too small to see as the same (a snap that lands back where it was, give or take rounding)", () => {
+    expect(sameTransform(t(), t({ x: 1e-13, y: -2e-14 }))).toBe(true);
+    expect(sameTransform(t(), t({ scale: 1 + 1e-12, rotation: 1e-11 }))).toBe(true);
+    expect(sameTransform(t(), t({ x: 0.001 }))).toBe(false);   // about a pixel: a move
+  });
 });

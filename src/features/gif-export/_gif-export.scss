@@ -1,16 +1,7 @@
 // Save as GIF (step 25): a split button in the toolbar (the shared .option-menu and .export-menu),
-// whose options open below it: the sizes, one per row, and the quality.
+// whose options open below it: two sliders: the size and the quality.
 .nsc-studio {
   .nsc-gif-export {
     .options { min-width: 17rem; }
-
-    .sizes { display: grid; gap: var(--space-1); }
-
-    .size-option {
-      justify-content: space-between;
-      width: 100%;
-    }
-
-    .size-width { color: var(--color-muted); font-weight: 600; font-size: var(--text-hint); }
   }
 }

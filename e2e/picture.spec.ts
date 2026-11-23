@@ -200,3 +200,11 @@ test("with several selected, the sliders change them all as one undo; Reset puts
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.getByText("Contrast: 90%")).toBeVisible();
 });
+
+test("a picture lying exactly over the stage has no outline (it would trace the stage's edge); moved, it does", async ({ page }) => {
+  const outline = page.locator(".outline");
+  await expect(outline).toHaveCount(0);
+  await field(page, "Left / right").fill("40");
+  await field(page, "Left / right").press("Enter");
+  await expect(outline).toHaveCount(1);
+});

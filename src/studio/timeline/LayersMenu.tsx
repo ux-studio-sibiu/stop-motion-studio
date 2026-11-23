@@ -5,7 +5,7 @@ import { useDropdown } from "../useDropdown";
 import type { TimelineLayers } from "../remembered";
 
 // The timeline's Layers button: a dropdown with a switch for each extra row under the pictures,
-// objects in time and sounds. What's chosen is remembered (Timeline keeps it in remembered.ts).
+// objects in time and sounds, and one for the ruler's gradations (its second marks and times). What's chosen is remembered (Timeline keeps it in remembered.ts).
 // A hidden row keeps what's on it: it still plays and goes in the video; it just isn't shown.
 // It opens below the button, over the timeline. The icon is the usual stacked layers, with a
 // small caret so it reads as a dropdown. It comes first in the timeline's buttons.
@@ -24,6 +24,7 @@ export function LayersMenu({ layers, onChange }: { layers: TimelineLayers; onCha
         <div className="options" role="group" aria-label="Timeline layers">
           {row("objects", "Objects Layer", "The row of objects that show over several pictures")}
           {row("sounds", "Sound Layer", "The row of sounds")}
+          {row("ruler", "Gradations", "The ruler's second marks and times")}
         </div>
       )}
     </div>
