@@ -65,5 +65,6 @@
 
     // In the toolbar (Save as GIF): the options open below instead.
     &.opens-below .options { top: calc(100% + var(--space-2)); bottom: auto; }
+    &.opens-below[data-flip="up"] .options { top: auto; bottom: calc(100% + var(--space-2)); }   // no room below: above (useDropdown)
   }
 }

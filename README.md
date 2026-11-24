@@ -23,6 +23,8 @@ src/studio/     the studio screen and its SCSS; timeline/ for the timeline
 src/features/   one folder per feature (camera, picture, objects, draw, sounds, exports...), placed by Studio.tsx
 src/projects/   the projects page (home): its intro, the cards, backup and restore
 src/design-system/ the /design page: every part of the interface, and the token panel
+src/offline/    the service worker's page side: registering it, the Update notice, the install offer
+scripts/        build helpers: sw.js (the service worker) and build-offline.mjs, which writes it into out/
 src/styles/     tokens (globals, _colours), breakpoints, the cardboard mixins
 e2e/            Playwright specs, one per flow
 public/steps/   build notes, one HTML page per step
@@ -41,8 +43,8 @@ npm run dev
 | Script | What it does |
 |---|---|
 | `npm run dev` | Dev server at http://localhost:3000 |
-| `npm run build` | Static site in `out/` |
-| `npm start` | Serves `out/` locally |
+| `npm run build` | Static site in `out/`, then its service worker, `out/sw.js` (step 32: what it keeps offline, listed by the build) |
+| `npm start` | Serves `out/` locally at http://localhost:3100 (away from the dev server's port, so the offline worker it installs never answers for `npm run dev`) |
 | `npm test` | Vitest in Node, once (`npm run test:watch` to keep it running) |
 | `npm run test:browser` | Vitest browser mode in Chromium: the renderer's pixel tests (`*.browser.test.ts`) |
 | `npm run lint` | ESLint, including the layering rules |

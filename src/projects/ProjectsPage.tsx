@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import { ArchiveRestore, Clapperboard, Plus, Settings } from "lucide-react";
-import { exportArchive, importArchive } from "@/adapters/archive/projectArchive";
+import { exportArchive, importArchives } from "@/adapters/archive/projectArchive";
 import { decodePicture } from "@/adapters/images/thumbnail";
 import { ArchiveError } from "@/core/archive";
 import { download } from "@/studio/useExport";
@@ -21,7 +21,8 @@ import { covers, useProjects } from "./useProjects";
 import "./projects.scss";
 
 // The home page: every animation saved in this browser, newest first. Each can be backed up as a
-// .zip (step 27), and a backup restored here, as a new animation, on this device or another.
+// .zip (step 27), and a backup restored here, as a new animation, on this device or another; the
+// backup of all animations (Settings) restores here too, every animation in it.
 export function ProjectsPage() {
   const router = useRouter();
   const list = useProjects();
@@ -58,8 +59,11 @@ export function ProjectsPage() {
     setRestoring(true);
     setArchiveNote(null);
     try {
-      const project = await importArchive(appRepository(), file, { decode: decodePicture });
-      setArchiveNote({ text: `Restored ${project.name}`, problem: false });
+      const { restored, failed } = await importArchives(appRepository(), file, { decode: decodePicture });
+      const done = restored.length === 1 && failed === 0 ? `Restored ${restored[0].name}` : `Restored ${restored.length} animation${restored.length === 1 ? "" : "s"}`;
+      setArchiveNote(failed === 0
+        ? { text: done, problem: false }
+        : { text: `${done}. ${failed} couldn't be restored.`, problem: true });
     } catch (error) {
       if (!(error instanceof ArchiveError)) console.warn("Restore failed", error);
       setArchiveNote({ text: error instanceof ArchiveError ? error.message : "That backup couldn't be restored. Try again.", problem: true });
@@ -125,7 +129,7 @@ export function ProjectsPage() {
             {/* Side by side, below the title: a new animation (green, the main one), one loaded from a backup file, and the settings (icons only; their names in a tooltip and for screen readers). */}
             <div className="ctas">
               <button type="button" className="icon-button is-go new-button" style={buttonStyle(0)} aria-label="New animation" onClick={startNew} disabled={creating}><Plus size={42} strokeWidth={3.5} />NEW</button>
-              <button type="button" className="icon-button" style={buttonStyle(1)} aria-label={restoring ? "Loading the backup…" : "Load project"} title="Open an animation saved as a backup (.zip)" onClick={() => picker.current?.click()} disabled={restoring} aria-busy={restoring}><ArchiveRestore size={36} /></button>
+              <button type="button" className="icon-button" style={buttonStyle(1)} aria-label={restoring ? "Loading the backup…" : "Load project"} title="Open .zip project" onClick={() => picker.current?.click()} disabled={restoring} aria-busy={restoring}><ArchiveRestore size={36} /></button>
               <button type="button" className="icon-button" style={buttonStyle(2)} aria-label="Settings" title="Settings: storage on this device" onClick={() => setSettingsOpen(true)}><Settings size={36} /></button>
             </div>
             <input ref={picker} type="file" accept=".zip,application/zip" hidden aria-label="Backup file" onChange={(event) => void restore(event.currentTarget.files?.[0])} />
@@ -156,7 +160,7 @@ export function ProjectsPage() {
           )}
         </div>
 
-        <SettingsDialog open={settingsOpen} version={list?.projects} onClose={() => setSettingsOpen(false)} />
+        <SettingsDialog open={settingsOpen} version={list?.projects} animations={list?.projects.length ?? 0} onClose={() => setSettingsOpen(false)} />
         <DeleteDialog project={deleting} coverUrl={deleting ? coverUrl(deleting) : undefined} onCancel={() => setDeleting(null)} onConfirm={confirmDelete} />
       </main>
 

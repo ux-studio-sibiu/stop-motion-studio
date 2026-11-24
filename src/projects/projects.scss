@@ -478,9 +478,26 @@
   }
 }
 
-// The settings window: its title, the storage line (and its bar, wider here), the Close button.
+// The settings window: its title with an X in the corner, the storage line (and its bar, wider
+// here), then its actions one under another: Download all animations, Install the studio.
 .nsc-settings-dialog {
+  position: relative;
   width: min(24rem, calc(100vw - 2rem));
+
+  .close-button {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+  }
+
+  .settings-action { display: flex; margin: 0 auto var(--space-4); }
+
+  .settings-note {
+    margin-top: calc(var(--space-2) * -1);
+    font-size: var(--text-hint);
+
+    &.is-problem { color: var(--color-danger); }
+  }
 
   .nsc-storage-meter {
     width: 100%;
@@ -489,4 +506,6 @@
 
     p { margin: 0; }
   }
+
+  .offline-note { font-size: var(--text-hint); }
 }

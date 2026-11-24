@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
-import { Camera, CopyPlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
+import { CopyPlus, Maximize2, Minimize2, Plus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { formatSeconds, formatTicks, inOrder, objectLabel, neighbourAfterDelete, pxPerTick, rulerScale, ticksToSeconds, totalTicks } from "@/core/model";
 import { MAX_TIMELINE_ZOOM, MIN_TIMELINE_ZOOM, selectedOverlayId, withPreview } from "@/store/editorStore";
 import { editorStore, useEditor, useShownFrames, useShownOverlays } from "@/store/useEditor";
@@ -56,6 +56,7 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
   const overlay = useShownOverlays().find((item) => item.id === overlayId);
   const fps = useEditor((state) => state.project?.fps ?? 8);
   const projectId = useEditor((state) => state.project?.id);
+  const [minimized, setMinimized] = useRememberedState(remembered.timelineMinimized, false);   // the pictures small: the same on every animation
   const [layers, setLayers] = useRememberedState(projectId ? remembered.timelineLayers(projectId) : null, DEFAULT_LAYERS);   // the extra rows shown (LayersMenu), this animation's
   const thumbRatio = useEditor((state) => (state.project ? `${state.project.width} / ${state.project.height}` : "16 / 9"));
 
@@ -64,6 +65,9 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
   const next = useRef<HTMLLIElement>(null);
   useTimelineView(scroller);
   const { zoom, zoomTo } = useTimelineZoom(scroller);
+  // Minimized, the pictures are a third as tall: zoomed out two steps too (and back in), so they
+  // stay about the same shape.
+  const toggleMinimized = () => { setMinimized(!minimized); zoomTo(zoom * ZOOM_STEP ** (minimized ? 2 : -2)); };
 
   const order = frames.map((frame) => frame.id);
   const tickWidth = pxPerTick(zoom, fps);
@@ -186,8 +190,9 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
   const pictures = overlay ? objectLabel(overlay.element) : count > 1 ? `${count} pictures` : "picture";
 
   return (
-    <section className="timeline" aria-label="Timeline">
+    <section className={`timeline${minimized ? " is-minimized" : ""}`} aria-label="Timeline">
       <div className="timeline-tools">
+        <button type="button" className="icon-button is-small" aria-label={minimized ? "Maximize" : "Minimize"} title={minimized ? "Maximize" : "Minimize"} onClick={toggleMinimized}>{minimized ? <Maximize2 size={20} /> : <Minimize2 size={20} />}</button>
         <LayersMenu layers={layers} onChange={setLayers} />
         <span className="tools-gap" />
         <button type="button" className="icon-button is-small" aria-label="Zoom out" disabled={zoom <= MIN_TIMELINE_ZOOM} onClick={() => zoomTo(zoom / ZOOM_STEP)}><ZoomOut size={20} /></button>
@@ -225,9 +230,9 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
           {reorder.drag && <li className="drop-marker" aria-hidden="true" style={{ left: reorder.drag.markerX }} />}
           {/* Where the next picture goes; pressed, it adds an empty (see-through) picture there. */}
           <li ref={next} className="next-slot" role="presentation">
-            <button type="button" className="next-button" aria-label="Add an empty picture" title="Add an empty picture: see-through, for a title or a drawing" onClick={onAddEmpty}>
-              <Camera size={24} aria-hidden="true" />
-              {frames.length === 0 && <span className="next-hint">Your pictures appear here</span>}
+            <button type="button" className="next-button" title="Add empty frame" onClick={onAddEmpty}>
+              <Plus size={28} strokeWidth={3.5} aria-hidden="true" />
+              <span className="next-hint">Insert frame</span>
             </button>
           </li>
         </ol>

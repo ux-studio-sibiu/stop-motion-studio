@@ -169,7 +169,7 @@ export function Studio() {
           <PictureControls save={commands.transformPictures} />
           <AdjustControls save={commands.adjustPictures} />
         </PanelTab>
-        <PanelTab id="objects" label="Objects" title="Things on the picture" icon={<Shapes size={31} />}>
+        <PanelTab id="objects" label="Objects" title="Add extras" icon={<Shapes size={31} />}>
           <ObjectsPanel saves={objectSaves} onStage={stageMode === "frame"} />
         </PanelTab>
         <PanelTab id="draw" label="Draw" title="Draw on the picture" icon={<Pencil size={31} />}>

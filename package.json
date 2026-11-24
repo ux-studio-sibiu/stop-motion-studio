@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "serve out",
+    "build": "next build && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-offline.mjs",
+    "start": "serve out -l 3100",
     "lint": "eslint",
     "test": "vitest run --project unit",
     "test:browser": "vitest run --project browser",

@@ -15,16 +15,16 @@ export function PlaybackBar({ onSpeed, onSafeMargin, children }: { onSpeed: (fro
   const isPlaying = useEditor((state) => state.isPlaying);
   const loop = useEditor((state) => state.loop);
   const fps = useEditor((state) => state.project?.fps ?? 8);
-  const hasPictures = useEditor((state) => (state.project?.frameIds.length ?? 0) > 0);
   const speedIndex = nearestOption(fps);
   const { open, toggle, ref } = useDropdown();
 
-  // Green to play; red, the whole group, while playing (the stop look, with the pause icon).
+  // Green to play; red, the whole group, while playing (the stop look, with the pause icon). Never
+  // greyed out: with no pictures yet, pressing it does nothing (the store's play()).
   const fill = isPlaying ? "is-primary" : "is-go";
   return (
     <footer className="playback-bar">
       <div ref={ref} className="nsc-playback-options option-menu">
-        <button type="button" className={`icon-button toggle play ${fill}`} aria-label={isPlaying ? "Pause" : "Play"} title={`${isPlaying ? "Pause" : "Play"} (Enter)`} disabled={!hasPictures} onClick={togglePlay}>
+        <button type="button" className={`icon-button toggle play ${fill}`} aria-label={isPlaying ? "Pause" : "Play"} title={`${isPlaying ? "Pause" : "Play"} (Enter)`} onClick={togglePlay}>
           {isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}   {/* filled: solid shapes, like a player's */}
           {/* Both words in one spot, only one visible: the button keeps the width of the longer one. */}
           <span className="play-label" aria-hidden="true">

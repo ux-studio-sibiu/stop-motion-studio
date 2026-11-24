@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
-import { strToU8, zipSync } from "fflate";
+import { strToU8, unzipSync, zipSync } from "fflate";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { exportArchive, importArchive, type Decode } from "@/adapters/archive/projectArchive";
+import { exportAllArchives, exportArchive, importArchive, importArchives, type Decode } from "@/adapters/archive/projectArchive";
 import { openStudioDb, type StudioDb } from "@/adapters/storage/db";
 import { createDexieRepository } from "@/adapters/storage/dexieRepository";
 import { ArchiveError } from "@/core/archive";
@@ -83,5 +83,49 @@ describe("project archive", () => {
     const failing: Decode = async (picture) => ((await picture.text()).includes("img-b") ? Promise.reject(new Error("broken")) : decode(picture));
     await expect(importArchive(repository, blob, { decode: failing })).rejects.toMatchObject({ problem: "missing-pictures" });
     expect(await repository.listProjects()).toEqual([]);   // all or nothing
+  });
+
+  it("backs up every animation in one file, each as its own backup, names kept apart", async () => {
+    await savedAnimation();
+    await savedAnimation();   // another "Dino walk"
+    const { blob, name, count } = await exportAllArchives(repository, { now: new Date(2026, 10, 24) });
+    expect(name).toBe("All animations 2026-11-24.zip");
+    expect(count).toBe(2);
+    const inside = unzipSync(new Uint8Array(await blob.arrayBuffer()));
+    expect(Object.keys(inside).sort()).toEqual(["Dino walk (2).zip", "Dino walk.zip"]);
+    expect(Object.keys(unzipSync(inside["Dino walk.zip"]))).toContain("project.json");
+  });
+
+  it("has nothing to back up with no animations", async () => {
+    await expect(exportAllArchives(repository)).rejects.toThrow();
+  });
+
+  it("restores the backup of all animations: every one comes back, as new animations", async () => {
+    await savedAnimation();
+    await repository.createProject({ ...createProject({ name: "Cat", now: 0 }), frameIds: [] });
+    const { blob } = await exportAllArchives(repository);
+    for (const project of await repository.listProjects()) await repository.deleteProject(project.id);
+
+    const { restored, failed } = await importArchives(repository, blob, { decode });
+    expect(failed).toBe(0);
+    expect(restored.map((project) => project.name).sort()).toEqual(["Cat", "Dino walk"]);
+    const dino = restored.find((project) => project.name === "Dino walk")!;
+    expect((await repository.loadProject(dino.id))?.frames).toHaveLength(3);
+  });
+
+  it("restores one animation's backup too, and the others of a bundle when one is broken", async () => {
+    const original = await savedAnimation();
+    const { blob: single } = await exportArchive(repository, original.id);
+    expect((await importArchives(repository, single, { decode })).restored.map((project) => project.name)).toEqual(["Dino walk"]);
+
+    const bundle = zipSync({ "Dino walk.zip": new Uint8Array(await single.arrayBuffer()), "Broken.zip": strToU8("not a zip") });
+    const { restored, failed } = await importArchives(repository, new Blob([bundle as BlobPart]), { decode });
+    expect(restored).toHaveLength(1);
+    expect(failed).toBe(1);
+  });
+
+  it("rejects a file that's neither kind of backup", async () => {
+    await expect(importArchives(repository, new Blob([zipSync({ "notes.txt": strToU8("hi") }) as BlobPart]), { decode })).rejects.toMatchObject({ problem: "not-archive" });
+    await expect(importArchives(repository, new Blob(["just text"]), { decode })).rejects.toMatchObject({ problem: "not-archive" });
   });
 });

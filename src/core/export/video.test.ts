@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { exportFileName, exportSegments, videoFrames } from "@/core/export";
+import { exportFileName, exportSegments, uniqueFileNames, videoFrames } from "@/core/export";
 
 const holds = (...values: number[]) => values.map((hold) => ({ hold }));
 
@@ -32,5 +32,15 @@ describe("exportFileName", () => {
   it("is the animation's name with the file's extension", () => {
     expect(exportFileName("Dino walk", "mp4")).toBe("Dino walk.mp4");
     expect(exportFileName("a/b", "webm")).toBe("a b.webm");
+  });
+});
+
+describe("uniqueFileNames", () => {
+  it("numbers names already taken, ignoring case, and keeps the order", () => {
+    expect(uniqueFileNames(["Dino.zip", "Cat.zip", "dino.zip", "Dino.zip"])).toEqual(["Dino.zip", "Cat.zip", "dino (2).zip", "Dino (3).zip"]);
+  });
+
+  it("never makes a name that's already in the list", () => {
+    expect(uniqueFileNames(["Dino (2).zip", "Dino.zip", "Dino.zip"])).toEqual(["Dino (2).zip", "Dino.zip", "Dino (3).zip"]);
   });
 });

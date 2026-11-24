@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, Check, ChevronDown, ChevronLeft, CopyPlus, Download, Eraser, HardDrive, Image as ImageIcon, ImagePlus, Layers, Music, Pause, Pencil, Play, Redo2, RotateCcw, Shapes, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Camera, Check, ChevronDown, ChevronLeft, CopyPlus, Download, Eraser, HardDrive, Image as ImageIcon, ImagePlus, Layers, Music, Pause, Pencil, Play, Plus, Redo2, RotateCcw, Shapes, Trash2, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { bubbleProps, createBubble, createProject, createShape, createText, SHAPE, shapeProps, SPEECH_BUBBLE, TEXT, textProps, withProps, type Project } from "@/core/model";
 import { BubbleSettings } from "@/features/objects/BubbleSettings";
@@ -349,7 +349,7 @@ export function DesignPage() {
                 <TimelinePicture number={2} width={200} index={1} selected grip="1.25 s" />
                 <TimelinePicture number={3} width={60} index={2} onStage />
                 <TimelinePicture number={4} width={40} index={3} />
-                <li className="next-slot" aria-hidden="true"><Camera size={24} /></li>
+                <li className="next-slot" aria-hidden="true"><span className="next-button"><Plus size={28} strokeWidth={3.5} /><span className="next-hint">Insert frame</span></span></li>
               </ol>
               <div className="overlay-track" style={{ width: 640, "--lanes": 2 } as CSSProperties}>
                 <OverlayBar left={0} width={240} lane={0} kind={TEXT} text="Once upon a time" />

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>32 Offline · Stop-motion Studio</title>
+<link rel="stylesheet" href="steps.css">
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+</head>
+<body>
+<main class="nsc-step">
+  <p class="eyebrow"><a href="index.html">Build steps</a> · Step 32 · Part 10 Kids, polish and shipping</p>
+  <h1>Offline (PWA)</h1>
+  <p class="intro">After one visit the studio is <strong>stored on the device</strong>: it opens, takes pictures, plays and saves GIFs and videos <strong>with no internet</strong>. The animations were already on the device (IndexedDB); now the app's own files are too. It can be <strong>installed</strong> like an app. <strong>Online, it's always the latest version</strong>: pages come fresh from the network, and the stored copy is only for when there's none. Only a page opened from the stored copy offers <strong>Update</strong>, when a newer version comes. The planned step 33, Ship, is dropped: the studio is already live at <code>stop-motion.studiosibiu.com</code>.</p>
+
+  <h2>What was built</h2>
+  <ul>
+    <li><strong>A service worker</strong>, <code>scripts/sw.js</code>, hand-written. <code>npm run build</code> now runs <code>scripts/build-offline.mjs</code> after <code>next build</code>: it lists the files in <code>out/</code> and writes <code>out/sw.js</code> with those lists in front. It prints what it keeps: 68 files (1.8 MB), then 73 sounds (24.9 MB).</li>
+    <li><strong>What's kept, decided in <code>core/offline/precache.ts</code></strong> (plain TypeScript, tested; the build script runs the <code>.ts</code> file directly, and copies its <code>pageKey</code> into the worker, so the tested code is the shipped code):
+      <ul>
+        <li>the <strong>shell</strong>: the pages (stored as <code>/</code>, <code>/studio</code>, <code>/design</code>), the code, the fonts, the cardboard pieces, the icons and the manifest. Stored when the worker installs, all or nothing;</li>
+        <li>the <strong>sounds</strong>: fetched in the background once the worker runs (the page asks for it), and stored as they're played, in a cache of their own;</li>
+        <li>left out: these build notes (<code>/steps/</code>, always fetched fresh), source maps and the not-found pages.</li>
+      </ul>
+    </li>
+    <li><strong>Online first.</strong> Pages, and every stored file without a hash in its name (Next's page data, the manifest, fonts, cardboard pieces), come from the network; from the cache only when there's no network or it takes over 4 s. The code chunks (<code>/_next/static/</code>, a hash in every name, so a file there never changes) come from the cache first. Sounds from their own cache.</li>
+    <li><strong>Versions:</strong> each list has a hash of its files' contents. A build that changes anything makes a new worker and a new shell cache; the new worker takes over at once and drops the old cache. A build that changes no sound keeps the 25 MB of sounds already stored.</li>
+    <li><strong>The Update notice</strong> (<code>src/offline/OfflineSupport.tsx</code>, in the root layout): "A new version of the studio is ready." with an <strong>Update</strong> button, at the top of the page, <strong>only on a page opened from the stored copy</strong>. The worker notes each tab it answered from the cache; the page asks it on load (<code>"served"</code>), and if so, shows the notice when a newer worker takes over. Pressed, the page reloads, fresh from the network. The browser looks for a new worker on every visit, and the studio asks again when it's looked at again or the internet comes back.</li>
+    <li><strong>The manifest</strong> (<code>src/app/manifest.ts</code>, written as <code>/manifest.webmanifest</code>) and the icons: the favicon's bars as PNGs in <code>public/icons/</code> (192, 512, and a maskable 512 on the page colour), and <code>src/app/apple-icon.png</code> for iPads.</li>
+    <li><strong>Settings</strong> (home page) says "The studio is saved on this device: it works without the internet too." once it is, and shows <strong>Install the studio</strong> when the browser offers it (Chrome, Edge; Safari installs from its Share menu instead).</li>
+  </ul>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>No PWA library.</strong> The usual ones (<code>next-pwa</code>, Serwist) plug into webpack; this build is Turbopack. The worker is about 90 lines and the lists come from the export itself, so nothing can be forgotten.</li>
+    <li><strong>Online first, the cache as a fallback.</strong> Online, a child always gets the latest studio with no prompt to understand; the 4 s limit keeps a very slow classroom Wi-Fi from leaving them waiting (that page then counts as opened offline).</li>
+    <li><strong>An update never reloads by itself.</strong> A child in the middle of an animation, opened offline, keeps that version until they press Update. The animations are saved as they change, so pressing it loses nothing.</li>
+    <li><strong>Only in the production build.</strong> The dev server has no <code>/sw.js</code>, and a worker there would serve old files while editing. For the same reason <code>npm start</code> now serves on port 3100, not the dev server's 3000.</li>
+    <li><strong>Tests block service workers,</strong> all but <code>offline.spec.ts</code>: otherwise every test would download the app and the sounds into its fresh browser.</li>
+  </ul>
+
+  <h2>Watch out</h2>
+  <ul>
+    <li>Stored files ignore their requests' <code>Vary</code> header and query: the server says <code>Vary: Accept-Encoding</code>, and scripts and prefetches don't all ask the same way; without it, some chunks weren't found offline.</li>
+    <li>A worker script answered from the cache is copied into a fresh response: Next's worker bootstrap reads its settings from its address's <code>#params=</code>, and a stored response would give it the stored address, without them (the GIF encoder failed with "Missing worker bootstrap config").</li>
+    <li>The host must serve pages at their clean names (<code>/studio</code>), as it does now; the worker stores them under those.</li>
+    <li>Offline right after the first visit, the sounds may not all be stored yet: one not stored yet plays as silence until the internet is back.</li>
+    <li>A page opened offline that stays open after a newer worker took over runs old code with the new cache: a part it hasn't loaded yet may be missing (a new deploy removes the old chunks). That's what the Update notice is for.</li>
+  </ul>
+
+  <h2>Check it</h2>
+  <ul>
+    <li><code>npm run test:e2e -- e2e/offline.spec.ts</code> (builds the app, about 40 s).</li>
+    <li>By hand: <code>npm run build</code>, <code>npm start</code>, open http://localhost:3100, then DevTools → Application → Service workers shows it running; tick Offline in the Network tab and reload: the studio still opens and takes pictures.</li>
+    <li>On the live site after the next deploy: install it from the browser's address bar, turn the Wi-Fi off, open it.</li>
+  </ul>
+  <div class="note">Checked while building: lint and typecheck are clean; 433 unit tests pass; <code>offline.spec</code> (3 tests) passes against the production build, and the projects and storage specs (the Settings window) against the dev server.</div>
+
+  <h2>Files in this step</h2>
+  <p><code>scripts/sw.js</code>, <code>scripts/build-offline.mjs</code> (new); <code>src/core/offline/precache.ts</code> (new); <code>src/offline/serviceWorker.ts</code>, <code>OfflineSupport.tsx</code>, <code>_offline.scss</code> (new); <code>src/app/manifest.ts</code>, <code>src/app/apple-icon.png</code>, <code>public/icons/</code> (new); <code>src/app/layout.tsx</code>; <code>src/projects/SettingsDialog.tsx</code>, <code>projects.scss</code>; <code>package.json</code> (build, start); <code>playwright.config.ts</code>; <code>e2e/offline.spec.ts</code> (new); the docs (<code>ROADMAP.md</code>, <code>PLAN.md</code>, <code>README.md</code>, <code>CLAUDE.md</code>, <code>src/core/README.md</code>); <code>public/steps/32-offline.html</code>, <code>index.html</code>, <code>31-performance.html</code> (next link).</p>
+  <p><strong>Tests added:</strong></p>
+  <ul>
+    <li>Unit, <code>precache.test.ts</code>: files map to the addresses they're served at (pages by clean name); the shell and the sounds are listed apart, sorted; the build notes, source maps, not-found pages and the worker are left out; every form of a page's address answers with its clean name.</li>
+    <li>End-to-end, <code>offline.spec.ts</code>: after one visit, offline, the home page opens and Settings says it works offline; a new animation opens (and reloads) in the studio, takes two pictures and saves a GIF. Online, a changed home page shows at once and a new worker takes over with no notice. A page opened offline shows the Update notice when a new worker comes; Update reloads it, and the notice is gone.</li>
+  </ul>
+  <p><strong>Tests changed:</strong> none. Every spec now runs with service workers blocked (<code>playwright.config.ts</code>), which changes nothing they check.</p>
+
+  <h2>Review checklist</h2>
+  <ul class="checklist">
+    <li><code>npm run build</code> prints the worker's line, and <code>out/sw.js</code> lists no <code>/steps/</code> or <code>.map</code> file</li>
+    <li>offline after one visit, the studio opens, captures and exports</li>
+    <li>online, a new deploy shows on the next load with no notice; a page opened offline offers Update, and nothing reloads until it's pressed</li>
+    <li><code>npm run dev</code> registers no worker</li>
+    <li>the install offer shows in Settings in Chrome, and the installed app opens in its own window</li>
+  </ul>
+
+  <nav class="pager">
+    <a href="31-performance.html">Previous: 31 · Performance</a>
+    <span>Last step</span>
+  </nav>
+</main>
+</body>
+</html>

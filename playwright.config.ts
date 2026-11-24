@@ -24,6 +24,7 @@ export default defineConfig<StudioOptions>({
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: "retain-on-failure",          // every failed test keeps a trace to open in the trace viewer
+    serviceWorkers: "block",             // the offline worker (step 32) stays out of every test but offline.spec's
   },
 
   projects: [

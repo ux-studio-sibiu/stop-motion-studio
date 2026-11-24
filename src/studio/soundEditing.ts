@@ -5,7 +5,7 @@ import { orderedFrames } from "@/store/editorStore";
 import { soundById, startingVolume } from "@/core/sound";
 import { previewSound } from "@/adapters/sound/sound";
 import { editorStore } from "@/store/useEditor";
-import { DEFAULT_LAYERS, remembered, saveRemembered } from "./remembered";
+import { showTimelineLayer } from "./remembered";
 
 // Changing the sounds in time (step 29b), shared by the timeline's sound row and the Sounds tab.
 
@@ -56,9 +56,7 @@ export function soundName(sound: string): string {
 export async function addSound(sound: string, tick: number, save: SaveSounds): Promise<void> {
   const clip = createSoundClip(sound, tick, startingVolume(sound));   // music starts quiet
   previewSound(sound);
-  const id = editorStore.getState().project?.id;   // this animation's rows
-  const layers = (id && remembered.timelineLayers(id).read()) || DEFAULT_LAYERS;
-  if (id && !layers.sounds) saveRemembered(remembered.timelineLayers(id), { ...layers, sounds: true });
+  showTimelineLayer("sounds");
   if (await saveSounds([...savedSounds(), clip], `Add ${soundName(sound)}`, save)) editorStore.getState().pickSound(clip.id);
 }
 

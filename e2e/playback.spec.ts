@@ -73,3 +73,14 @@ test("the loop setting is remembered after a reload", async ({ page }) => {
   await page.getByRole("button", { name: "Playback options" }).click();
   await expect(page.getByRole("checkbox", { name: /^Loop/ })).not.toBeChecked();
 });
+
+// Play is never greyed out: in a new animation, with nothing to play yet, it's there to press,
+// and pressing it does nothing.
+test("in a new animation, Play can be pressed and does nothing", async ({ studio, page }) => {
+  await studio.open();   // a new animation, no pictures
+  const play = page.getByRole("button", { name: "Play", exact: true });
+  await expect(play).toBeEnabled();
+  await play.click();
+  await expect(play).toBeVisible();   // still Play, not Pause
+  await expect(page.getByRole("button", { name: "Pause" })).toHaveCount(0);
+});

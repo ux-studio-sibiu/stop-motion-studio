@@ -96,21 +96,24 @@ test("playing plays the sounds; pausing stops them", async ({ studio, page }) =>
 test("the Layers button shows and hides the objects and sounds rows, remembered after a reload; dragging a sound shows its row", async ({ studio, page }) => {
   const sounds = page.getByRole("group", { name: "Sound Layer" });
   const objects = page.getByRole("group", { name: "Objects Layer" });
-  await expect(sounds).toBeVisible();    // both show at first, whichever tab is open
-  await expect(objects).toBeVisible();
+  await expect(page.getByRole("region", { name: "Timeline" })).toBeVisible();
+  await expect(sounds).toHaveCount(0);   // a new animation shows neither at first
+  await expect(objects).toHaveCount(0);
 
   const layers = page.getByRole("button", { name: "Timeline layers" });
   await layers.click();
   const menu = page.getByRole("group", { name: "Timeline layers" });
-  const below = (await menu.boundingBox())!.y > (await layers.boundingBox())!.y;
-  expect(below).toBe(true);              // it opens below the button, over the timeline
-  await menu.getByLabel("Sound Layer").uncheck();
-  await menu.getByLabel("Objects Layer").uncheck();
-  await expect(sounds).toHaveCount(0);
-  await expect(objects).toHaveCount(0);
+  await menu.getByLabel("Sound Layer").check();
+  await menu.getByLabel("Objects Layer").check();
+  await expect(sounds).toBeVisible();
+  await expect(objects).toBeVisible();
 
   await page.reload();
-  await expect(page.getByRole("region", { name: "Timeline" })).toBeVisible();
+  await expect(sounds).toBeVisible();    // remembered
+  await expect(objects).toBeVisible();
+  await layers.click();
+  await menu.getByLabel("Sound Layer").uncheck();
+  await menu.getByLabel("Objects Layer").uncheck();
   await expect(sounds).toHaveCount(0);
   await expect(objects).toHaveCount(0);
 

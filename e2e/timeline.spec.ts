@@ -152,17 +152,17 @@ test("each animation remembers which pictures were selected", async ({ studio, p
   expect(await studio.selectedOrder()).toEqual((await studio.order()).slice(1, 3));
 });
 
-test("the timeline's buttons come in four groups: layers, zoom, undo and redo, then duplicate, add photos and delete", async ({ page }) => {
+test("the timeline's buttons come in four groups: minimize and layers, zoom, undo and redo, then duplicate, add photos and delete", async ({ page }) => {
   const tools = page.locator(".timeline-tools").locator("button, .tools-gap");
   const names = await tools.evaluateAll((items) => items.map((item) => (item.classList.contains("tools-gap") ? "|" : item.getAttribute("aria-label"))));
-  expect(names).toEqual(["Timeline layers", "|", "Zoom out", "Zoom in", "|", "Undo", "Redo", "|", "Duplicate picture", "Add photos", "Delete picture"]);
+  expect(names).toEqual(["Minimize", "Timeline layers", "|", "Zoom out", "Zoom in", "|", "Undo", "Redo", "|", "Duplicate picture", "Add photos", "Delete picture"]);
 });
 
 // An empty picture (no photo): the next-picture slot adds one, see-through, shown on a checkerboard.
 test("the next-picture slot adds an empty picture after the selected one, one undo step, on a checkerboard", async ({ studio, page }) => {
   const before = await studio.order();
   await studio.picture(1).click();
-  await page.getByRole("button", { name: "Add an empty picture" }).click();
+  await page.getByRole("button", { name: "Insert frame" }).click();
   await expect(studio.pictures()).toHaveCount(4);
   await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Add empty picture");
   const order = await studio.order();
@@ -191,4 +191,61 @@ test("the ruler's gradations are off at first; the Layers menu turns them on, an
 
   await page.reload();
   await expect(labels.first()).toHaveText("0s");
+});
+
+// Minimize (the tools' first button): the pictures a third as tall, the stage taller, and zoomed
+// out two steps, so they keep about their shape (Maximize zooms back in). Shown, an extra
+// row makes the timeline taller, the pictures staying small. Remembered for every animation.
+test("Minimize makes the pictures small, extra rows still fit, and it's remembered for every animation", async ({ studio, page }) => {
+  const timeline = page.getByRole("region", { name: "Timeline" });
+  const heightOf = async (locator: ReturnType<typeof page.locator>) => (await locator.boundingBox())!.height;
+  const full = await heightOf(studio.picture(1));
+  const tall = await heightOf(timeline);
+
+  await page.getByRole("button", { name: "Minimize" }).click();
+  await expect(page.getByRole("button", { name: "Maximize" })).toHaveAttribute("title", "Maximize");
+  await expect.poll(() => heightOf(studio.picture(1))).toBeLessThan(full * 0.45);
+  const small = await heightOf(studio.picture(1));
+  expect(small).toBeGreaterThan(full * 0.25);   // about a third
+  expect(await studio.widthOf(studio.picture(1))).toBeCloseTo(20 / 2.25, 0);   // two zoom steps of 1.5 out
+  const short = await heightOf(timeline);
+  expect(short).toBeLessThan(tall);
+
+  await page.getByRole("button", { name: "Timeline layers" }).click();
+  await page.getByRole("group", { name: "Timeline layers" }).getByLabel("Objects Layer").check();
+  await expect(page.getByRole("group", { name: "Objects Layer" })).toBeVisible();
+  await expect.poll(() => heightOf(timeline)).toBeGreaterThan(short + 10);   // grown to fit the row
+  expect(await heightOf(studio.picture(1))).toBeCloseTo(small, 0);           // the pictures as small as before
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Maximize" })).toBeVisible();
+  await studio.open();   // another, new animation: minimized too
+  await expect(page.getByRole("button", { name: "Maximize" })).toBeVisible();
+  await studio.seedPictures(1);
+  await page.getByRole("button", { name: "Maximize" }).click();
+  await expect(page.getByRole("button", { name: "Minimize" })).toBeVisible();
+  await expect.poll(() => studio.widthOf(studio.picture(1))).toBeCloseTo(20, 0);   // zoomed back in
+});
+
+// A list that opens below its button (the Layers list, over the timeline) opens above it when the
+// window has no room underneath: with only the pictures showing (the timeline is too short for it),
+// or minimized. With both extra rows showing there's room.
+test("the Layers list opens below its button, or above it when there's no room below", async ({ page }) => {
+  const button = page.getByRole("button", { name: "Timeline layers" });
+  const list = page.getByRole("group", { name: "Timeline layers" });
+  const where = async () => { const [menu, at] = [(await list.boundingBox())!, (await button.boundingBox())!]; return menu.y >= at.y + at.height ? "below" : menu.y + menu.height <= at.y ? "above" : "over"; };
+
+  await button.click();
+  expect(await where()).toBe("above");   // only the pictures: no room
+  await list.getByLabel("Objects Layer").check();
+  await list.getByLabel("Sound Layer").check();
+  await button.click();   // closed
+  await button.click();
+  expect(await where()).toBe("below");   // the timeline taller: room
+  await button.click();
+
+  await page.getByRole("button", { name: "Minimize" }).click();
+  await button.click();
+  expect(await where()).toBe("above");
+  expect((await list.boundingBox())!.y).toBeGreaterThanOrEqual(0);   // inside the window
 });

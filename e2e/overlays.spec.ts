@@ -22,9 +22,10 @@ const bar = (page: Page) => page.getByRole("button", { name: /^Rectangle, from/ 
 // Drags the Shape icon onto the track, at a tick.
 async function dropShape(page: Page, studio: Studio, tick: number) {
   const from = (await page.getByRole("button", { name: "Shape", exact: true }).boundingBox())!;
-  const to = (await track(page).boundingBox())!;
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2 + 10, from.y + from.height / 2, { steps: 2 });   // the drag starts: the Objects Layer shows (hidden in a new animation)
+  const to = (await track(page).boundingBox())!;
   await page.mouse.move(to.x + tick * TICK + TICK / 2, to.y + to.height / 2, { steps: 12 });
   await page.mouse.up();
   await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Add rectangle");

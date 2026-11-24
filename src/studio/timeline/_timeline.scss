@@ -359,42 +359,62 @@
   .next-slot {
     display: flex;   // its button fills it
     flex: none;
-    width: 5rem;
     margin-left: var(--space-2);
-    border: 2px dashed var(--color-border);
-    border-radius: var(--radius-small);
-    color: var(--color-muted);
+    color: var(--cardboard-ink);   // black, on the cardboard
 
-    // With no pictures yet the slot widens to fit its hint.
-    &:only-child { width: auto; margin-left: 0; }
-    &:only-child .next-button { padding: 0 var(--space-4); }
+    &:only-child { margin-left: 0; }
   }
 
-  // The whole slot is the button that adds an empty picture.
+  // The whole slot is the button that adds an empty picture: a dashed square, as tall as the row,
+  // with a + and "Insert frame" under it, inside.
   .next-button {
-    display: grid;
-    place-content: center;
-    justify-items: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     gap: var(--space-1);
-    width: 100%;
     height: 100%;
-    padding: 0;
-    border: 0;
-    border-radius: inherit;
+    aspect-ratio: 1;
+    padding: var(--space-1);
+    border: 2px dashed currentColor;
+    border-radius: var(--radius-small);
     background: transparent;
     color: inherit;
     font: inherit;
     cursor: pointer;
 
-    &:hover { background: color-mix(in srgb, var(--color-ink) 5%, transparent); color: var(--color-ink); }
+    &:hover { background: color-mix(in srgb, var(--color-ink) 5%, transparent); }
     &:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
   }
 
-  .next-hint { font-size: var(--text-hint); font-weight: 700; }
+  .next-hint { font-size: var(--text-hint); font-weight: 800; line-height: 1.1; text-align: center; }
 
 }
 // The sound row (step 29b), at the bottom: its bars white like the overlay track's (told apart by
 // their row and their note icon). Its ends drag like an overlay's.
 .nsc-studio .timeline {
   .sound-track { margin-bottom: 0; }
+}
+
+// Minimized (the tools' Minimize button, remembered for every animation): the pictures a third as
+// tall, the timeline only as tall as what's in it, so the stage gets the rest. The extra rows keep
+// their own height under the small pictures: shown, they make it taller, the pictures stay small.
+.nsc-studio:has(.timeline.is-minimized) {
+  --timeline-height: 6rem;   // phones; less than what's in it, so its content sets its height
+
+  @include respond-to("tablet") { --timeline-height: 3rem; }   // the tools are a tab, outside it
+}
+
+.nsc-studio .timeline.is-minimized {
+  .timeline-scroll {
+    grid-template-rows: 1.25rem auto auto;   // ruler, pictures, objects in time: none of them stretched
+    align-content: start;
+  }
+
+  .track {
+    height: 3.25rem;   // pictures about 40 px tall, a third of their usual height
+    min-height: 0;
+  }
+
+  .next-hint { display: none; }   // no room for the words in the small square
 }

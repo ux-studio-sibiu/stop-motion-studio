@@ -36,6 +36,7 @@ export const remembered = {
   timelineLayers: definePreferenceFamily("timeline-layers", asTimelineLayers),   // each animation's timeline: which extra rows show (objects in time, sounds), and the ruler's gradations
   cameraFraming: definePreferenceFamily("camera-framing", asFraming),  // each animation's camera zoom and where it's framed, so every picture matches
   cameraLock: definePreference("camera-lock", asBoolean),              // the camera's focus, exposure and white balance locked
+  timelineMinimized: definePreference("timeline-minimized", asBoolean),   // the timeline's pictures small (its Minimize button), for every animation
 };
 
 // A remembered camera framing, its values put back in range.
@@ -45,13 +46,22 @@ function asFraming(raw: unknown): Framing | undefined {
 }
 
 // The timeline's extra rows under the pictures, each shown or hidden from the timeline's Layers
-// button. Both show at first; a missing one counts as shown.
-// And the ruler's gradations (its second marks and times), hidden at first.
+// button, and the ruler's gradations (its second marks and times). A new animation has all of them
+// hidden; adding an object or a sound in time shows its row (showTimelineLayer).
 export type TimelineLayers = { objects: boolean; sounds: boolean; ruler: boolean };
-export const DEFAULT_LAYERS: TimelineLayers = { objects: true, sounds: true, ruler: false };
+export const DEFAULT_LAYERS: TimelineLayers = { objects: false, sounds: false, ruler: false };
 function asTimelineLayers(raw: unknown): TimelineLayers | undefined {
   const value = asObject(raw);
-  return value && { objects: value.objects !== false, sounds: value.sounds !== false, ruler: value.ruler === true };
+  return value && { objects: value.objects === true, sounds: value.sounds === true, ruler: value.ruler === true };
+}
+
+// Shows one of the open animation's timeline rows (a drag of a sound or an object starts, so there's
+// somewhere to drop it; one is added); nothing if it's showing already.
+export function showTimelineLayer(layer: "objects" | "sounds"): void {
+  const id = editorStore.getState().project?.id;
+  if (!id) return;
+  const layers = remembered.timelineLayers(id).read() ?? DEFAULT_LAYERS;
+  if (!layers[layer]) saveRemembered(remembered.timelineLayers(id), { ...layers, [layer]: true });
 }
 
 // Settings the studio used to remember and no longer does, cleared once when it opens:

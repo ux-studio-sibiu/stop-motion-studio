@@ -26,3 +26,18 @@ export function exportFileName(name: string, extension: string): string {
   const clean = name.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().replace(/[. ]+$/, "");
   return `${clean || "animation"}.${extension}`;
 }
+
+// File names made unique, for files side by side in one folder or .zip (the backup of all
+// animations): the second "Dino.zip" becomes "Dino (2).zip", and so on, ignoring case (Windows
+// and macOS do). Order kept.
+export function uniqueFileNames(names: readonly string[]): string[] {
+  const taken = new Set<string>();
+  return names.map((name) => {
+    const dot = name.lastIndexOf(".");
+    const [base, extension] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ""];
+    let candidate = name;
+    for (let n = 2; taken.has(candidate.toLowerCase()); n++) candidate = `${base} (${n})${extension}`;
+    taken.add(candidate.toLowerCase());
+    return candidate;
+  });
+}

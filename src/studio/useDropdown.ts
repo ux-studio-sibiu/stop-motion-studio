@@ -12,6 +12,9 @@ const GAP = 8;   // px between the button row and a list fixed to the window
 // placed inside its parent, so a scrolling or clipping container (the side panel) can't cut it
 // off. `style` then places it just above the `ref` element, right edges lined up, and follows it
 // when the window is resized or anything scrolls.
+//
+// A list that opens below its button (.opens-below) opens above it instead when the window has no
+// room for it underneath and more above (data-flip="up" on the `ref` element).
 export function useDropdown<T extends HTMLElement = HTMLDivElement>({ fixed = false }: { fixed?: boolean } = {}) {
   const [open, setOpen] = useState(false);
   const [at, setAt] = useState<CSSProperties>();
@@ -28,6 +31,22 @@ export function useDropdown<T extends HTMLElement = HTMLDivElement>({ fixed = fa
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+
+  useLayoutEffect(() => {
+    const holder = ref.current;
+    if (!open || fixed || !holder?.classList.contains("opens-below")) return;
+    const fit = () => {
+      delete holder.dataset.flip;   // measured where it opens first: below
+      const list = holder.querySelector<HTMLElement>(":scope > .options");
+      if (!list) return;
+      const box = list.getBoundingClientRect();
+      const above = holder.getBoundingClientRect().top - GAP;
+      if (box.bottom > innerHeight - GAP && above > innerHeight - box.top) holder.dataset.flip = "up";
+    };
+    fit();
+    addEventListener("resize", fit);
+    return () => { removeEventListener("resize", fit); delete holder.dataset.flip; };
+  }, [open, fixed]);
 
   useLayoutEffect(() => {
     if (!open || !fixed) return;

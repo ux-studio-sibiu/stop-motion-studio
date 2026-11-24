@@ -21,7 +21,8 @@
   grid-template-areas: "toolbar" "stage" "playback" "timeline";
   gap: var(--space-3);
   height: 100dvh;
-  padding: var(--space-3);
+  --studio-top: 2.5rem;   // the clearance above everything, more than round the sides
+  padding: var(--studio-top) var(--space-3) var(--space-3);
   overflow: hidden;
 
   // The background texture: faint graph paper over the page colour,
@@ -56,7 +57,7 @@
 
     .toolbar {
       position: absolute;
-      top: var(--space-3);
+      top: var(--studio-top);   // level with the stage and the side panel
       left: var(--space-3);
       z-index: 15;
     }

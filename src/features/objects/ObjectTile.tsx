@@ -3,6 +3,7 @@
 import { useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { Point } from "@/core/model";
+import { showTimelineLayer } from "@/studio/remembered";
 
 const DRAG_START = 6;   // px the pointer moves before a press becomes a drag
 
@@ -52,6 +53,7 @@ export function ObjectTile({ label, icon, disabled = false, title, onPlace }: { 
     const current = drag.current;
     if (!current || current.pointerId !== event.pointerId) return;
     if (!current.moved && Math.hypot(event.clientX - current.start.x, event.clientY - current.start.y) < DRAG_START) return;
+    if (!current.moved) showTimelineLayer("objects");   // the drag starts: make sure the Objects Layer is there to drop on
     current.moved = true;
     setGhost({ x: event.clientX, y: event.clientY });
     showDrop(dropAt(event.clientX, event.clientY));

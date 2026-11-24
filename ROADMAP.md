@@ -1,6 +1,6 @@
 # Stop-motion Studio: roadmap
 
-The studio is built in **34 small steps (00-33)**. Each step is one reviewable change and one commit,
+The studio is built in **33 small steps (00-32)**. Each step is one reviewable change and one commit,
 and leaves the app working. Architecture and decisions are in [PLAN.md](PLAN.md); this file is the order
 of work.
 
@@ -427,7 +427,7 @@ neighbours. Step 18 is moving; step 19 is lining up.
   icons dragged onto the picture, and below them the picked object's settings (a bubble: shape
   speech / thought / spiked, tail on or off, colour, outline and its colour, text, text size, font,
   text colour); position, size and turn are set only on the stage. Text is typed in the tab
-  instead of over the canvas.
+  instead of over the canvas. The tab's heading is now **Add extras**.
 
 ### 24 · Overlay layer: text and shapes in time
 - **Builds:** the `Overlay` type and an `overlays` table (Dexie version 2) *(core + adapter)*; a second
@@ -567,6 +567,14 @@ styles. Removing the folder and its route removes the page, and nothing else cha
     and its tabs, reaching down to the timeline; the timeline as bare cardboard from edge to edge,
     its tools a tab cut at 45°. The playhead and the selection are one red block behind the selected
     pictures, with a chunky grip; the ruler's gradations are a setting (Layers menu), off at first.
+  - **Changed after the step (studio UI):** a new animation starts with all three Layers off (the
+    objects row, the sound row, the gradations); adding or dragging an object or a sound shows its
+    row. After the last picture, a dashed square with a + and "Insert frame" adds an empty picture.
+    The timeline's first tool, **Minimize** / **Maximize** (remembered for every animation), makes
+    the pictures a third as tall and zooms two steps out (and back in); the extra rows keep their
+    height. Play stays pressable with no pictures (it does nothing). Lists that open downward open
+    upward when the window has no room below (`useDropdown`). More room above the studio
+    (`--studio-top`) and round Play and See.
   - **Design system page:** a Cardboard section after the tokens (the pieces, the buttons beside the
     stage, Play and See); the old top toolbar and plain split-button specimens are gone, and with
     them two tokens nothing used (`--shadow-card`, `--color-faint`).
@@ -620,6 +628,11 @@ inside the band.
   elements, and drop element kinds this version doesn't know.
 - **Check:** export, delete the project, import, everything (order, durations, transforms, bubbles,
   overlays) is back.
+- **Changed after the step:** Settings has **Download all animations**: one `.zip` (`All animations
+  <date>.zip`) holding each animation's own backup, names kept apart (`uniqueFileNames`).
+  Load project (its title now "Open .zip project") takes either kind; a bundle restores every
+  animation in it, each all or nothing, and says how many couldn't be. Settings closes with an X in
+  its corner instead of a Close button.
 
 ### 28 · Import photos
 - **Builds:** `features/photo-import` as a `FrameSource`: file picker and drag-and-drop onto the
@@ -747,15 +760,24 @@ inside the band.
 - **Watch out:** a stale service worker can serve an old app forever; version the cache and test the
   update path. Service workers need HTTPS (localhost excepted).
 - **Check:** install, go offline, reload, capture and export still work.
-
-### 33 · Ship
-- **Builds:** production build, deploy of `out/` to a static host with HTTPS (GitHub Pages with
-  `basePath`, or Netlify/Vercel), README with a "try it" link and a short privacy note ("photos never
-  leave your device").
-- **Decisions:** static hosting only; no backend to run or secure.
-- **Watch out:** camera requires HTTPS; GitHub Pages under `/stop-motion-studio/` needs `basePath` and
-  `assetPrefix`, and the service worker scope must match.
-- **Check:** open the deployed URL on a tablet, make and export an animation.
+- **Already in place:** the app is deployed as a static export over HTTPS at the root of
+  https://stop-motion.studiosibiu.com/ (no `basePath`), so the service worker's scope is `/`. A step
+  33 "Ship" was planned and dropped: the deploy happened outside the steps.
+- **As built:** no PWA library (they hook into webpack; this build is Turbopack). `npm run build`
+  runs `scripts/build-offline.mjs` after `next build`: it lists `out/` with `core/offline/precache.ts`
+  (tested) and writes `out/sw.js` from `scripts/sw.js`, with a version per list (a hash of the
+  files). The **shell** (pages, code, fonts, cardboard: 1.8 MB) is stored on the first visit, all
+  or nothing; the **sounds** (24.9 MB) follow in the background and as they're played. Build notes
+  (`/steps/`) stay online only. **Online first:** pages and every file without a hash in its name
+  come from the network, the cache only without one (or after 4 s), so online the studio is always
+  the latest; code chunks (hashed) come from the cache. A new worker takes over at once. Only a page
+  opened from the stored copy shows an **Update** notice when a newer version arrives; it reloads
+  when pressed, never by itself. Settings says when the studio works offline, with
+  an **Install the studio** button where the browser offers one. The worker runs only in the
+  production build; `npm start` moved to port 3100 so its worker never answers for `npm run dev`.
+  `e2e/offline.spec.ts` (production build only) goes offline after one visit, opens the studio,
+  takes pictures and saves a GIF; online, a changed page shows at once and no notice appears; a page
+  opened offline offers Update. Every other spec blocks service workers.
 
 ---
 
@@ -808,5 +830,4 @@ feature folder of its own.
 - [x] 29b Sound track: sound effects in time ([page](public/steps/29b-sound-track.html))
 - [x] 30 Accessibility and keyboard map, replaced by a Help window ([page](public/steps/30-help.html))
 - [x] 31 Performance with long projects, measured first: no virtualising needed ([page](public/steps/31-performance.html))
-- [ ] 32 Offline (PWA)
-- [ ] 33 Ship
+- [x] 32 Offline (PWA) ([page](public/steps/32-offline.html))

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "@/styles/globals.scss";
+import { OfflineSupport } from "@/offline/OfflineSupport";
 
 // The app's font, Nunito, is self-hosted from public/fonts/nunito/ (src/styles/_fonts.scss): no
 // request to Google at runtime, while building or while developing.
@@ -16,7 +17,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* The font almost every page needs, fetched straight away instead of once the CSS asks for it. */}
         <link rel="preload" href="/fonts/nunito/nunito-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
       </head>
-      <body>{children}</body>
+      <body>{children}<OfflineSupport /></body>
     </html>
   );
 }

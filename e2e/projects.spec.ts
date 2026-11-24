@@ -155,7 +155,7 @@ test("deleting asks first; Keep it keeps, Delete deletes for good", async ({ pro
   await expect(page.getByText(/No animations yet/)).toBeVisible();
 });
 
-test("Settings shows how much space is used, in a window that Close and Escape shut", async ({ projects, page }, testInfo) => {
+test("Settings shows how much space is used, in a window that its X and Escape shut", async ({ projects, page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "Only Chromium reports a storage estimate reliably in Playwright.");
   await projects.open();
   await expect(page.getByText(/Using .+ of about .+ on this device/)).toHaveCount(0);   // not on the page itself
@@ -219,6 +219,40 @@ test("a backup brings an animation back after it's deleted: its pictures, their 
   await card.getByRole("link", { name: "Open My animation" }).click();
   await expect(studio.pictures()).toHaveCount(3);
   await expect.poll(widths).toEqual(before);   // the same lengths, in the same order
+});
+
+test("Download all animations in Settings saves them in one file, and Load project brings them all back", async ({ projects, studio, page }) => {
+  await newAnimationWithAPicture(projects, studio, page);
+  await projects.rename("My animation", "Dino");
+  await expect(projects.card("Dino")).toBeVisible();
+  await newAnimationWithAPicture(projects, studio, page);
+  await expect(projects.cards()).toHaveCount(2);
+
+  await page.getByRole("button", { name: "Settings" }).click();
+  const dialog = page.getByRole("dialog", { name: "Settings" });
+  const downloading = page.waitForEvent("download");
+  await dialog.getByRole("button", { name: "Download all animations" }).click();
+  const backup = await downloading;
+  expect(backup.suggestedFilename()).toMatch(/^All animations \d{4}-\d{2}-\d{2}\.zip$/);
+  await expect(dialog.getByRole("status")).toHaveText(/^Saved 2 animations: All animations /);
+  await dialog.getByRole("button", { name: "Close" }).click();
+
+  for (const name of ["Dino", "My animation"]) {
+    await page.getByRole("button", { name: `Delete ${name}` }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Delete", exact: true }).click();
+    await expect(projects.card(name)).toHaveCount(0);
+  }
+
+  await page.getByLabel("Backup file").setInputFiles((await backup.path())!);
+  await expect(page.getByRole("status").filter({ hasText: "Restored 2 animations" })).toBeVisible();
+  await expect(projects.card("Dino")).toContainText("1 picture");
+  await expect(projects.card("My animation")).toContainText("1 picture");
+});
+
+test("with no animations, there's nothing to download", async ({ projects, page }) => {
+  await projects.open();
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("dialog", { name: "Settings" }).getByRole("button", { name: "Download all animations" })).toBeDisabled();
 });
 
 test("restoring a file that isn't a backup says so, and adds nothing", async ({ projects, page }) => {

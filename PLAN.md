@@ -43,7 +43,7 @@ plan keeps its shape and changes what is listed under "What changed from the ori
 | Backup | Project archive (`.zip` of `project.json` + images) via `fflate` | Browser storage is not a backup; kids' work must be exportable |
 | Tests | Three layers. **Vitest** (Node) for `core/` and adapters, `fake-indexeddb` for Dexie: fast, many edge cases. **Playwright** end-to-end tests from step 08: the real app in Chromium and WebKit, a fake webcam playing a generated video, real IndexedDB (axe scans and screenshot tests were planned for step 30 and left for later). **Vitest browser mode** from step 15 for canvas pixel tests | Logic is tested where failures are cheap to find; a few end-to-end flows prove the pieces work together in a real browser. No jsdom component tests: jsdom has no camera, canvas or IndexedDB |
 | Long animations | **Every picture on the timeline**, no virtualising; what's kept cheap is redrawing: the pictures are memoised, the playhead is its own component, the store hands back the same frames while nothing changed. *Measured in step 31*: 2000 pictures open in about a second, scroll at 60 fps, and answer a key in well under 200 ms (`e2e/performance.spec.ts`, `MEASURE=1` for the numbers) | A minute of animation is about 500 pictures. Virtualising pictures of different widths, with the reorder drag and the overlay and sound rows, would add a lot of code for no visible gain |
-| Offline | Installable PWA with a service worker, late in the roadmap | Classrooms often have bad Wi-Fi |
+| Offline | Installable PWA (`src/app/manifest.ts`) with a hand-written service worker (`scripts/sw.js`, written into `out/` by the build with its lists from `core/offline`): the app stored on a first visit, the sounds after; online first, so online it's always the latest, and only a page opened offline offers Update. *Step 32.* | Classrooms often have bad Wi-Fi. No PWA library: they hook into webpack, and this build is Turbopack |
 
 ### What changed from the original plan
 
@@ -191,7 +191,8 @@ type SoundClip = {
 - Images are kept until no frame references them (garbage collection, step 21). Undoing a delete
   therefore always finds its image.
 - Picture layers, recorded sounds and keyframes are later additions: a `schemaVersion` bump plus a Dexie migration.
-  Until the app ships, changes to the stored shape can simply reset the dev database.
+  The app is live now (stop-motion.studiosibiu.com), so children's animations are already stored:
+  a change to the stored shape needs a migration, never a database reset.
 
 ---
 

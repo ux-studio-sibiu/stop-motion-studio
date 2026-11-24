@@ -3,6 +3,7 @@
 import { duplicateOverlay, objectLabel, overlaysOf, sameOverlays, withOverlay, type Overlay } from "@/core/model";
 import { shownOverlays } from "@/store/editorStore";
 import { editorStore } from "@/store/useEditor";
+import { showTimelineLayer } from "./remembered";
 import { settleSoon } from "./saveSoon";
 
 // Changing the overlays (step 24), shared by the timeline's overlay track and the Objects tab: show
@@ -45,8 +46,9 @@ export function deleteOverlay(overlayId: string, save: SaveOverlays): void {
   editorStore.getState().selectElement(null);
 }
 
-// Adds an overlay, as one step, and selects it: shown straight away, then saved.
+// Adds an overlay, as one step, and selects it: shown straight away (its row too), then saved.
 export function addOverlay(overlay: Overlay, save: SaveOverlays, label: string): void {
+  showTimelineLayer("objects");   // its row, if hidden
   previewOverlays([...shownOverlays(editorStore.getState()), overlay]);
   editorStore.getState().selectOverlay(overlay.id);
   commitOverlays(save, label);
