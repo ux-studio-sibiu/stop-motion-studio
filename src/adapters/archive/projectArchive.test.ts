@@ -63,6 +63,39 @@ describe("project archive", () => {
     expect(await (await repository.getThumb(frames[1].imageId))!.text()).toBe("thumb of jpeg img-b");   // made anew
   });
 
+  it("pictures opened out of order still each get their own thumbnail", async () => {
+    const original = await savedAnimation();
+    const { blob } = await exportArchive(repository, original.id);
+    // img-a takes longer to open than img-b, so img-b is done first.
+    const slow: Decode = async (picture) => { const text = await picture.text(); await new Promise((resolve) => setTimeout(resolve, text.includes("img-a") ? 30 : 0)); return decode(picture); };
+    const restored = await importArchive(repository, blob, { decode: slow });
+    const loaded = (await repository.loadProject(restored.id))!;
+    for (const frame of loaded.frames) {
+      const photo = await (await repository.getImage(frame.imageId))!.text();
+      expect(await (await repository.getThumb(frame.imageId))!.text()).toBe(`thumb of ${photo}`);
+    }
+  });
+
+  it("a backup carries the thumbnails, and restoring keeps them instead of opening every photo", async () => {
+    const jpeg = (text: string) => new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), text]);   // starts like a JPEG
+    const project = createProject({ name: "Quick", now: 0 });
+    const frame = createFrame(project.id, "img-q");
+    await repository.createProject({ ...project, frameIds: [] });
+    await repository.insertFrames(project.id, {
+      frames: [frame],
+      images: [{ id: "img-q", projectId: project.id, blob: jpeg("photo"), width: 1280, height: 720, createdAt: 0 }],
+      thumbs: [{ imageId: "img-q", projectId: project.id, blob: jpeg("small") }],
+    });
+    const { blob } = await exportArchive(repository, project.id);
+    expect(Object.keys(unzipSync(new Uint8Array(await blob.arrayBuffer())))).toContain("thumbs/img-q.jpg");
+
+    const never: Decode = async () => { throw new Error("opened a photo"); };
+    const restored = await importArchive(repository, blob, { decode: never });
+    const loaded = (await repository.loadProject(restored.id))!;
+    const thumb = await repository.getThumb(loaded.frames[0].imageId);
+    expect((await thumb!.text()).endsWith("small")).toBe(true);
+  });
+
   it("restoring twice makes two animations: it never overwrites", async () => {
     const original = await savedAnimation();
     const { blob } = await exportArchive(repository, original.id);
@@ -122,6 +155,18 @@ describe("project archive", () => {
     const { restored, failed } = await importArchives(repository, new Blob([bundle as BlobPart]), { decode });
     expect(restored).toHaveLength(1);
     expect(failed).toBe(1);
+  });
+
+  it("restoring a bundle can leave animations out by name, and says each one's name as it's saved", async () => {
+    await savedAnimation();
+    await repository.createProject({ ...createProject({ name: "Cat", now: 0 }), frameIds: [] });
+    const { blob } = await exportAllArchives(repository);
+    for (const project of await repository.listProjects()) await repository.deleteProject(project.id);
+
+    const saved: string[] = [];
+    const { restored } = await importArchives(repository, blob, { decode, skip: (name) => name === "Dino walk.zip", onRestored: (name) => saved.push(name) });
+    expect(restored.map((project) => project.name)).toEqual(["Cat"]);
+    expect(saved).toEqual(["Cat.zip"]);
   });
 
   it("rejects a file that's neither kind of backup", async () => {

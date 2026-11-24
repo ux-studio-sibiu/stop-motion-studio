@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ARCHIVE_LIMITS, ArchiveError, archiveManifest, imageFile, readManifest } from "@/core/archive";
+import { ARCHIVE_LIMITS, ArchiveError, archiveManifest, imageFile, readManifest, thumbFile } from "@/core/archive";
 import { addStroke, createBubble, createFrame, createOverlay, createProject, createShape, createSoundClip, withProps, type Frame } from "@/core/model";
 
 // The archive's format: what a backup says, and that reading one back trusts nothing in it.
@@ -32,6 +32,25 @@ describe("archiveManifest", () => {
     expect(manifest).toMatchObject({ format: "stop-motion-studio", version: 1 });
     expect(manifest.frames.map((frame) => [frame.image, frame.hold])).toEqual([["img-b", 1], ["img-a", 3], ["img-a", 2]]);
     expect(manifest.images.map((image) => image.file)).toEqual([imageFile("img-a"), imageFile("img-b")]);   // not the unused one
+  });
+
+  it("names a picture's thumbnail when it has one", () => {
+    const { project, frames } = animation();
+    const manifest = archiveManifest(project, frames, [{ id: "img-a", width: 1280, height: 720, thumb: true }, { id: "img-b", width: 1280, height: 720 }]);
+    expect(manifest.images.map((image) => image.thumb)).toEqual([thumbFile("img-a"), undefined]);
+  });
+});
+
+describe("thumbnails in an archive", () => {
+  it("are kept when they're named and there; otherwise left to be made again", () => {
+    const { project, frames } = animation();
+    const manifest = archiveManifest(project, frames, [{ id: "img-a", width: 1280, height: 720, thumb: true }, { id: "img-b", width: 1280, height: 720, thumb: true }]);
+    const withA = restore(manifest, [imageFile("img-a"), imageFile("img-b"), thumbFile("img-a")]);   // img-b's thumbnail is missing
+    expect(withA.images.map((image) => [image.file, image.thumb])).toEqual([[imageFile("img-a"), thumbFile("img-a")], [imageFile("img-b"), undefined]]);
+    // One that points anywhere but thumbs/ is ignored.
+    const odd = JSON.parse(JSON.stringify(manifest));
+    odd.images[0].thumb = "images/img-b.jpg";
+    expect(restore(odd, [imageFile("img-a"), imageFile("img-b")]).images[0].thumb).toBeUndefined();
   });
 });
 

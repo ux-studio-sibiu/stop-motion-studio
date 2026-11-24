@@ -646,6 +646,8 @@ inside the band.
   overlays) is back.
 - **Changed after the step:** Settings has **Download all animations**: one `.zip` (`All animations
   <date>.zip`) holding each animation's own backup, names kept apart (`uniqueFileNames`).
+  Backups now carry each picture's thumbnail (`thumbs/<id>.jpg`, named in `project.json`; older
+  backups without them restore as before), so a restore needn't open every photo.
   Load project (its title now "Open .zip project") takes either kind; a bundle restores every
   animation in it, each all or nothing, and says how many couldn't be. Settings closes with an X in
   its corner instead of a Close button.
@@ -653,7 +655,10 @@ inside the band.
   Names, Paper animation) with the photos re-saved at JPEG quality 80 (8.5 MB to 4.2 MB, still
   1280×720). On a browser's first visit to the home page, once the page shows, it's restored like
   any backup (`src/projects/demos.ts`), remembered (`demos-added`) only once it's in; deleted demos
-  don't come back (a Settings button to add them again was tried, then removed). Kept out of the offline worker's first
+  don't come back (a Settings button to add them again was tried, then removed). Each is remembered
+  as it's saved (`demos-restored`), so a first visit cut short adds only the rest next time; the home
+  page says "Adding the demo animations…" meanwhile; restoring opens four photos at a time. The
+  demos file carries the thumbnails too (4.4 MB), so they land in about a third of the time. Kept out of the offline worker's first
   download. Tests start without them (`withDemos` in `e2e/fixtures.ts`); `projects.spec` checks
   them. To change the demos: make a new backup, re-save its photos, replace the file and deploy
   (browsers that had the old ones keep them).

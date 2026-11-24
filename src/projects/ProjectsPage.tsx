@@ -11,7 +11,7 @@ import { forgetAnimation } from "@/studio/remembered";
 import { appRepository } from "@/adapters/storage/appRepository";
 import type { Project } from "@/core/model";
 import { createSavedProject } from "./createSavedProject";
-import { addDemosOnce } from "./demos";
+import { addDemosOnce, useAddingDemos } from "./demos";
 import { CardboardBurst } from "./CardboardBurst";
 import { DeleteDialog } from "./DeleteDialog";
 import { HomeTitle, TitleCard } from "./HomeTitle";
@@ -44,6 +44,7 @@ export function ProjectsPage() {
   const copies = useEndlessScroll(page, column, realList, list?.projects.length ?? 0);
   const copyLists = () => Array.from({ length: copies }, (_, i) => <ul key={i} className="projects is-copy" aria-hidden="true">{cards(true)}</ul>);
   const listed = list !== null;
+  const addingDemos = useAddingDemos();
   useEffect(() => { if (listed) addDemosOnce(); }, [listed]);   // the demo animations, once per browser, once the page is showing
   // The intro (HomeTitle, INTRO): how many of its frames after the title's cards are down so far.
   const [after, setAfter] = useState(0);
@@ -157,7 +158,8 @@ export function ProjectsPage() {
           {list?.projects.length === 0 && (
             <div className="empty">
               <Clapperboard size={48} aria-hidden="true" />
-              <p>No animations yet. Press <strong>New animation</strong> to make your first one.</p>
+              {/* The first visit's demo animations on their way (each card comes as it's saved). */}
+              {addingDemos ? <p role="status">Adding the demo animations…</p> : <p>No animations yet. Press <strong>New animation</strong> to make your first one.</p>}
             </div>
           )}
 

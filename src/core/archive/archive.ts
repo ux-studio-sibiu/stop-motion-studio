@@ -5,7 +5,9 @@ import {
 } from "../model";
 
 // The project archive (step 27): a backup of one animation as a .zip, `project.json` beside its
-// pictures (`images/<id>.jpg`, the photos as stored). This file is the archive's format, which is
+// pictures (`images/<id>.jpg`, the photos as stored) and, optionally, their thumbnails
+// (`thumbs/<id>.jpg`, as the timeline shows them: a restore with them doesn't have to open every
+// photo to make them again, so it's much quicker). This file is the archive's format, which is
 // the stable, public one: storage (Dexie) can change behind it, an archive made today must still
 // open later. Only `version` changes the format, and readManifest upgrades older ones.
 //
@@ -26,7 +28,7 @@ export const ARCHIVE_LIMITS = {
   totalBytes: 1536 * 1024 * 1024,      // everything unpacked
 } as const;
 
-export type ArchiveImage = { id: string; file: string; width: number; height: number };
+export type ArchiveImage = { id: string; file: string; width: number; height: number; thumb?: string };   // thumb: its thumbnail's file, when the archive has one
 export type ArchiveFrame = { image: string; hold: number; transform: Transform; adjust: Frame["adjust"]; elements: Element[]; empty?: boolean };   // empty: a see-through picture
 export type ArchiveManifest = {
   format: typeof ARCHIVE_FORMAT;
@@ -38,10 +40,11 @@ export type ArchiveManifest = {
 };
 
 export const imageFile = (imageId: string) => `images/${imageId}.jpg`;
+export const thumbFile = (imageId: string) => `thumbs/${imageId}.jpg`;
 
 // The manifest for an animation: its frames in order, each with the picture it shows (several
-// frames can share one), and each picture once.
-export function archiveManifest(project: Project, frames: readonly Frame[], images: readonly { id: string; width: number; height: number }[]): ArchiveManifest {
+// frames can share one), and each picture once, with its thumbnail when there is one (`thumb`).
+export function archiveManifest(project: Project, frames: readonly Frame[], images: readonly { id: string; width: number; height: number; thumb?: boolean }[]): ArchiveManifest {
   const byId = new Map(frames.map((frame) => [frame.id, frame]));
   const ordered = project.frameIds.flatMap((id) => byId.get(id) ?? []);
   const used = new Set(ordered.map((frame) => frame.imageId));
@@ -51,7 +54,7 @@ export function archiveManifest(project: Project, frames: readonly Frame[], imag
     schemaVersion: project.schemaVersion,
     project: { name: project.name, width: project.width, height: project.height, fps: project.fps, safeMargin: project.safeMargin, overlays: project.overlays ?? [], sounds: project.sounds ?? [], createdAt: project.createdAt, updatedAt: project.updatedAt },
     frames: ordered.map((frame) => ({ image: frame.imageId, hold: frame.hold, transform: frame.transform, adjust: frame.adjust, elements: frame.elements ?? [], ...(frame.empty ? { empty: true } : {}) })),
-    images: images.filter((image) => used.has(image.id)).map((image) => ({ ...image, file: imageFile(image.id) })),
+    images: images.filter((image) => used.has(image.id)).map(({ id, width, height, thumb }) => ({ id, file: imageFile(id), width, height, ...(thumb ? { thumb: thumbFile(id) } : {}) })),
   };
 }
 
@@ -92,7 +95,9 @@ export function readManifest(raw: unknown, { files, now = Date.now(), makeId = n
     const image = record(item);
     if (!image || typeof image.id !== "string" || typeof image.file !== "string" || pictures.has(image.id)) throw new ArchiveError("not-archive");
     if (!files.has(image.file)) throw new ArchiveError("missing-pictures");
-    pictures.set(image.id, { id: makeId(), file: image.file, width: size(image.width, MAX_WIDTH * 4), height: size(image.height, MAX_HEIGHT * 4) });
+    // A thumbnail only if it's named as one and in the archive; otherwise it's made again.
+    const thumb = typeof image.thumb === "string" && /^thumbs\/[^/]+\.jpg$/.test(image.thumb) && files.has(image.thumb) ? image.thumb : undefined;
+    pictures.set(image.id, { id: makeId(), file: image.file, width: size(image.width, MAX_WIDTH * 4), height: size(image.height, MAX_HEIGHT * 4), ...(thumb ? { thumb } : {}) });
   }
 
   const id = makeId();

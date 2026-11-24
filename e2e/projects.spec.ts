@@ -566,6 +566,27 @@ test.describe("demo animations", () => {
     await expect(projects.cards()).toHaveCount(2);
   });
 
+  test("while they're on their way, the page says so instead of \"No animations yet\"", async ({ projects, page }) => {
+    let release = () => {};
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    await page.route("**/demos/demos.zip", async (route) => { await held; await route.continue(); });
+    await projects.open();
+    await expect(page.getByRole("status").filter({ hasText: "Adding the demo animations…" })).toBeVisible();
+    await expect(page.getByText(/No animations yet/)).toHaveCount(0);
+    release();
+    await expect(projects.cards()).toHaveCount(3, { timeout: 20_000 });
+    await expect(page.getByText("Adding the demo animations…")).toHaveCount(0);
+  });
+
+  test("a first visit cut short carries on next time with the ones still missing, none twice", async ({ projects, page }) => {
+    // As if Arlequin had been saved before the page was closed (and then deleted, to tell them apart).
+    await page.addInitScript(() => { if (!localStorage.getItem("stop-motion-studio:demos-restored")) localStorage.setItem("stop-motion-studio:demos-restored", JSON.stringify(["Arlequin.zip"])); });
+    await projects.open();
+    await expect(projects.card("Names")).toBeVisible({ timeout: 20_000 });
+    await expect(projects.card("Paper animation")).toBeVisible({ timeout: 20_000 });
+    await expect(projects.cards()).toHaveCount(2);
+  });
+
   test("a demo opens in the studio with all its pictures", async ({ projects, studio, page }) => {
     await studio.withoutCamera();
     await projects.open();

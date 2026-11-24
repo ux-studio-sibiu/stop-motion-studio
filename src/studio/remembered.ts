@@ -38,6 +38,7 @@ export const remembered = {
   cameraLock: definePreference("camera-lock", asBoolean),              // the camera's focus, exposure and white balance locked
   timelineMinimized: definePreference("timeline-minimized", asBoolean),   // the timeline's pictures small (its Minimize button), for every animation
   demosAdded: definePreference("demos-added", asBoolean),   // the demo animations were added to this browser once (projects/demos.ts)
+  demosRestored: definePreference("demos-restored", asStringList),   //   which of them are in already, while they're being added (by file name)
 };
 
 // A remembered camera framing, its values put back in range.
