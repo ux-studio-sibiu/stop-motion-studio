@@ -559,7 +559,7 @@ styles. Removing the folder and its route removes the page, and nothing else cha
   pieces of the cardboard letters font's own photos (synced in with `npm run sync:cardboard`),
   with paper pasted on them. One set of mixins in `src/styles/_cardboard.scss` (`cardboard()`,
   `cardboard-paper()`, `cardboard-button()`, `cardboard-split()`) cuts every piece.
-  - **Home page:** the title in paper letters on a five-piece burst, the New, open-a-backup and Settings buttons, and the
+  - **Home page:** the title in cardboard letters on a five-piece cardboard burst (each piece and letter edged as seen from a little above: a thick cut face along the bottom, a sliver along the top), the New, open-a-backup and Settings buttons, and the
     animation cards, shown frame by frame as a short stop-motion intro (not when coming back from the
     studio, not with reduced motion); the storage meter moved into a Settings window.
   - **Studio:** the back arrow, Save and Help in a column beside the stage; Play and See (each
@@ -683,6 +683,9 @@ inside the band.
   keeps it on the same picture (its length stays in seconds). Playback schedules the sounds on the
   audio clock when Play is pressed and again when a loop comes round; sounds starting after the
   last picture aren't played or exported. Backups carry the sounds.
+- **Later:** a sound's bar resizes like an overlay's (its ends, or Shift+arrows): a `length` of its
+  own in ticks; shorter, it stops there with a short fade; longer, the sound starts again. Objects
+  dropped on the overlay track start 5 ticks long (were 2 s), and both rows' bars show grips at their ends.
 
 ### 30 · Accessibility and keyboard map
 - **Builds:** focus styles, labels for all icon buttons, a keyboard shortcut sheet (`?`), live region

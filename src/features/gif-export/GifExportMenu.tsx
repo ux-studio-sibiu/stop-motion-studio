@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Download, X } from "lucide-react";
+import { Download, Settings, X } from "lucide-react";
 import { exportGif } from "@/adapters/export/gifExport";
 import { BIG_GIF_BYTES, GIF_ENCODING, GIF_QUALITIES, GIF_SIZES, gifFileName, gifFrames, gifSize, type GifQuality, type GifSize } from "@/core/export";
 import { projectExportRect } from "@/core/render";
@@ -27,8 +27,9 @@ export function GifExportMenu() {
   // How wide each size is for this animation (full depends on its size and safe zone).
   const project = useEditor((state) => state.project);
   const exported = projectExportRect(project ?? { width: 1280, height: 720 });
-  const [size, setSize] = useRememberedState<GifSize>(remembered.gifSize, "medium");
-  const [quality, setQuality] = useRememberedState<GifQuality>(remembered.gifQuality, "medium");
+  const projectId = project?.id;   // the settings are this animation's own (none on the design page)
+  const [size, setSize] = useRememberedState<GifSize>(projectId ? remembered.gifSize(projectId) : null, "medium");
+  const [quality, setQuality] = useRememberedState<GifQuality>(projectId ? remembered.gifQuality(projectId) : null, "medium");
   const { open, toggle, ref } = useDropdown();
   const { run, progress, busy, note, stop } = useExport();
 
@@ -63,10 +64,11 @@ export function GifExportMenu() {
       </button>
       {busy
         ? <button type="button" className="icon-button more" aria-label="Stop saving" title="Stop saving" onClick={stop}><X size={20} /></button>
-        : <button type="button" className="icon-button more" aria-label="GIF options" aria-expanded={open} aria-haspopup="true" onClick={toggle}><ChevronDown size={20} /></button>}
+        : <button type="button" className="icon-button more" aria-label="GIF settings" title="GIF settings: its size and quality" aria-expanded={open} aria-haspopup="true" onClick={toggle}><Settings size={20} /></button>}
 
       {open && !busy && (
-        <div className="options" role="group" aria-label="GIF options">
+        <div className="options" role="group" aria-labelledby="gif-settings-title">
+          <p id="gif-settings-title" className="options-title">GIF settings</p>
           <label className="option">
             <span>Size: {sizeText}</span>
             <input type="range" min={0} max={GIF_SIZES.length - 1} step={1} value={GIF_SIZES.indexOf(size)} aria-label="Size" aria-valuetext={sizeText} onChange={(event) => setSize(GIF_SIZES[Number(event.target.value)])} />

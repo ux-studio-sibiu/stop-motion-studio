@@ -25,7 +25,6 @@ export function useProject(projectId: string | null): ProjectStatus {
     creating.current = true;
     void createSavedProject().then((id) => {
       creating.current = false;
-      editorStore.getState().setPanelTab("camera");   // the studio is already open: its remembered tab was put back before this
       router.replace(`/studio?project=${id}`);   // replace, not push: Back shouldn't return to an empty URL
     });
   }, [projectId, router]);

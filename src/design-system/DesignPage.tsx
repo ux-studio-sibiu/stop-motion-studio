@@ -263,10 +263,10 @@ export function DesignPage() {
         <Specimen label="Object tiles" studio>
           <div className="nsc-objects-panel">
             <div className="tiles">
-              <ObjectTile label="Speech bubble" icon={<ObjectIcon kind={SPEECH_BUBBLE} size={30} />} onPlace={nothing} />
-              <ObjectTile label="Text" icon={<ObjectIcon kind={TEXT} size={30} />} onPlace={nothing} />
-              <ObjectTile label="Shape" icon={<ObjectIcon kind={SHAPE} size={30} />} onPlace={nothing} />
-              <ObjectTile label="Disabled" icon={<ObjectIcon kind={SHAPE} size={30} />} disabled onPlace={nothing} />
+              <ObjectTile label="Speech bubble" icon={<ObjectIcon kind={SPEECH_BUBBLE} size={34} coloured />} onPlace={nothing} />
+              <ObjectTile label="Text" icon={<ObjectIcon kind={TEXT} size={34} coloured />} onPlace={nothing} />
+              <ObjectTile label="Shape" icon={<ObjectIcon kind={SHAPE} size={34} coloured />} onPlace={nothing} />
+              <ObjectTile label="Disabled" icon={<ObjectIcon kind={SHAPE} size={34} coloured />} disabled onPlace={nothing} />
             </div>
           </div>
         </Specimen>

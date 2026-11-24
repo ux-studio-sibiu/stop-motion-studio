@@ -64,7 +64,8 @@ export class Studio {
   // Turns the ruler's gradations on (the Layers menu's Gradations, off at first), for tests that
   // read the ruler's times: remembered, then the page reloads.
   async showGradations(): Promise<void> {
-    await this.page.evaluate(() => localStorage.setItem("stop-motion-studio:timeline-layers", JSON.stringify({ objects: true, sounds: true, ruler: true })));
+    const projectId = new URL(this.page.url()).searchParams.get("project");   // this animation's own
+    await this.page.evaluate((id) => localStorage.setItem(`stop-motion-studio:timeline-layers:${id}`, JSON.stringify({ objects: true, sounds: true, ruler: true })), projectId);
     await this.page.reload();
     await expect(this.page.locator(".ruler-label").first()).toBeVisible();
   }

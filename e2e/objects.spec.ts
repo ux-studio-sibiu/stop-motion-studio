@@ -24,7 +24,7 @@ const onStage = async (page: Page, x: number, y: number) => { const box = (await
 const tile = (page: Page) => page.getByRole("button", { name: "Speech bubble", exact: true });
 
 async function addBubble(page: Page, studio: Studio, typed?: string) {
-  await tile(page).click();   // a click puts it near the top
+  await tile(page).press("Enter");   // the keys put it near the top (a click adds nothing: it's dragged)
   await expect(text(page)).toBeFocused();   // typing straight away
   if (typed) {
     await page.keyboard.type(typed);
@@ -166,7 +166,10 @@ test("shape, tail, outline, text size, font and colours are set in its settings,
 });
 
 test("text and shapes: added from their icons, set in their settings, each one undo step", async ({ studio, page }) => {
-  await page.getByRole("button", { name: "Text", exact: true }).click();
+  await page.getByRole("button", { name: "Text", exact: true }).click();   // a click adds nothing: objects are dragged where they go
+  await expect(text(page)).toHaveCount(0);
+  await expect(studio.undoButton()).toBeDisabled();
+  await page.getByRole("button", { name: "Text", exact: true }).press("Enter");   // the keys add one
   await expect(text(page)).toBeFocused();   // typing straight away
   await page.keyboard.type("THE END");
   await text(page).blur();
@@ -175,7 +178,7 @@ test("text and shapes: added from their icons, set in their settings, each one u
   await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Change background");
   await expect.poll(() => studio.stageColour(0.22, 0.45)).toEqual([31, 36, 51]);   // the text's black background
 
-  await page.getByRole("button", { name: "Shape", exact: true }).click();
+  await page.getByRole("button", { name: "Shape", exact: true }).press("Enter");
   await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Add rectangle");
   await expect(page.getByRole("region", { name: "rectangle settings" })).toBeVisible();
   await page.getByRole("combobox", { name: "Shape" }).selectOption("arrow");

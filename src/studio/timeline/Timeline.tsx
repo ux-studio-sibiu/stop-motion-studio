@@ -56,7 +56,7 @@ export function Timeline({ onDelete, onDuplicate, onResize, onReorder, onNudge, 
   const overlay = useShownOverlays().find((item) => item.id === overlayId);
   const fps = useEditor((state) => state.project?.fps ?? 8);
   const projectId = useEditor((state) => state.project?.id);
-  const [layers, setLayers] = useRememberedState(remembered.timelineLayers, DEFAULT_LAYERS);   // the extra rows shown (LayersMenu)
+  const [layers, setLayers] = useRememberedState(projectId ? remembered.timelineLayers(projectId) : null, DEFAULT_LAYERS);   // the extra rows shown (LayersMenu), this animation's
   const thumbRatio = useEditor((state) => (state.project ? `${state.project.width} / ${state.project.height}` : "16 / 9"));
 
   const scroller = useRef<HTMLDivElement>(null);

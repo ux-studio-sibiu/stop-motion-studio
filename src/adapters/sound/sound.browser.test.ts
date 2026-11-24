@@ -34,7 +34,7 @@ describe("sounds", () => {
       const fresh = await import("@/adapters/sound/sound");
       fresh.playSounds([])();
       expect(started).toBe(0);
-      fresh.playSounds([{ clip: createSoundClip("cartoon/pop", 0), delay: 0, offset: 0 }])();
+      fresh.playSounds([{ clip: createSoundClip("cartoon/pop", 0), delay: 0, offset: 0, duration: 0.2 }])();
       expect(started).toBe(1);
     } finally {
       window.AudioContext = Real;
@@ -80,5 +80,22 @@ describe("sounds", () => {
     const steady = loudest(samples, RATE, 1, 2.4);
     expect(steady).toBeGreaterThan(0.05);
     expect(loudest(samples, RATE, 2.95, 3)).toBeLessThan(steady * 0.25);   // nearly silent by the end
+  });
+
+  // A clip's own length (resized on the timeline).
+  it("plays a clip cut short only as long as it is, then stops", async () => {
+    // The 30 s tune, cut to 8 ticks (1 s) at 8 per second, in a 3 s animation.
+    const mix = await mixSounds([{ ...createSoundClip("background/ukulele", 0), length: 8 }], 8, 24, RATE);
+    const samples = mix!.getChannelData(0);
+    expect(loudest(samples, RATE, 0.2, 0.9)).toBeGreaterThan(0.05);
+    expect(loudest(samples, RATE, 1.05, 3)).toBe(0);   // silent once it's over
+  });
+
+  it("plays a clip made longer than its sound by starting the sound again", async () => {
+    const own = soundSeconds("cartoon/pop");
+    const mix = await mixSounds([{ ...createSoundClip("cartoon/pop", 0), length: 16 }], 8, 24, RATE);   // 2 s of a short pop
+    const samples = mix!.getChannelData(0);
+    expect(loudest(samples, RATE, own + 0.01, own * 2)).toBeGreaterThan(0.05);   // heard again after its own end
+    expect(loudest(samples, RATE, 2.05, 3)).toBe(0);                              // and not past the clip's
   });
 });

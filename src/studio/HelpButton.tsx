@@ -31,7 +31,7 @@ export function HelpButton() {
 
   return (
     <>
-      <button type="button" className="icon-button" aria-label="Help" title="How to use the studio, and its keys (?)" aria-haspopup="dialog" onClick={() => setOpen(true)}><CircleHelp size={24} /></button>
+      <button type="button" className="icon-button" aria-label="Help" title="How to use the studio, and its keys (?)" aria-haspopup="dialog" onClick={() => setOpen(true)}><CircleHelp size={28} /></button>
       <dialog ref={dialog} className="nsc-help" aria-labelledby="help-title" onCancel={(event) => { event.preventDefault(); setOpen(false); }} onClick={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
         <header className="help-header">
           <h2 id="help-title">How to use the studio</h2>
@@ -47,7 +47,7 @@ export function HelpButton() {
               <li><strong>Press Play</strong> to watch it. Make a picture last longer by dragging its right edge on the timeline.</li>
               <li><strong>Fix a picture</strong> in the Picture tab: move, size, turn it, or make it lighter.</li>
               <li><strong>Add things</strong>: speech bubbles, text and shapes from the Objects tab, drawings from the Draw tab, and sounds from the Sounds tab (drag them onto the stage or the timeline).</li>
-              <li><strong>Save it</strong> as a GIF or a video from the top bar. Everything else is saved by itself.</li>
+              <li><strong>Save it</strong> as an MP4 or a GIF with Save, under the back arrow. Everything else is saved by itself.</li>
             </ol>
           </section>
 
@@ -77,7 +77,7 @@ export function HelpButton() {
 
           <Keys title="Objects and Sound layers (a bar picked on the timeline)">
             <Key keys={["← →"]}>Move it in time</Key>
-            <Key keys={["Shift", "← →"]}>Make an object show for less or longer</Key>
+            <Key keys={["Shift", "← →"]}>Make an object show, or a sound play, for less or longer</Key>
             <Key keys={["Ctrl", "D"]}>Duplicate an object</Key>
             <Key keys={["Delete"]}>Delete it</Key>
             <Key keys={["Enter"]}>Pick it (and hear a sound)</Key>

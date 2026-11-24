@@ -3,6 +3,7 @@
 import { Music } from "lucide-react";
 import { useRef, useState, type PointerEvent } from "react";
 import { previewSound } from "@/adapters/sound/sound";
+import { editorStore } from "@/store/useEditor";
 import { DEFAULT_LAYERS, remembered, saveRemembered } from "@/studio/remembered";
 
 const DRAG_START = 6;   // px the pointer moves before a press becomes a drag
@@ -49,8 +50,9 @@ export function SoundTile({ id, name, disabled = false, onPlace }: { id: string;
     if (!current || current.pointerId !== event.pointerId) return;
     if (!current.moved && Math.hypot(event.clientX - current.x, event.clientY - current.y) < DRAG_START) return;
     if (!current.moved) {   // the drag starts: make sure the Sound Layer is there to drop on
-      const layers = remembered.timelineLayers.read() ?? DEFAULT_LAYERS;
-      if (!layers.sounds) saveRemembered(remembered.timelineLayers, { ...layers, sounds: true });
+      const id = editorStore.getState().project?.id;   // this animation's rows
+      const layers = (id && remembered.timelineLayers(id).read()) || DEFAULT_LAYERS;
+      if (id && !layers.sounds) saveRemembered(remembered.timelineLayers(id), { ...layers, sounds: true });
     }
     current.moved = true;
     setGhost({ x: event.clientX, y: event.clientY });

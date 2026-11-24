@@ -59,10 +59,11 @@ test("a sound dropped on the Sound Layer goes where it's dropped; it's moved by 
 
   const box = (await row.getByRole("button").boundingBox())!;
   const tick = 20;   // px: the default zoom at 8 per second
-  await page.mouse.move(box.x + 4, box.y + box.height / 2);
+  const middle = box.x + box.width / 2;   // grabbed in the middle: its ends make it shorter or longer
+  await page.mouse.move(middle, box.y + box.height / 2);
   await page.mouse.down();
-  await page.mouse.move(box.x + 4 + tick, box.y + box.height / 2, { steps: 4 });
-  await page.mouse.move(box.x + 4 + 2 * tick, box.y + box.height / 2, { steps: 4 });
+  await page.mouse.move(middle + tick, box.y + box.height / 2, { steps: 4 });
+  await page.mouse.move(middle + 2 * tick, box.y + box.height / 2, { steps: 4 });
   await page.mouse.up();
   await expect(row.getByRole("button", { name: "Pop sound, at 0.25 s" })).toBeVisible();
   await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Move Pop");
@@ -151,4 +152,36 @@ test("a click plays at most 5 seconds of a sound, and a click on another stops i
   expect((await stops())[0]).toBeCloseTo(5, 0);   // stops after 5 s, not 30
   await studio.soundTile("Meow").click();
   await expect.poll(async () => (await stops()).filter((when) => when === null).length).toBe(1);   // the tune stops straight away
+});
+
+// A sound's own length: shorter, it stops there; longer, it starts again (what's heard is checked in
+// sound.browser.test.ts). Shift+arrows or its ends, each change one undo step, kept after a reload.
+test("a sound is made longer or shorter with Shift+arrows or by dragging its end", async ({ studio, page }) => {
+  await studio.dragSound("Boing", { tick: 0 });
+  const row = page.getByRole("group", { name: "Sound Layer" });
+  const bar = row.getByRole("button", { name: /^Boing sound/ });
+  const lasts = async () => Number((await bar.getAttribute("aria-label"))!.match(/for ([\d.]+) s$/)![1]);
+  const own = await lasts();   // as long as the sound, to start with
+
+  await bar.focus();
+  await page.keyboard.press("Shift+ArrowRight");
+  await page.keyboard.press("Shift+ArrowRight");
+  await expect.poll(lasts).toBeCloseTo(own + 0.25, 2);   // two ticks at 8 per second
+  await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Change how long Boing plays");
+  await expect(bar).toHaveAccessibleName(/^Boing sound, at 0 s/);   // its start where it was
+
+  const box = (await bar.boundingBox())!;
+  const tick = 20;
+  await page.mouse.move(box.x + box.width - 5, box.y + box.height / 2);   // its end (inside the outline)
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width - 5 - 2 * tick, box.y + box.height / 2, { steps: 6 });
+  await page.mouse.up();
+  await expect.poll(lasts).toBeCloseTo(own, 2);
+  await expect(studio.undoButton()).toHaveAttribute("title", "Undo: Change how long Boing plays");
+
+  await studio.undoButton().click();   // one step back: as the keys left it
+  await expect.poll(lasts).toBeCloseTo(own + 0.25, 2);
+
+  await page.reload();
+  await expect.poll(lasts).toBeCloseTo(own + 0.25, 2);   // kept
 });

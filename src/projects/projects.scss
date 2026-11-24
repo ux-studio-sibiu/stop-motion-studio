@@ -1,3 +1,4 @@
+@use "sass:math";
 @use "@/styles/breakpoints" as *;
 @use "@/styles/cardboard" as *;
 
@@ -125,7 +126,10 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: calc(var(--size) * 0.14);   // rows close together, but never touching: each card rests up to ~4 px off its place and ~3.5° crooked
+    // Rows close together, never touching: each card lies in its own fixed pose (HomeTitle), and
+    // this is measured: the closest two, a little over a pixel apart at their nearest corners, at
+    // any size of the title.
+    gap: calc(var(--size) * 0.02 + 2.5px);
     padding: 0.25rem;
     border: 0;
     border-radius: var(--radius-small);
@@ -138,20 +142,45 @@
 
   .title-word {
     display: flex;
-    gap: calc(var(--size) * 0.16);   // the cards apart, so two leaning towards each other still don't touch
+    gap: calc(var(--size) * 0.02 + 2.5px);   // the cards close, never touching: measured as the rows are (MOTION's O and N lean in closest)
 
     &.is-white .nsc-cardboard-letter { --paint: var(--cardboard-paper); }
     &.is-blue .nsc-cardboard-letter,
     .nsc-cardboard-letter.is-blue { --paint: #1e6fd0; --ink: #ffffff; }   // START, and STOP's pause O: blue paper, white letters
 
-    // Here the cards are their coloured paper alone: no cardboard under it (the paper fills the tile)
-    // and none of the cardboard's grain over it.
+    // Each card a piece of cardboard cut from the big piece, as the studio's are (@/styles/cardboard),
+    // its paper pasted on it up to the corrugated rim, as on the page's other pieces: over the inner
+    // part of the cut edge ($paper-reach of it), on every side. Its cut edge is seen from a little
+    // above and in front, as the burst's pieces are (edgeShowing in cardboard-shape.js): the whole
+    // cut face along the bottom, a sliver along the top, more on the right than the left. The edge
+    // photo's corners run between them (border-image), so each corner joins its two sides however
+    // thick each is. No grain over it (the font's tiles have one).
     .nsc-cardboard-letter {
-      --paint-inset: 0px;
-      --paint-shift: 0px;
-      background: var(--paint-layer);
+      --edge: calc(var(--size) * 0.11);
+      --edge-top: calc(var(--edge) * 0.25);
+      --edge-right: calc(var(--edge) * 0.67);
+      --edge-bottom: calc(var(--edge) * 0.97);
+      --edge-left: calc(var(--edge) * 0.39);
+      --paint-shift: 0px;   // the letter centred on the paper (the font's tiles nudge it up)
+      border-style: solid;
+      border-color: transparent;
+      border-width: var(--edge-top) var(--edge-right) var(--edge-bottom) var(--edge-left);
+      border-image: $edges $edge-slice / var(--edge-top) var(--edge-right) var(--edge-bottom) var(--edge-left) / 0 repeat;
+      border-radius: 0;
+      @include cardboard-surface;
 
-      &::after { content: none; background: none; }   // and not its picture either: the browser would still fetch it
+      // The paper: over the edge image (a layer above the tile's own border), under the letter. On
+      // ::after, in place of the font's grain (its picture isn't fetched then): a symbol tile draws
+      // its symbol with ::before.
+      &::after {
+        content: "";
+        position: absolute;
+        inset: calc(var(--edge-top) * -#{$paper-reach}) calc(var(--edge-right) * -#{$paper-reach}) calc(var(--edge-bottom) * -#{$paper-reach}) calc(var(--edge-left) * -#{$paper-reach});
+        z-index: -1;
+        background: var(--paint);
+        mix-blend-mode: normal;
+        pointer-events: none;
+      }
     }
   }
 

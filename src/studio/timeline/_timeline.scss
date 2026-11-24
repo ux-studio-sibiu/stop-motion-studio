@@ -248,17 +248,18 @@
     box-sizing: border-box;
     height: calc(var(--lane-height) - 4px);
     min-width: 6px;
-    padding: 0 0.5rem;
+    padding: 0 0.75rem;   // the text clear of the ends' ridges
     overflow: hidden;
-    border: 2px solid var(--color-border);   // plain, like the controls; selected, it turns green
+    border: 0;   // white paper lying on the timeline, like the pictures (_frame.scss): no outline, a soft shadow
     border-radius: 6px;
-    background: var(--color-surface);
-    color: var(--color-ink);
+    background: #fff;
+    box-shadow: 0.0625rem 0.125rem 0.25rem rgb(45 30 15 / 0.25);
+    color: var(--cardboard-ink);
     cursor: grab;
     touch-action: none;   // a finger drag moves the bar instead of scrolling the timeline
 
     &:active { cursor: grabbing; }
-    &.is-selected { border-color: var(--color-go); background: color-mix(in srgb, var(--color-go) 38%, var(--color-surface)); }
+    &.is-selected { background: color-mix(in srgb, var(--color-go) 38%, #fff); }   // picked: green, the colour of what's chosen
     &:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 1px; }
 
     .bar-label {
@@ -275,18 +276,33 @@
       svg { flex: none; }
     }
 
-    // The ends: wide enough to grab, invisible until hovered.
+    // The ends, to make it shorter or longer: wide enough to grab, each with two short ridges
+    // so it can be seen that they can be (like the picture's grip), darker under the pointer.
     .edge {
       position: absolute;
       top: 0;
       bottom: 0;
-      width: 8px;
+      width: min(10px, 25%);   // on a short bar, the middle half still moves it
       cursor: ew-resize;
       z-index: 1;
+
+      &::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 3px;
+        width: 4px;
+        height: 55%;
+        translate: 0 -50%;
+        background: linear-gradient(90deg, currentColor 0 1px, transparent 1px 3px, currentColor 3px 4px);
+        opacity: 0.45;
+        pointer-events: none;
+      }
 
       &.is-start { left: 0; }
       &.is-end { right: 0; }
       &:hover { background: color-mix(in srgb, var(--color-border) 25%, transparent); }
+      &:hover::before { opacity: 0.8; }
     }
   }
 
@@ -377,15 +393,8 @@
   .next-hint { font-size: var(--text-hint); font-weight: 700; }
 
 }
-// The sound row (step 29b), at the bottom: like the overlay track, its bars a colour of their own
-// so sounds and objects are told apart at a glance. A sound's length is its own, so no ends to drag.
+// The sound row (step 29b), at the bottom: its bars white like the overlay track's (told apart by
+// their row and their note icon). Its ends drag like an overlay's.
 .nsc-studio .timeline {
   .sound-track { margin-bottom: 0; }
-
-  .sound-bar {
-    border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border));
-    background: color-mix(in srgb, var(--color-accent) 14%, var(--color-surface));
-
-    &.is-selected { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 35%, var(--color-surface)); }
-  }
 }

@@ -1,7 +1,18 @@
 // Save as GIF (step 25): a split button in the toolbar (the shared .option-menu and .export-menu),
-// whose options open below it: two sliders: the size and the quality.
+// whose settings (the cog) open below it: a title, then two sliders: the size and the quality.
 .nsc-studio {
   .nsc-gif-export {
     .options { min-width: 17rem; }
+
+    .options-title { margin: 0; font-weight: 800; }
+  }
+
+  // In the Save menu: as wide as the menu's list and lined up with it, just under it (out past the
+  // list's padding and outline, which the GIF row sits inside).
+  .nsc-save-menu .nsc-gif-export > .options {
+    left: calc(-1 * (var(--space-1) + var(--line-width)));
+    right: auto;
+    width: 16rem;   // the list's (studio.scss)
+    min-width: 0;
   }
 }

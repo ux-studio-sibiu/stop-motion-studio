@@ -23,8 +23,10 @@
       cursor: grab;
       touch-action: none;   // a finger drag drags the object instead of scrolling the panel
 
-      &:hover:not(:disabled) { border-color: var(--color-focus); }
-      &:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+      // Under the pointer: a shade darker, its outline as it is (like the white paper on the
+      // cardboard buttons). Picked with the keys: a green ring, the colour of what's chosen.
+      &:hover:not(:disabled) { background: color-mix(in srgb, var(--color-ink) 8%, var(--color-surface)); }
+      &:focus-visible { outline: 3px solid var(--color-go); outline-offset: 2px; }
       &:disabled { opacity: 0.45; cursor: default; }   // the normal pointer: no red "not allowed" sign
       &.is-dragging { opacity: 0.5; cursor: grabbing; }
     }

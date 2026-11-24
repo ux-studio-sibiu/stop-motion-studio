@@ -312,7 +312,7 @@ test("the home page appears all at once: no loading line flashing up, no cards p
   expect(shown.every((moment) => moment.cards === 3)).toBe(true);    // from the first moment it's seen, every card is there
 });
 
-test("at the end of the intro, after the buttons, the animations' column slides up into place in a few jumps", async ({ projects, studio, page }) => {
+test("at the end of the intro, after the buttons, the animations' column slides up into place in four jumps", async ({ projects, studio, page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await studio.withoutCamera();
   for (let i = 0; i < 2; i++) { await studio.open(); await studio.seedPictures(1); }
@@ -332,17 +332,20 @@ test("at the end of the intro, after the buttons, the animations' column slides 
   });
   await projects.open();
   await expect(projects.cards().first()).toBeInViewport({ timeout: 15_000 });
-  await page.waitForTimeout(1000);   // the slide over
+  await expect(page.locator(".home-projects")).toHaveAttribute("style", /--slide: ?0(;|$)/, { timeout: 10_000 });   // the slide over: in its place
+  await page.waitForTimeout(200);   // a frame or two seen there
   const seen = await page.evaluate(() => (window as unknown as { seen: { settings: boolean; top: number | null }[] }).seen);
   const placed = seen.at(-1)!.top!;
   const moving = seen.filter((moment) => moment.top !== null && moment.top !== seen.find((m) => m.top !== null)!.top);   // from its first move on
   expect(moving.length).toBeGreaterThan(0);
   expect(moving.every((moment) => moment.settings)).toBe(true);   // it moves only once the buttons are there
   const positions = [...new Set(seen.map((moment) => moment.top).filter((top) => top !== null))];
-  // Exactly its four poses (below the window, then three jumps up, the last into place), nothing in
+  // Exactly its five poses (below the window, then four jumps up, the last into place), nothing in
   // between: it jumps from frame to frame, stop motion, with no transition.
-  expect(positions).toHaveLength(4);
+  expect(positions).toHaveLength(5);
   expect(positions.every((top, i) => i === 0 || top! < positions[i - 1]!)).toBe(true);   // only ever up
+  const jumps = positions.slice(1).map((top, i) => positions[i]! - top!);
+  for (const jump of jumps) expect(Math.abs(jump - jumps[0])).toBeLessThanOrEqual(1);   // each jump as far as the others (a pixel of rounding)
   expect(positions.at(-1)).toBe(placed);
   expect(positions[0]!).toBeGreaterThan(720);                       // it started out of sight, below the window
 });

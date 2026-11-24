@@ -101,7 +101,7 @@ export function previewSound(id: string, volume = 1): void {
   void soundBuffer(id).then((buffer) => {
     if (!buffer || mine !== previews) return;
     const now = ctx.currentTime;
-    previewing = play(ctx, buffer, now, 0, volume, ctx.destination, now + PREVIEW_SECONDS);
+    previewing = play(ctx, buffer, now, 0, volume, ctx.destination, { end: now + PREVIEW_SECONDS });
   });
 }
 
@@ -122,12 +122,13 @@ export function playSounds(scheduled: readonly ScheduledSound[], endsIn?: number
   const started = ctx.currentTime + 0.05;   // a moment to start them all on time
   const sources: AudioBufferSourceNode[] = [];
   let stopped = false;
-  for (const { clip, delay, offset } of scheduled) {
+  for (const { clip, delay, offset, duration } of scheduled) {
     void soundBuffer(clip.sound).then((buffer) => {
       if (stopped || !buffer) return;
       // Rendered late (the first time it's used): start where it would be by now.
       const late = Math.max(0, ctx.currentTime - (started + delay));
-      sources.push(play(ctx, buffer, Math.max(ctx.currentTime, started + delay), offset + late, clip.volume, ctx.destination, endsIn === undefined ? undefined : started + endsIn));
+      if (duration - late <= 0) return;   // over already
+      sources.push(play(ctx, buffer, Math.max(ctx.currentTime, started + delay), offset + late, clip.volume, ctx.destination, { duration: duration - late, end: endsIn === undefined ? undefined : started + endsIn }));
     });
   }
   return () => {
@@ -144,30 +145,39 @@ export async function mixSounds(clips: readonly SoundClip[], fps: number, totalT
   const seconds = totalTicks / fps;
   const offline = new OfflineAudioContext(2, Math.max(1, Math.round(seconds * sampleRate)), sampleRate);
   const buffers = await Promise.all(scheduled.map(({ clip }) => soundBuffer(clip.sound)));
-  scheduled.forEach(({ clip, delay }, i) => { const buffer = buffers[i]; if (buffer) play(offline, buffer, delay, 0, clip.volume, offline.destination, seconds); });   // fading out at the end
+  scheduled.forEach(({ clip, delay, duration }, i) => { const buffer = buffers[i]; if (buffer) play(offline, buffer, delay, 0, clip.volume, offline.destination, { duration, end: seconds }); });   // fading out at the end
   if (buffers.every((buffer) => !buffer)) return null;
   return offline.startRendering();
 }
 
 // How long a sound that runs past the end of the animation takes to fade out, in seconds.
 export const END_FADE = 0.5;
+// How long a clip cut short (its length on the timeline) takes to fade out: just enough not to click.
+const CUT_FADE = 0.03;
 
 // Plays `buffer` from `offset` at `when`. With `end` (on the context's clock: where the animation
 // ends), a sound still going then fades out over END_FADE and stops there, instead of being cut
 // (music, mostly).
-function play(ctx: BaseAudioContext, buffer: AudioBuffer, when: number, offset: number, volume: number, destination: AudioNode, end?: number): AudioBufferSourceNode {
+// `duration`: how long it plays from `offset` (a clip's own length, soundsFrom): shorter than
+// what's left of the sound, it's cut there with a quick fade; longer, the sound starts again
+// (looped) until then. Without it, the sound plays to its end.
+function play(ctx: BaseAudioContext, buffer: AudioBuffer, when: number, offset: number, volume: number, destination: AudioNode, { duration, end }: { duration?: number; end?: number } = {}): AudioBufferSourceNode {
   const source = ctx.createBufferSource();
   const gain = ctx.createGain();
   source.buffer = buffer;
   gain.gain.value = volume;
   source.connect(gain).connect(destination);
-  if (offset >= buffer.duration) return source;
-  source.start(when, offset);
-  if (end !== undefined && when + (buffer.duration - offset) > end) {
-    const fadeFrom = Math.max(when, end - END_FADE);
-    gain.gain.setValueAtTime(volume, fadeFrom);
-    gain.gain.linearRampToValueAtTime(0, end);
-    source.stop(end);
-  }
+  const left = buffer.duration - offset;   // what's left of the sound from offset
+  source.loop = duration !== undefined && duration > left + 1e-6;   // longer than the sound: it starts again
+  if (!source.loop && left <= 0) return source;
+  source.start(when, source.loop ? offset % buffer.duration : offset);
+  const natural = when + (duration ?? left);   // where it ends: its own length, or the sound's end
+  const fadeOut = (at: number, over: number) => {
+    gain.gain.setValueAtTime(volume, Math.max(when, at - over));
+    gain.gain.linearRampToValueAtTime(0, at);
+    source.stop(at);
+  };
+  if (end !== undefined && natural > end) fadeOut(end, END_FADE);   // still going where the animation ends
+  else if (source.loop || (duration !== undefined && duration < left - 1e-6)) fadeOut(natural, Math.min(CUT_FADE, duration ?? CUT_FADE));
   return source;
 }

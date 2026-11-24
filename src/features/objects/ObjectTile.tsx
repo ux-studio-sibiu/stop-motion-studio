@@ -12,8 +12,9 @@ const DRAG_START = 6;   // px the pointer moves before a press becomes a drag
 export type Place = { on: "picture"; at: Point } | { on: "track"; tick: number };
 
 // One kind of object in the Objects tab, as an icon to drag onto the picture on the stage or onto
-// the overlay track. `onPlace` gets where it was dropped, or null when it was clicked or pressed
-// with the keyboard instead: then it goes to a spot of the caller's choosing. A drop anywhere else
+// the overlay track. `onPlace` gets where it was dropped, or null when it was pressed with the
+// keyboard (Enter or Space) instead: then it goes to a spot of the caller's choosing. A click with
+// the mouse or a tap adds nothing: objects are dragged where they go. A drop anywhere else
 // does nothing. Pointer events, not HTML drag and drop, so it works with a finger on a tablet too;
 // the icon follows the pointer meanwhile, and the place it would land lights up.
 export function ObjectTile({ label, icon, disabled = false, title, onPlace }: { label: string; icon: ReactNode; disabled?: boolean; title?: string; onPlace: (place: Place | null) => void }) {
@@ -71,7 +72,10 @@ export function ObjectTile({ label, icon, disabled = false, title, onPlace }: { 
     <>
       <button type="button" className={`tile${ghost ? " is-dragging" : ""}`} aria-label={label} title={title ?? `${label}: drag it onto the picture`} disabled={disabled}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={(event) => end(event, true)} onPointerCancel={(event) => end(event, false)}
-        onClick={() => { if (dragged.current) { dragged.current = false; return; } onPlace(null); }}>
+        onClick={(event) => {
+          if (dragged.current) { dragged.current = false; return; }
+          if (event.detail === 0) onPlace(null);   // the keyboard's press (a pointer's click counts 1 or more)
+        }}>
         {icon}
       </button>
       {ghost && createPortal(<div className="nsc-drag-ghost" style={{ left: ghost.x, top: ghost.y }} aria-hidden="true">{icon}</div>, document.body)}

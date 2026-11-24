@@ -23,13 +23,13 @@ writeFileSync(cssOut, HEADER + css);
 
 const picturesOut = join(studio, "public", "cardboard-letters", "bases");
 mkdirSync(picturesOut, { recursive: true });
-// Only the pictures the studio uses: the big piece's edges and surface, for the home page's cardboard
-// cards and buttons. The home title's letters are paper only, so the letter tiles' pictures
-// (base-N.png, grain-N.png), the word cards' grain (sheet-grain.webp) and the cardboard bursts' edge
-// (sheet-strip.webp) aren't copied. To draw cardboard letter tiles, word cards or cardboard bursts
-// again, add their pictures to PICTURES (or copy every file in the font's bases/) and run
-// npm run sync:cardboard: the CSS and the shape module already point at them.
-const PICTURES = ["sheet-edges.webp", "sheet-surface.webp"];
+// Only the pictures the studio uses: the big piece's edges and surface (the home page's cards and
+// title letters, the studio's pieces) and the edge strip the burst's pieces are edged with. The
+// letter tiles' own pictures (base-N.png, grain-N.png) and the word cards' grain (sheet-grain.webp)
+// aren't copied: the title's letters are cut from the big piece like the studio's. To use them,
+// add them to PICTURES (or copy every file in the font's bases/) and run npm run sync:cardboard: the
+// CSS already points at them.
+const PICTURES = ["sheet-edges.webp", "sheet-surface.webp", "sheet-strip.webp"];
 const pictures = readdirSync(join(font, "bases")).filter((name) => PICTURES.includes(name));
 for (const name of pictures) copyFileSync(join(font, "bases", name), join(picturesOut, name));
 

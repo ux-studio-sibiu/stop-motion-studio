@@ -15,7 +15,7 @@ function animation() {
   const c = createFrame(project.id, "img-a", { hold: 2 });   // a copy: the same picture
   project.frameIds = [b.id, a.id, c.id];
   project.overlays = [createOverlay(createShape("arrow"), 2, 4)];
-  project.sounds = [{ ...createSoundClip("cartoon/boing", 3), volume: 1.5 }];
+  project.sounds = [{ ...createSoundClip("cartoon/boing", 3), volume: 1.5, length: 6 }];   // made longer on the timeline
   const images = [{ id: "img-a", width: 1280, height: 720 }, { id: "img-b", width: 1280, height: 720 }, { id: "unused", width: 10, height: 10 }];
   return { project, frames: [a, b, c], images };
 }
@@ -48,7 +48,7 @@ describe("readManifest", () => {
     expect(ordered[1].elements[0]).toMatchObject({ kind: "speech-bubble", props: { text: "Hi!" } });
     expect(ordered[1].imageId).toBe(ordered[2].imageId);   // the copy still shares its picture
     expect(restored.project.overlays).toEqual([expect.objectContaining({ start: 2, length: 4, element: expect.objectContaining({ kind: "shape" }) })]);
-    expect(restored.project.sounds).toEqual([expect.objectContaining({ start: 3, sound: "cartoon/boing", volume: 1.5 })]);
+    expect(restored.project.sounds).toEqual([expect.objectContaining({ start: 3, sound: "cartoon/boing", volume: 1.5, length: 6 })]);
   });
 
   it("keeps only real sounds from a backup, in range; a backup from before sounds has none", () => {

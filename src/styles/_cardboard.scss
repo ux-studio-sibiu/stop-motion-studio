@@ -111,9 +111,9 @@ $lighter: linear-gradient(rgb(255 255 255 / 0.3) 0 0);
 }
 
 // A button cut from cardboard with paper on it (an .icon-button, or anything like one): its paper
-// a shade darker under the pointer (coloured paper: lighter), and picked up too ($lift: false keeps
-// it where it is), pressed down
-// when clicked, back down while it's on (an open menu).
+// a shade darker under the pointer (coloured paper: lighter), picked up too, pressed down when
+// clicked, back down while it's on (an open menu). $lift: false keeps it where it is all along
+// (the studio's buttons beside the stage): pressed or on, only its paper stays a shade darker.
 @mixin cardboard-button($edge, $lift: true) {
   @include cardboard($edge);
   @include cardboard-paper;
@@ -127,8 +127,12 @@ $lighter: linear-gradient(rgb(255 255 255 / 0.3) 0 0);
     &.is-go::before { background-image: $lighter; }   // coloured paper: lighter
   }
 
-  &:active:not(:disabled),
-  &.is-on { translate: 0 1px; rotate: 0deg; }
+  @if $lift {
+    &:active:not(:disabled),
+    &.is-on { translate: 0 1px; rotate: 0deg; }
+  } @else {
+    &.is-on::before { background-image: $darker; }   // an open menu: its paper stays a shade darker
+  }
 }
 
 // A button joined to the arrow for its options (an .option-menu: .toggle and .more): one piece of

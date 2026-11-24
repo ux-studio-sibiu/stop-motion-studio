@@ -123,7 +123,7 @@ export function readManifest(raw: unknown, { files, now = Date.now(), makeId = n
   const sounds = list(stored.sounds, ARCHIVE_LIMITS.sounds).flatMap((item): SoundClip[] => {
     const clip = record(item);
     if (!clip || typeof clip.sound !== "string" || clip.sound === "") return [];
-    return [cleanSoundClip({ id: typeof clip.id === "string" ? clip.id : makeId(), start: number(clip.start, 0), sound: clip.sound, volume: number(clip.volume, 1) })];
+    return [cleanSoundClip({ id: typeof clip.id === "string" ? clip.id : makeId(), start: number(clip.start, 0), sound: clip.sound, volume: number(clip.volume, 1), length: typeof clip.length === "number" ? clip.length : undefined })];   // its own length, if it was given one
   });
 
   const project: Project = {

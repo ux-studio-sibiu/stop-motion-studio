@@ -72,3 +72,44 @@ test("after a reload the studio only shows once it's as it was left", async ({ s
   await expect(page.locator(".nsc-studio")).toHaveAttribute("aria-busy", "false");
   expect(await page.evaluate(() => (window as unknown as { firstShown: unknown }).firstShown)).toEqual({ tab: "Picture", pictures: 2 });
 });
+
+// What's remembered of an animation is its own: its open tab, its timeline's layers, its GIF
+// settings (and its loop and see-through, kept the same way). A new animation starts with each at
+// its default; going back to the first one finds it as it was left, after a reload too.
+test("each animation keeps its own tab, timeline layers and GIF settings", async ({ studio, page }) => {
+  await studio.withoutCamera();
+  await studio.open();
+  await studio.seedPictures(1);
+  const tab = (name: string) => page.getByRole("tab", { name });
+  const gradations = page.locator(".ruler.has-gradations");
+  const gifSize = page.getByRole("slider", { name: "Size" });
+  const openGifSettings = async () => {
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await page.getByRole("button", { name: "GIF settings" }).click();
+  };
+
+  await tab("Objects").click();
+  await page.getByRole("button", { name: "Timeline layers" }).click();
+  await page.getByRole("checkbox", { name: "Gradations" }).check();
+  await page.keyboard.press("Escape");
+  await openGifSettings();
+  await gifSize.fill("0");
+  await expect(gifSize).toHaveAttribute("aria-valuetext", /^small/);
+  await page.keyboard.press("Escape");
+  const first = page.url();
+
+  await studio.open();   // a new animation: everything at its default
+  await studio.seedPictures(1);
+  await expect(tab("Camera")).toHaveAttribute("aria-selected", "true");
+  await expect(gradations).toHaveCount(0);
+  await openGifSettings();
+  await expect(gifSize).toHaveAttribute("aria-valuetext", /^medium/);
+  await page.keyboard.press("Escape");
+
+  await page.goto(first);   // the first one, as it was left
+  await expect(studio.pictures()).toHaveCount(1);
+  await expect(tab("Objects")).toHaveAttribute("aria-selected", "true");
+  await expect(gradations).toHaveCount(1);
+  await openGifSettings();
+  await expect(gifSize).toHaveAttribute("aria-valuetext", /^small/);
+});
