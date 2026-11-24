@@ -124,7 +124,7 @@ export const MIN_TIMELINE_ZOOM = 40;
 export const MAX_TIMELINE_ZOOM = 2560;   // 16 times the usual 160: a picture (1/8 s) 320 px wide
 export const DEFAULT_TIMELINE_ZOOM = 160;   // a tick at the default 8 fps is 20 px wide
 export const DEFAULT_LOOP = true;   // a new animation loops
-export const DEFAULT_ONION_SKIN: OnionSkin = { on: true, opacity: 0.4, count: 1, outline: false, difference: false };
+export const DEFAULT_ONION_SKIN: OnionSkin = { on: false, opacity: 0.4, count: 1, outline: false, difference: false };
 
 const EMPTY = { project: null, frames: {}, selection: [], isPlaying: false, playhead: 0, holdPreview: {}, transformPreview: {}, adjustPreview: {}, elementsPreview: {}, overlaysPreview: null, selectedElement: null, pickedSound: null } as const;
 

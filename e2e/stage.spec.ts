@@ -57,12 +57,15 @@ test("with the camera on, the stage stays live even with a picture selected", as
   await expect(page.locator(".stage-picture")).toHaveCount(0);
 });
 
-test("see-through shows the last picture faintly over the live camera, and remembers its settings", async ({ studio, page }) => {
+test("see-through, off at first, shows the last picture faintly over the live camera, and remembers its settings", async ({ studio, page }) => {
   await studio.open();
   await studio.cameraOn();
   const ghost = page.locator(".onion-skin");
-  await expect(ghost).toHaveCount(0);   // nothing to see through before the first picture
   await studio.takePictures(1);
+  const toggle = page.getByRole("button", { name: "See-through", exact: true });
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");   // off in a new animation
+  await expect(ghost).toHaveCount(0);
+  await toggle.click();
   await expect(ghost).toBeVisible();
   // Drawn and see-through: the middle of the ghost is about 40% opaque.
   await expect.poll(() => ghost.evaluate((canvas: HTMLCanvasElement) => canvas.getContext("2d")!.getImageData(40, canvas.height / 2, 1, 1).data[3])).toBeGreaterThan(90);
@@ -82,14 +85,15 @@ test("see-through shows the last picture faintly over the live camera, and remem
   await page.keyboard.press("Escape");
   await expect(options).toHaveCount(0);
 
-  const toggle = page.getByRole("button", { name: "See-through", exact: true });
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
   await expect(ghost).toHaveCount(0);
+  await toggle.click();   // on again: remembered after a reload
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
 
-  await page.reload();   // still off after a reload
+  await page.reload();   // still on after a reload
   await expect(studio.pictures()).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "See-through", exact: true })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("button", { name: "See-through", exact: true })).toHaveAttribute("aria-pressed", "true");
 });
 
 test("with the camera off, see-through shows the picture before the one on the stage", async ({ studio, page }) => {
@@ -97,6 +101,7 @@ test("with the camera off, see-through shows the picture before the one on the s
   await studio.open();
   await studio.seedPictures(2);
   const ghost = page.locator(".onion-skin");
+  await page.getByRole("button", { name: "See-through", exact: true }).click();   // off at first
   await expect(ghost).toBeVisible();          // over picture 2: picture 1, faintly
   await studio.picture(1).click();
   await expect(ghost).toHaveCount(0);         // nothing before picture 1
@@ -111,6 +116,7 @@ test("spot the difference is a see-through look, instead of outline only; it's r
   await studio.open();
   await studio.seedPictures(2);
   const ghost = page.locator(".onion-skin");
+  await page.getByRole("button", { name: "See-through", exact: true }).click();   // off at first
   await page.getByRole("button", { name: "See-through options" }).click();
   const difference = page.getByRole("checkbox", { name: "Spot the difference" });
   const outline = page.getByRole("checkbox", { name: "Outline only" });

@@ -201,13 +201,13 @@ describe("panel tab", () => {
 });
 
 describe("onion skin", () => {
-  it("is on at 40%, one picture back, by default", () => {
-    expect(store.getState().onionSkin).toEqual({ on: true, opacity: 0.4, count: 1, outline: false, difference: false });
+  it("is off by default, at 40% and one picture back once it's on", () => {
+    expect(store.getState().onionSkin).toEqual({ on: false, opacity: 0.4, count: 1, outline: false, difference: false });
   });
 
   it("changes, kept to sensible limits", () => {
-    store.getState().setOnionSkin({ on: false });
-    expect(store.getState().onionSkin.on).toBe(false);
+    store.getState().setOnionSkin({ on: true });
+    expect(store.getState().onionSkin.on).toBe(true);
     store.getState().setOnionSkin({ opacity: 2, count: 9 });
     expect(store.getState().onionSkin).toMatchObject({ opacity: 0.9, count: 3 });
     store.getState().setOnionSkin({ opacity: 0, count: 0.2 });

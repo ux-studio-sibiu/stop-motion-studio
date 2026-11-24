@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatSeconds, formatTicks, frameIndexAt, frameStarts, pxPerTick, resizeHolds, rulerScale, secondsToTicks, ticksFromPx, ticksToSeconds, totalTicks } from "@/core/model";
+import { formatSeconds, formatTicks, frameIndexAt, frameStarts, pxPerTick, resizeHolds, rulerScale, secondsToTicks, ticksFromPx, ticksToSeconds, totalTicks, trueShapeZoom } from "@/core/model";
 
 describe("ticksFromPx", () => {
   it("snaps a drag to the nearest whole tick", () => {
@@ -103,5 +103,15 @@ describe("formatTicks", () => {
 describe("formatSeconds", () => {
   it.each([[0, "0s"], [4, "4s"], [59.4, "59s"], [60, "1:00"], [725, "12:05"]])("shows %d seconds as %s", (seconds, text) => {
     expect(formatSeconds(seconds)).toBe(text);
+  });
+});
+
+describe("trueShapeZoom", () => {
+  it("draws a one-tick picture at the animation's own shape", () => {
+    // 90 px tall at 16:9 is 160 px wide: at 12 per second, 1920 px a second.
+    const zoom = trueShapeZoom(90, { width: 1280, height: 720 }, 12);
+    expect(zoom).toBe(1920);
+    expect(pxPerTick(zoom, 12)).toBe(160);
+    expect(pxPerTick(trueShapeZoom(90, { width: 720, height: 720 }, 8), 8)).toBe(90);   // square
   });
 });

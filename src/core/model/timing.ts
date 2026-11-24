@@ -18,6 +18,13 @@ export function pxPerTick(pxPerSecond: number, fps: number): number {
   return pxPerSecond / fps;
 }
 
+// The zoom (pixels per second) at which a picture held one tick, drawn `height` px tall, has the
+// animation's own shape (`size`, its width and height). What an animation opened here for the first
+// time starts at, unless a zoom was chosen already (useTimelineView).
+export function trueShapeZoom(height: number, size: { width: number; height: number }, fps: number): number {
+  return (height * size.width / size.height) * fps;
+}
+
 // The tick each frame starts on, in animation order: [0, hold0, hold0 + hold1, ...].
 export function frameStarts(frames: readonly Pick<Frame, "hold">[]): number[] {
   const starts: number[] = [];

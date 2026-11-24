@@ -249,3 +249,15 @@ test("the Layers list opens below its button, or above it when there's no room b
   expect(await where()).toBe("above");
   expect((await list.boundingBox())!.y).toBeGreaterThanOrEqual(0);   // inside the window
 });
+
+// Before any zoom was chosen on this device, an animation opened for the first time (here, a demo,
+// a backup) starts at its pictures' true shape: a one-tick picture as wide as a 16:9 photo is at
+// that height. The zoom is each animation's own from then on.
+test.describe("with no zoom chosen yet", () => {
+  test.use({ startZoom: null });
+
+  test("a new animation's pictures have their true shape", async ({ studio }) => {
+    const photo = await studio.thumbPhoto(1).boundingBox();
+    expect(photo!.width / photo!.height).toBeCloseTo(16 / 9, 1);
+  });
+});

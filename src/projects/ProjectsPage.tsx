@@ -39,9 +39,10 @@ export function ProjectsPage() {
   const page = useRef<HTMLElement>(null);
   const column = useRef<HTMLDivElement>(null);
   const realList = useRef<HTMLUListElement>(null);
-  // The wheel anywhere on the page and a finger on the column scroll it, round and round when it's
-  // taller than the window: a copy of the list before and after the real one (useEndlessScroll).
-  const looping = useEndlessScroll(page, column, realList, list?.projects.length ?? 0);
+  // The wheel anywhere on the page and a finger on the column scroll it, round and round: copies of
+  // the list before and after the real one, enough to fill the window (useEndlessScroll).
+  const copies = useEndlessScroll(page, column, realList, list?.projects.length ?? 0);
+  const copyLists = () => Array.from({ length: copies }, (_, i) => <ul key={i} className="projects is-copy" aria-hidden="true">{cards(true)}</ul>);
   const listed = list !== null;
   useEffect(() => { if (listed) addDemosOnce(); }, [listed]);   // the demo animations, once per browser, once the page is showing
   // The intro (HomeTitle, INTRO): how many of its frames after the title's cards are down so far.
@@ -162,12 +163,12 @@ export function ProjectsPage() {
 
           {list && list.projects.length > 0 && (
             <section className="project-list" aria-label="Your animations">
-              {/* The copies (only while it loops) can be clicked like the real cards, but screen readers and the keyboard meet each animation once, in the real list. */}
-              {looping && <ul className="projects is-copy" aria-hidden="true">{cards(true)}</ul>}
+              {/* The copies can be clicked like the real cards, but screen readers and the keyboard meet each animation once, in the real list. */}
+              {copyLists()}
               <ul ref={realList} className="projects">
                 {cards(false)}
               </ul>
-              {looping && <ul className="projects is-copy" aria-hidden="true">{cards(true)}</ul>}
+              {copyLists()}
             </section>
           )}
         </div>

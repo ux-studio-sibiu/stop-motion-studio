@@ -336,15 +336,29 @@ test.describe("the column of animations goes round", () => {
     return { top: element.scrollTop, period: copy ? real.offsetTop - copy.offsetTop : 0 };
   });
 
-  test("with few animations it doesn't: no copies", async ({ projects, studio, page }) => {
+  test("with few animations it goes round too: they repeat down the whole column, seamlessly", async ({ projects, studio, page }) => {
     await manyAnimations(projects, studio, page, 2);
-    await expect(page.locator(".projects.is-copy")).toHaveCount(0);
+    await page.reload();
+    await expect.poll(() => page.locator(".projects.is-copy").count()).toBeGreaterThan(2);   // copies enough to fill the window
+    await expect(projects.cards()).toHaveCount(2);
+    await expect(projects.cards().first()).toBeInViewport();
+    const { period } = await scroll(page);
+    const { point } = await firstCard(page);
+    const first = await nameAt(page, point);
+    const place = await placeAt(page, point);
+    await page.mouse.move(200, 360);
+    for (let turn = 0; turn < 3; turn++) await page.mouse.wheel(0, period);   // three times round
+    await expect.poll(() => placeAt(page, point)).toEqual(place);
+    expect(await nameAt(page, point)).toBe(first);
+    await page.mouse.wheel(0, -4 * period);   // and back, past the start
+    await expect.poll(() => placeAt(page, point)).toEqual(place);
+    expect(await nameAt(page, point)).toBe(first);
   });
 
   test("it starts at the first animation, and the wheel takes it past the last to the first again, seamlessly", async ({ projects, studio, page }) => {
     await manyAnimations(projects, studio, page, 8);
     await page.reload();
-    await expect(page.locator(".projects.is-copy")).toHaveCount(2);
+    await expect(page.locator(".projects.is-copy")).toHaveCount(2);   // the list is taller than the window: a copy each side
     await expect(projects.cards()).toHaveCount(8);   // the copies aren't counted, nor read out
     await expect(page.getByRole("button", { name: "Rename Film 1" })).toHaveCount(1);   // the copies' buttons aren't read out
     await expect(projects.cards().first()).toBeInViewport();   // the real first card, in its place
@@ -380,7 +394,7 @@ test.describe("the column of animations goes round", () => {
     test.skip(browserName !== "chromium", "Touches are sent through Chromium's DevTools protocol.");
     await manyAnimations(projects, studio, page, 8);
     await page.reload();
-    await expect(page.locator(".projects.is-copy")).toHaveCount(2);
+    await expect(page.locator(".projects.is-copy")).toHaveCount(2);   // the list is taller than the window: a copy each side
     const cdp = await page.context().newCDPSession(page);
     const touch = (type: "touchStart" | "touchMove" | "touchEnd", x: number, y: number) =>
       cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });

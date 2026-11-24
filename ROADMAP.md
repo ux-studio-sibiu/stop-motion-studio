@@ -221,6 +221,11 @@ dragging. Step 24 adds a second layer under the pictures for text and shapes.
   pictures stay the focus.
 - **Check:** at 8 fps, a 1-tick picture is 1/8 of a second-mark wide; zooming keeps the selection in
   view; 100 frames scroll smoothly.
+- **Changed later:** each animation remembers its own zoom (`useTimelineView`). One opened here for
+  the first time (new, restored, a demo) starts at the last zoom chosen anywhere, or, before any
+  was chosen, at its pictures' true shape (`trueShapeZoom`: a one-tick picture as wide as its
+  shape makes it at the track's height). The tests start at 160 px a second (`startZoom` in
+  `e2e/fixtures.ts`).
 
 ### 11 · Commands and undo/redo *(core)*
 - **Builds:** `core/commands`: `Command` type, `History` (undo/redo stacks, limit 100), `runCommand()`
@@ -320,6 +325,8 @@ dragging. Step 24 adds a second layer under the pictures for text and shapes.
 - **Watch out:** the overlay must use the same cover-crop as the live `<video>` (step 03), or the ghost
   and the camera picture won't line up.
 - **Check:** move a toy and line it up with its ghost.
+- **Changed later:** See is **off** in a new animation (and in a restored backup or demo); turned
+  on, it's remembered for that animation.
 
 ---
 
@@ -562,9 +569,9 @@ styles. Removing the folder and its route removes the page, and nothing else cha
   - **Home page:** the title in cardboard letters on a five-piece cardboard burst (each piece and letter edged as seen from a little above: a thick cut face along the bottom, a sliver along the top), the New, open-a-backup and Settings buttons, and the
     animation cards, shown frame by frame as a short stop-motion intro (not when coming back from the
     studio, not with reduced motion); the storage meter moved into a Settings window.
-    *Later:* the animations' column goes round (`useEndlessScroll`, tablet width and up, when the
-    list is taller than the window): a copy of the list before and after the real one, put back
-    one list's height whenever the view's middle leaves the real list, so past the last animation
+    *Later:* the animations' column goes round (`useEndlessScroll`, tablet width and up, however
+    few animations there are): copies of the list before and after the real one, enough to fill
+    the window (one a side for a long list, more for a short one), put back one list's height whenever the view's middle leaves the real list, so past the last animation
     come the first again with nothing moving on screen. The wheel and a finger both drive it (the
     page follows the finger itself, `touch-action: none`, so Safari's momentum can't fight it; a
     flick carries on in a few shrinking jumps, 80 ms apart). The copies are clickable but hidden

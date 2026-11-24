@@ -8,7 +8,10 @@ import { test as base, expect, type Locator, type Page } from "@playwright/test"
 // withDemos: the demo animations added on a first visit (src/projects/demos.ts). Off in every
 // test, as if this browser had them already, so each starts with no animations; on for the tests
 // about them.
-export type StudioOptions = { fakeCamera: "device" | "script"; withDemos: boolean };
+// startZoom: the timeline zoom a new animation starts at, as if the child had chosen it (160 px a
+// second: a tick at 8 per second 20 px wide), so the tests' widths stay the same; null for none
+// chosen yet, where an animation starts at its pictures' true shape (useTimelineView).
+export type StudioOptions = { fakeCamera: "device" | "script"; withDemos: boolean; startZoom: number | null };
 
 // A page object for the studio: the things a test does, named the way a child would say
 // them. Tests read like the flow they check, and when the UI changes, only this file changes.
@@ -259,9 +262,12 @@ export class Projects {
 export const test = base.extend<StudioOptions & { studio: Studio; projects: Projects }>({
   fakeCamera: ["device", { option: true }],
   withDemos: [false, { option: true }],
+  startZoom: [160, { option: true }],
 
-  page: async ({ page, withDemos }, use) => {
+  page: async ({ page, withDemos, startZoom }, use) => {
     if (!withDemos) await page.addInitScript(() => { try { localStorage.setItem("stop-motion-studio:demos-added", "true"); } catch { /* no storage */ } });
+    // Only if none is there: a zoom the test chose since stays.
+    if (startZoom !== null) await page.addInitScript((zoom) => { try { if (!localStorage.getItem("stop-motion-studio:timeline-zoom")) localStorage.setItem("stop-motion-studio:timeline-zoom", String(zoom)); } catch { /* no storage */ } }, startZoom);
     await use(page);
   },
 
