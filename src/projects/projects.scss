@@ -88,7 +88,8 @@
     // A strip of cards laid on the table at a slant (2.5°, its top to the right), running past the
     // window's top and bottom (taller by --overhang at each end, cut off by the page), so no corner
     // shows; it scrolls along its own slant. No scrollbar (it would slant too): the wheel anywhere on
-    // the page scrolls it (useWheelScrolls), and so does dragging.
+    // the page scrolls it, and so does a finger, round and round past the last animation
+    // (useEndlessScroll: the finger is followed by the page, not the browser, hence touch-action).
     @include respond-to("tablet") {
       --overhang: 2.5rem;
       height: calc(100dvh + 2 * var(--overhang));
@@ -100,6 +101,9 @@
       // The intro slides it up into place (--slide: how far below it still is, in windows; ProjectsPage).
       translate: 0 calc(var(--slide, 0) * 110dvh);
       scroll-behavior: auto;   // scrolling jumps, never glides (stop motion)
+      position: relative;      // the lists' offsets are its own (useEndlessScroll measures them)
+      overflow-anchor: none;   // the copy drawn above the list moves it by exactly what the loop expects, nothing more
+      touch-action: none;
 
       &::-webkit-scrollbar { display: none; }
     }
@@ -246,6 +250,12 @@
     border-radius: var(--radius);
 
     p { margin: 0; font-size: var(--text-title); }
+  }
+
+  // The real list, and while the column loops a copy before and after it, as far apart as two cards.
+  .project-list {
+    display: grid;
+    gap: var(--space-3);
   }
 
   .projects {

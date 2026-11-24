@@ -22,7 +22,7 @@ describe("planPrecache", () => {
     "_next/static/chunks/b.js", "_next/static/chunks/a.css", "_next/static/chunks/b.js.map",
     "fonts/nunito/nunito-latin.woff2", "favicon.ico", "manifest.webmanifest",
     "sounds/bsb-0128.ogg", "sounds/bsb-0095.ogg",
-    "steps/index.html", "steps/steps.css", "404.html", "_not-found.html", "_not-found/__next._tree.txt", "sw.js",
+    "steps/index.html", "steps/steps.css", "demos/demos.zip", "404.html", "_not-found.html", "_not-found/__next._tree.txt", "sw.js",
   ];
 
   it("keeps the pages, the code and the assets in the shell, sorted", () => {
@@ -36,9 +36,9 @@ describe("planPrecache", () => {
     expect(planPrecache(files).sounds).toEqual(["/sounds/bsb-0095.ogg", "/sounds/bsb-0128.ogg"]);
   });
 
-  it("leaves out the build notes, source maps, not-found pages and the worker", () => {
+  it("leaves out the build notes, the demo animations, source maps, not-found pages and the worker", () => {
     const all = [...planPrecache(files).shell, ...planPrecache(files).sounds];
-    expect(all.some((url) => url.startsWith("/steps/") || url.endsWith(".map") || url.includes("not-found") || url === "/404" || url === "/sw.js")).toBe(false);
+    expect(all.some((url) => url.startsWith("/steps/") || url.startsWith("/demos/") || url.endsWith(".map") || url.includes("not-found") || url === "/404" || url === "/sw.js")).toBe(false);
   });
 });
 

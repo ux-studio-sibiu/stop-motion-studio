@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { ArchiveRestore, Clapperboard, Plus, Settings } from "lucide-react";
 import { exportArchive, importArchives } from "@/adapters/archive/projectArchive";
@@ -11,12 +11,14 @@ import { forgetAnimation } from "@/studio/remembered";
 import { appRepository } from "@/adapters/storage/appRepository";
 import type { Project } from "@/core/model";
 import { createSavedProject } from "./createSavedProject";
+import { addDemosOnce } from "./demos";
 import { CardboardBurst } from "./CardboardBurst";
 import { DeleteDialog } from "./DeleteDialog";
 import { HomeTitle, TitleCard } from "./HomeTitle";
 import { ProjectCard } from "./ProjectCard";
 import { SettingsDialog } from "./SettingsDialog";
 import { StorageWarning } from "./StorageMeter";
+import { useEndlessScroll } from "./useEndlessScroll";
 import { covers, useProjects } from "./useProjects";
 import "./projects.scss";
 
@@ -36,7 +38,12 @@ export function ProjectsPage() {
   const picker = useRef<HTMLInputElement>(null);
   const page = useRef<HTMLElement>(null);
   const column = useRef<HTMLDivElement>(null);
-  useWheelScrolls(page, column);
+  const realList = useRef<HTMLUListElement>(null);
+  // The wheel anywhere on the page and a finger on the column scroll it, round and round when it's
+  // taller than the window: a copy of the list before and after the real one (useEndlessScroll).
+  const looping = useEndlessScroll(page, column, realList, list?.projects.length ?? 0);
+  const listed = list !== null;
+  useEffect(() => { if (listed) addDemosOnce(); }, [listed]);   // the demo animations, once per browser, once the page is showing
   // The intro (HomeTitle, INTRO): how many of its frames after the title's cards are down so far.
   const [after, setAfter] = useState(0);
   const piecesShown = Math.min(after, TITLE_BURST.shape.pieces);   // the burst's frames come first
@@ -90,6 +97,8 @@ export function ProjectsPage() {
     const imageId = list?.coverOf[project.id];
     return imageId ? covers.url(imageId) : undefined;
   };
+  // Every animation's card, for the real list or one of its copies.
+  const cards = (copy: boolean) => list?.projects.map((project) => <ProjectCard key={project.id} copy={copy} project={project} coverUrl={coverUrl(project)} size={list.sizeOf[project.id] ?? 0} onDelete={() => setDeleting(project)} onBackUp={() => void backUp(project)} />);
 
   return (
     // The full-screen backdrop (the page colour and texture, projects.scss), with the page on it.
@@ -153,9 +162,12 @@ export function ProjectsPage() {
 
           {list && list.projects.length > 0 && (
             <section className="project-list" aria-label="Your animations">
-              <ul className="projects">
-                {list.projects.map((project) => <ProjectCard key={project.id} project={project} coverUrl={coverUrl(project)} size={list.sizeOf[project.id] ?? 0} onDelete={() => setDeleting(project)} onBackUp={() => void backUp(project)} />)}
+              {/* The copies (only while it loops) can be clicked like the real cards, but screen readers and the keyboard meet each animation once, in the real list. */}
+              {looping && <ul className="projects is-copy" aria-hidden="true">{cards(true)}</ul>}
+              <ul ref={realList} className="projects">
+                {cards(false)}
               </ul>
+              {looping && <ul className="projects is-copy" aria-hidden="true">{cards(true)}</ul>}
             </section>
           )}
         </div>
@@ -166,27 +178,6 @@ export function ProjectsPage() {
 
     </div>
   );
-}
-
-// The mouse wheel (or a trackpad) anywhere on the page scrolls the animations: the page itself
-// never scrolls from tablet width on, only that column does. Over the column too, so it jumps
-// straight to where the wheel takes it, never gliding (the browser's own wheel scrolling is smooth;
-// this is stop motion). When the column doesn't scroll (a phone, where the page scrolls as usual),
-// the browser does it itself.
-function useWheelScrolls(page: RefObject<HTMLElement | null>, column: RefObject<HTMLDivElement | null>) {
-  useEffect(() => {
-    const area = page.current;
-    if (!area) return;
-    const onWheel = (event: WheelEvent) => {
-      const list = column.current;
-      if (!list || event.ctrlKey) return;
-      if (getComputedStyle(list).overflowY !== "auto" || list.scrollHeight <= list.clientHeight) return;
-      event.preventDefault();
-      list.scrollBy({ top: event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY, left: 0, behavior: "instant" });
-    };
-    area.addEventListener("wheel", onWheel, { passive: false });
-    return () => area.removeEventListener("wheel", onWheel);
-  }, [page, column]);
 }
 
 // The page shows all at once, once the animations are listed (with their covers), and fades in,

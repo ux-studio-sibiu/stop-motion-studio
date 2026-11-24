@@ -562,6 +562,13 @@ styles. Removing the folder and its route removes the page, and nothing else cha
   - **Home page:** the title in cardboard letters on a five-piece cardboard burst (each piece and letter edged as seen from a little above: a thick cut face along the bottom, a sliver along the top), the New, open-a-backup and Settings buttons, and the
     animation cards, shown frame by frame as a short stop-motion intro (not when coming back from the
     studio, not with reduced motion); the storage meter moved into a Settings window.
+    *Later:* the animations' column goes round (`useEndlessScroll`, tablet width and up, when the
+    list is taller than the window): a copy of the list before and after the real one, put back
+    one list's height whenever the view's middle leaves the real list, so past the last animation
+    come the first again with nothing moving on screen. The wheel and a finger both drive it (the
+    page follows the finger itself, `touch-action: none`, so Safari's momentum can't fight it; a
+    flick carries on in a few shrinking jumps, 80 ms apart). The copies are clickable but hidden
+    from screen readers and the keyboard; tests count only the real cards.
   - **Studio:** the back arrow, Save and Help in a column beside the stage; Play and See (each
     joined to its options arrow); the stage on cardboard with a white paper border; the side panel
     and its tabs, reaching down to the timeline; the timeline as bare cardboard from edge to edge,
@@ -633,6 +640,14 @@ inside the band.
   Load project (its title now "Open .zip project") takes either kind; a bundle restores every
   animation in it, each all or nothing, and says how many couldn't be. Settings closes with an X in
   its corner instead of a Close button.
+- **Demo animations (added):** `public/demos/demos.zip`, a backup of all animations (Arlequin,
+  Names, Paper animation) with the photos re-saved at JPEG quality 80 (8.5 MB to 4.2 MB, still
+  1280×720). On a browser's first visit to the home page, once the page shows, it's restored like
+  any backup (`src/projects/demos.ts`), remembered (`demos-added`) only once it's in; deleted demos
+  don't come back. Settings has **Add the demo animations**. Kept out of the offline worker's first
+  download. Tests start without them (`withDemos` in `e2e/fixtures.ts`); `projects.spec` checks
+  them. To change the demos: make a new backup, re-save its photos, replace the file and deploy
+  (browsers that had the old ones keep them).
 
 ### 28 · Import photos
 - **Builds:** `features/photo-import` as a `FrameSource`: file picker and drag-and-drop onto the

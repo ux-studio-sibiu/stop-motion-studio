@@ -5,7 +5,10 @@ import { test as base, expect, type Locator, type Page } from "@playwright/test"
 //             real getUserMedia path runs end to end
 //   "script": getUserMedia is replaced before the page loads with a canvas stream, for
 //             browsers without a fake device (WebKit)
-export type StudioOptions = { fakeCamera: "device" | "script" };
+// withDemos: the demo animations added on a first visit (src/projects/demos.ts). Off in every
+// test, as if this browser had them already, so each starts with no animations; on for the tests
+// about them.
+export type StudioOptions = { fakeCamera: "device" | "script"; withDemos: boolean };
 
 // A page object for the studio: the things a test does, named the way a child would say
 // them. Tests read like the flow they check, and when the UI changes, only this file changes.
@@ -237,7 +240,7 @@ export class Projects {
   constructor(readonly page: Page) {}
 
   readonly newButton = () => this.page.getByRole("button", { name: "New animation" });
-  readonly cards = () => this.page.locator(".nsc-project-card");
+  readonly cards = () => this.page.locator(".nsc-project-card:not(.is-copy)");   // the real cards, not the looping column's copies
   readonly card = (name: string) => this.cards().filter({ has: this.page.getByRole("button", { name: `Rename ${name}`, exact: true }) });   // its name (a click renames it)
 
   async open(): Promise<void> {
@@ -255,6 +258,12 @@ export class Projects {
 
 export const test = base.extend<StudioOptions & { studio: Studio; projects: Projects }>({
   fakeCamera: ["device", { option: true }],
+  withDemos: [false, { option: true }],
+
+  page: async ({ page, withDemos }, use) => {
+    if (!withDemos) await page.addInitScript(() => { try { localStorage.setItem("stop-motion-studio:demos-added", "true"); } catch { /* no storage */ } });
+    await use(page);
+  },
 
   studio: async ({ page, fakeCamera }, use) => {
     if (fakeCamera === "script") await page.addInitScript(installScriptCamera);

@@ -12,12 +12,15 @@ import "./cardboard-letters/cardboard-letters.css";   // the cardboard's shared 
 // One saved animation: its first picture, name, picture count, how much space it takes (step 21)
 // and when it was last changed. Its actions: back up (a .zip, step 27), delete. A click on the
 // name renames it in place, the field exactly the name's size, so the card doesn't move (Enter or
-// leaving the field saves, Escape cancels).
-export function ProjectCard({ project, coverUrl, size, onDelete, onBackUp }: { project: Project; coverUrl?: string; size: number; onDelete: () => void; onBackUp: () => void }) {
+// leaving the field saves, Escape cancels). `copy`: one of the looping column's copies
+// (useEndlessScroll), clicked like the real card but out of the keyboard's way (its list is hidden
+// from screen readers).
+export function ProjectCard({ project, coverUrl, size, copy = false, onDelete, onBackUp }: { project: Project; coverUrl?: string; size: number; copy?: boolean; onDelete: () => void; onBackUp: () => void }) {
   const [editing, setEditing] = useState(false);
   const { canvas: previewCanvas, playing, start: startPreview, stop: stopPreview } = useCardPreview(project);
   const href = `/studio?project=${project.id}`;
   const count = project.frameIds.length;
+  const tab = copy ? -1 : undefined;
 
   const save = async (value: string) => {
     setEditing(false);
@@ -26,9 +29,9 @@ export function ProjectCard({ project, coverUrl, size, onDelete, onBackUp }: { p
   };
 
   return (
-    <li className="nsc-project-card">
+    <li className={`nsc-project-card${copy ? " is-copy" : ""}`}>
       {/* Playing while the pointer is over it or it has the keyboard (useCardPreview), over the still cover. */}
-      <Link className="cover" href={href} aria-label={`Open ${project.name}`} onPointerEnter={startPreview} onPointerLeave={stopPreview} onFocus={startPreview} onBlur={stopPreview}>
+      <Link className="cover" href={href} tabIndex={tab} aria-label={`Open ${project.name}`} onPointerEnter={startPreview} onPointerLeave={stopPreview} onFocus={startPreview} onBlur={stopPreview}>
         {/* A blob: URL from the cover cache; next/image can't optimise those. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {coverUrl ? <img src={coverUrl} alt="" draggable={false} /> : <Clapperboard size={40} aria-hidden="true" />}
@@ -45,14 +48,14 @@ export function ProjectCard({ project, coverUrl, size, onDelete, onBackUp }: { p
           }} />
         ) : (
           // The name: a click (or Enter) turns it into the field above, in its place (the cover opens the animation).
-          <button type="button" className="name" aria-label={`Rename ${project.name}`} title="Click to rename" onClick={() => setEditing(true)}>{project.name}</button>
+          <button type="button" className="name" tabIndex={tab} aria-label={`Rename ${project.name}`} title="Click to rename" onClick={() => setEditing(true)}>{project.name}</button>
         )}
         <p className="meta"><span className="size">{formatBytes(size)}</span> · {new Date(project.updatedAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</p>
       </div>
 
       <div className="actions">
-        <button type="button" className="icon-button is-small" aria-label={`Back up ${project.name}`} title="Save a backup (.zip), to keep or to open on another device" onClick={onBackUp}><Download size={20} /></button>
-        <button type="button" className="icon-button is-small" aria-label={`Delete ${project.name}`} onClick={onDelete}><Trash2 size={20} /></button>
+        <button type="button" className="icon-button is-small" tabIndex={tab} aria-label={`Back up ${project.name}`} title="Save a backup (.zip), to keep or to open on another device" onClick={onBackUp}><Download size={20} /></button>
+        <button type="button" className="icon-button is-small" tabIndex={tab} aria-label={`Delete ${project.name}`} onClick={onDelete}><Trash2 size={20} /></button>
       </div>
     </li>
   );

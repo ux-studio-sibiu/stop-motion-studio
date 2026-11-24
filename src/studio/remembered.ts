@@ -37,6 +37,7 @@ export const remembered = {
   cameraFraming: definePreferenceFamily("camera-framing", asFraming),  // each animation's camera zoom and where it's framed, so every picture matches
   cameraLock: definePreference("camera-lock", asBoolean),              // the camera's focus, exposure and white balance locked
   timelineMinimized: definePreference("timeline-minimized", asBoolean),   // the timeline's pictures small (its Minimize button), for every animation
+  demosAdded: definePreference("demos-added", asBoolean),   // the demo animations were added to this browser once (projects/demos.ts)
 };
 
 // A remembered camera framing, its values put back in range.

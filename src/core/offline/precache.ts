@@ -6,11 +6,13 @@
 //           cardboard pieces. Small (a few MB), so the studio opens offline right after a first visit.
 //   sounds  the recorded sound effects (24 MB), fetched afterwards in the background, and kept as
 //           they're played, so an early offline moment doesn't wait on all of them.
-// Left out: the build notes (/steps/), source maps, the not-found pages and the worker itself.
+// Left out: the build notes (/steps/), source maps, the not-found pages, the worker itself, and
+// the demo animations (/demos/, a few MB): fetched once, on a first visit, into the browser's
+// storage (src/projects/demos.ts).
 
 export type OfflinePlan = { shell: string[]; sounds: string[] };
 
-const LEFT_OUT = [/^steps\//, /\.map$/, /^404\.html$/, /^_not-found(\.|\/)/, /^sw\.js$/];
+const LEFT_OUT = [/^steps\//, /^demos\//, /\.map$/, /^404\.html$/, /^_not-found(\.|\/)/, /^sw\.js$/];
 
 // The URL a file of the export is served at. Pages are asked for by their clean name (/studio,
 // not /studio.html), the way the app links to them, so that's what the worker stores them under.

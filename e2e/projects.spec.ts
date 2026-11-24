@@ -1,4 +1,6 @@
+import { readFile } from "node:fs/promises";
 import type { Page } from "@playwright/test";
+import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { expect, test, type Projects, type Studio } from "./fixtures";
 
 // A new animation with one picture (one without pictures isn't kept), then back home. Returns its id.
@@ -129,7 +131,7 @@ test("Escape cancels a rename", async ({ projects, studio, page }) => {
   await expect(page.getByRole("textbox", { name: "Animation name" })).toBeFocused();
   // The cursor at the end of the name, nothing selected.
   expect(await page.getByRole("textbox", { name: "Animation name" }).evaluate((input: HTMLInputElement) => [input.selectionStart, input.selectionEnd])).toEqual([12, 12]);
-  const during = await page.locator(".nsc-project-card").first().boundingBox();
+  const during = await projects.cards().first().boundingBox();
   expect([during?.width, during?.height]).toEqual([before?.width, before?.height]);
   await page.getByRole("textbox", { name: "Animation name" }).fill("Oops");
   await page.getByRole("textbox", { name: "Animation name" }).press("Escape");
@@ -272,21 +274,133 @@ test("the mouse wheel anywhere on the page scrolls the animations' column, at on
   }
   await expect(projects.cards()).toHaveCount(4);
   const column = page.locator(".home-projects");
-  expect(await column.evaluate((element) => element.scrollTop)).toBe(0);
+  const start = await column.evaluate((element) => element.scrollTop);   // 0, or the real list's place when it loops
   await page.mouse.move(200, 360);   // over the title, far from the column
   await page.mouse.wheel(0, 300);
-  await expect.poll(() => column.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await expect.poll(() => column.evaluate((element) => element.scrollTop)).not.toBe(start);
   expect(await page.evaluate(() => document.scrollingElement!.scrollTop)).toBe(0);   // the page itself doesn't move
 
   // Over the column too, it's where the wheel takes it straight away (a smooth scroll would still be
   // where it was at this point): stop motion, no glide.
   const moved = await column.evaluate((element) => {
-    element.scrollTop = 0;
+    const before = element.scrollTop;
     const card = element.querySelector(".nsc-project-card")!;
     card.dispatchEvent(new WheelEvent("wheel", { deltaY: 120, bubbles: true, cancelable: true }));
-    return element.scrollTop;
+    return element.scrollTop - before;
   });
   expect(moved).toBe(120);
+});
+
+// The column goes round (useEndlessScroll): past the last animation come the first ones again. A
+// copy of the list is drawn before and after the real one; whenever the view's middle leaves the
+// real list, it's put back one list's height, onto the same cards. Nothing on screen moves.
+test.describe("the column of animations goes round", () => {
+  // Enough animations for the list to be taller than the window, seeded straight into storage.
+  // Quickly: one animation backed up, then restored as `count` named copies from one bundle
+  // (Film 1 to Film n), the first one deleted.
+  async function manyAnimations(projects: Projects, studio: Studio, page: Page, count: number) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await newAnimationWithAPicture(projects, studio, page);
+    const downloading = page.waitForEvent("download");
+    await projects.card("My animation").getByRole("button", { name: "Back up My animation" }).click();
+    const backup = unzipSync(new Uint8Array(await readFile((await (await downloading).path())!)));
+    await page.getByRole("button", { name: "Delete My animation" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Delete", exact: true }).click();
+    await expect(projects.cards()).toHaveCount(0);
+
+    const manifest = JSON.parse(strFromU8(backup["project.json"]));
+    const bundle = Object.fromEntries(Array.from({ length: count }, (_, i) => [`Film ${i + 1}.zip`, zipSync({ ...backup, "project.json": strToU8(JSON.stringify({ ...manifest, project: { ...manifest.project, name: `Film ${i + 1}` } })) })]));
+    await page.getByLabel("Backup file").setInputFiles({ name: "films.zip", mimeType: "application/zip", buffer: Buffer.from(zipSync(bundle)) });
+    await expect(projects.cards()).toHaveCount(count);
+  }
+  // The name of the card at a point of the column (a copy or the real one: what a child sees there).
+  const nameAt = (page: Page, { x, y }: { x: number; y: number }) => page.evaluate(({ x, y }) => {
+    const card = document.elementFromPoint(x, y)?.closest(".nsc-project-card");
+    return card?.querySelector(".name")?.textContent ?? null;
+  }, { x, y });
+  // Where the card at a point is on screen, to the pixel.
+  const placeAt = (page: Page, { x, y }: { x: number; y: number }) => page.evaluate(({ x, y }) => {
+    const box = document.elementFromPoint(x, y)?.closest(".nsc-project-card")?.getBoundingClientRect();
+    return box ? [Math.round(box.left), Math.round(box.top)] : null;
+  }, { x, y });
+  // A point on the first real card's cover, and how far down the next row of cards starts.
+  const firstCard = (page: Page) => page.locator(".projects:not(.is-copy)").evaluate((list) => {
+    const cards = [...list.querySelectorAll<HTMLElement>(".nsc-project-card")];
+    const box = cards[0].querySelector(".cover")!.getBoundingClientRect();
+    const row = (cards.find((card) => card.offsetTop > cards[0].offsetTop)?.offsetTop ?? 0) - cards[0].offsetTop;
+    return { point: { x: box.left + box.width / 2, y: box.top + box.height / 2 }, row };
+  });
+  const scroll = (page: Page) => page.locator(".home-projects").evaluate((element) => {
+    const real = element.querySelector(".projects:not(.is-copy)") as HTMLElement;
+    const copy = real.previousElementSibling as HTMLElement | null;
+    return { top: element.scrollTop, period: copy ? real.offsetTop - copy.offsetTop : 0 };
+  });
+
+  test("with few animations it doesn't: no copies", async ({ projects, studio, page }) => {
+    await manyAnimations(projects, studio, page, 2);
+    await expect(page.locator(".projects.is-copy")).toHaveCount(0);
+  });
+
+  test("it starts at the first animation, and the wheel takes it past the last to the first again, seamlessly", async ({ projects, studio, page }) => {
+    await manyAnimations(projects, studio, page, 8);
+    await page.reload();
+    await expect(page.locator(".projects.is-copy")).toHaveCount(2);
+    await expect(projects.cards()).toHaveCount(8);   // the copies aren't counted, nor read out
+    await expect(page.getByRole("button", { name: "Rename Film 1" })).toHaveCount(1);   // the copies' buttons aren't read out
+    await expect(projects.cards().first()).toBeInViewport();   // the real first card, in its place
+    const { period } = await scroll(page);
+    expect(period).toBeGreaterThan(720);
+    const { point, row } = await firstCard(page);
+    const first = await nameAt(page, point);   // the first real card: what's at the top
+    expect(first).toMatch(/^Film \d$/);
+    const place = await placeAt(page, point);
+
+    // One whole list's height down, in wheel steps: the same cards are back where they were, and the
+    // scroll never ran off (it was put back as it went).
+    await page.mouse.move(200, 360);
+    for (let moved = 0; moved < period; moved += 100) await page.mouse.wheel(0, Math.min(100, period - moved));
+    await expect.poll(() => nameAt(page, point)).toBe(first);
+    expect(await placeAt(page, point)).toEqual(place);   // to the pixel: nothing moved
+    expect((await scroll(page)).top).toBeLessThan(2 * period);
+
+    // Up from the first: the last animation comes before it.
+    await page.reload();
+    await expect(projects.cards().first()).toBeInViewport();
+    const lastRow = await page.locator(".projects:not(.is-copy)").evaluate((list) => {
+      const cards = [...list.querySelectorAll<HTMLElement>(".nsc-project-card")];
+      const bottom = cards[cards.length - 1].offsetTop;
+      return cards.filter((card) => card.offsetTop === bottom).map((card) => card.querySelector(".name")!.textContent);
+    });
+    await page.mouse.move(200, 360);
+    await page.mouse.wheel(0, -row);   // a row up
+    await expect.poll(() => nameAt(page, point)).toBe(lastRow[0]);   // the last row, from the copy above
+  });
+
+  test("a finger drags it along, and a tap still opens an animation", async ({ projects, studio, page, browserName }) => {
+    test.skip(browserName !== "chromium", "Touches are sent through Chromium's DevTools protocol.");
+    await manyAnimations(projects, studio, page, 8);
+    await page.reload();
+    await expect(page.locator(".projects.is-copy")).toHaveCount(2);
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type: "touchStart" | "touchMove" | "touchEnd", x: number, y: number) =>
+      cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
+    const column = (await page.locator(".home-projects").boundingBox())!;
+    const x = column.x + column.width / 2;
+    const before = (await scroll(page)).top;
+    await touch("touchStart", x, 500);
+    for (let y = 480; y >= 300; y -= 20) await touch("touchMove", x, y);
+    await touch("touchEnd", x, 300);
+    const dragged = (await scroll(page)).top - before;
+    expect(dragged).toBeGreaterThan(150);   // about 200: the finger's way, give or take the slant and the wrap
+
+    // A tap, no move: the card under it opens.
+    await page.reload();
+    await expect(projects.cards().first()).toBeInViewport();
+    const cover = await projects.cards().first().getByRole("link").boundingBox();
+    await touch("touchStart", cover!.x + cover!.width / 2, cover!.y + cover!.height / 2);
+    await touch("touchEnd", cover!.x + cover!.width / 2, cover!.y + cover!.height / 2);
+    await expect(page).toHaveURL(/\/studio\?project=/);
+  });
 });
 
 test("a card plays its animation while the pointer is over it, and stops when it leaves", async ({ projects, studio, page }) => {
@@ -329,7 +443,7 @@ test("the home page appears all at once: no loading line flashing up, no cards p
       if (home) {
         const shown = Number(getComputedStyle(home).opacity) > 0;
         if (shown) shownAt = Math.min(shownAt, performance.now());
-        seen.push({ shown, loading: !!document.querySelector(".status"), cards: document.querySelectorAll(".nsc-project-card").length });
+        seen.push({ shown, loading: !!document.querySelector(".status"), cards: document.querySelectorAll(".nsc-project-card:not(.is-copy)").length });
       }
       const now = performance.now();
       if (now - start < 8000 && now - shownAt < 500) requestAnimationFrame(look);
@@ -358,7 +472,7 @@ test("at the end of the intro, after the buttons, the animations' column slides 
     const start = performance.now();
     const look = () => {
       const settings = document.querySelector('[aria-label="Settings"]');
-      const card = document.querySelector(".nsc-project-card");
+      const card = document.querySelector(".nsc-project-card:not(.is-copy)");
       seen.push({ settings: !!settings && getComputedStyle(settings).visibility !== "hidden", top: card ? Math.round(card.getBoundingClientRect().top) : null });
       if (performance.now() - start < 8000) requestAnimationFrame(look);
     };
@@ -414,4 +528,45 @@ test("coming back from the studio, the intro doesn't play again; a reload plays 
   await page.reload();
   await expect(settings).toBeHidden();                          // the intro again: the buttons come last
   await expect(settings).toBeVisible({ timeout: 15_000 });
+});
+
+// The demo animations (public/demos/demos.zip): added on a browser's first visit, once.
+test.describe("demo animations", () => {
+  test.use({ withDemos: true });
+  const DEMOS = ["Arlequin", "Names", "Paper animation"];
+
+  test("a first visit adds the demo animations, once: deleted, they don't come back", async ({ projects, page }) => {
+    await projects.open();
+    for (const name of DEMOS) await expect(projects.card(name)).toBeVisible({ timeout: 20_000 });   // their photos unpacked first
+    await expect(projects.cards()).toHaveCount(3);
+
+    await page.reload();
+    await expect(projects.card("Names")).toBeVisible();
+    await expect(projects.cards()).toHaveCount(3);   // not added again
+
+    await page.getByRole("button", { name: "Delete Names" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Delete", exact: true }).click();
+    await page.reload();
+    await expect(projects.card("Arlequin")).toBeVisible();
+    await expect(projects.cards()).toHaveCount(2);
+  });
+
+  test("Settings adds them again", async ({ projects, page }) => {
+    await projects.open();
+    await expect(projects.cards()).toHaveCount(3, { timeout: 20_000 });
+    await page.getByRole("button", { name: "Settings" }).click();
+    const dialog = page.getByRole("dialog", { name: "Settings" });
+    await dialog.getByRole("button", { name: "Add the demo animations" }).click();
+    await expect(dialog.getByRole("status")).toHaveText("Added 3 demo animations", { timeout: 20_000 });
+    await expect(projects.cards()).toHaveCount(6);
+  });
+
+  test("a demo opens in the studio with all its pictures", async ({ projects, studio, page }) => {
+    await studio.withoutCamera();
+    await projects.open();
+    await expect(projects.card("Arlequin")).toBeVisible({ timeout: 20_000 });
+    await projects.card("Arlequin").getByRole("link", { name: "Open Arlequin" }).click();
+    await expect(page).toHaveURL(/project=/);
+    await expect(studio.pictures()).toHaveCount(20);
+  });
 });
