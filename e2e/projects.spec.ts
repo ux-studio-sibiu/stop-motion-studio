@@ -164,6 +164,7 @@ test("Settings shows how much space is used, in a window that its X and Escape s
   await page.getByRole("button", { name: "Settings" }).click();
   const dialog = page.getByRole("dialog", { name: "Settings" });
   await expect(dialog.getByRole("region", { name: "Storage on this device" })).toContainText(/Using .+ of about .+ on this device/);
+  await expect(dialog.getByRole("link", { name: "Design system" })).toHaveAttribute("href", "/design");
   await dialog.getByRole("button", { name: "Close" }).click();
   await expect(dialog).toBeHidden();
   await page.getByRole("button", { name: "Settings" }).click();

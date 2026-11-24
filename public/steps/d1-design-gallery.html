@@ -28,7 +28,7 @@
   <ul>
     <li><strong>Stand-alone:</strong> everything is in <code>src/design-system/</code> (<code>DesignPage</code>, <code>Specimen</code>, <code>_design.scss</code>) plus the route <code>src/app/design/</code>. It uses no store, storage or camera, and nothing in the studio imports it; deleting the folder and the route removes the page.</li>
     <li><strong>The studio's own styles:</strong> the real components where they take only props (the side panel, swatches, tiles, the settings of each kind), the same markup and class names otherwise. The page's own stylesheet only lays it out. A specimen sits in <code>.nsc-studio.is-specimen</code>, which keeps the studio's scope but drops its full-screen grid, texture and fade-in.</li>
-    <li><strong>Development only:</strong> the build has <code>/design</code> as a 404 (checked: no gallery in <code>out/design.html</code>).</li>
+    <li><strong>Development only</strong> at first: the build had <code>/design</code> as a 404. <em>Later</em> it ships with the live site, linked from the home page's Settings.</li>
     <li><strong>Light testing, on purpose</strong> (your call: a utility page, fast changes): one smoke test, <code>e2e/design.spec.ts</code>: every section shows, with no errors. The rest is checked by eye.</li>
   </ul>
 

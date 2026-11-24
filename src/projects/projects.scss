@@ -518,4 +518,17 @@
   }
 
   .offline-note { font-size: var(--text-hint); }
+
+  // The way to the design system page: a quiet link under the actions.
+  .design-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    color: var(--color-muted);
+    font-size: var(--text-hint);
+    font-weight: 700;
+
+    &:hover { color: var(--color-ink); }
+    &:focus-visible { outline: var(--line-width) solid var(--color-focus); outline-offset: 2px; }
+  }
 }

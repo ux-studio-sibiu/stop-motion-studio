@@ -46,7 +46,7 @@ export function TokenPanel(props: Props) {
 }
 
 function Panel({ scheme, setScheme, tweaks, values, set, reset, resetAll, onColourClick, colourCursor, host }: Props & { host: Element }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);   // folded to its Tokens button at first: the page shows whole
   const [find, setFind] = useState("");
   const [at, setAt] = useState(() => ({ x: Math.max(16, window.innerWidth - 360 - 24), y: 64 }));   // top right, below the dev server's badge, to start with
   const drag = useRef<{ dx: number; dy: number } | null>(null);

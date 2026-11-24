@@ -19,6 +19,8 @@ test("a token changed in the panel restyles the page, not the panel; reset puts 
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/design");
   const panel = page.getByRole("dialog", { name: "Design tokens" });
+  await expect(panel).toHaveCount(0);   // folded at first
+  await page.getByRole("button", { name: /^Tokens/ }).click();
   const border = () => page.locator("#controls .icon-button").first().evaluate((element) => getComputedStyle(element).borderTopColor);
   const panelBorder = () => panel.evaluate((element) => getComputedStyle(element).borderTopColor);
   await expect.poll(border).toBe("rgb(51, 51, 51)");
@@ -36,6 +38,7 @@ test("a token changed in the panel restyles the page, not the panel; reset puts 
 test("Alt+click copies a colour token, Ctrl+Alt+click pastes it on another, as a tweak", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/design");
+  await page.getByRole("button", { name: /^Tokens/ }).click();   // the panel starts folded
   const panel = page.getByRole("dialog", { name: "Design tokens" });
   const border = () => page.locator("#controls .icon-button").first().evaluate((element) => getComputedStyle(element).borderTopColor);
   const ink = page.locator('[data-colour-token="--color-ink"]');
@@ -52,6 +55,7 @@ test("Alt+click copies a colour token, Ctrl+Alt+click pastes it on another, as a
 
 test("picking an element lists only the tokens it uses", async ({ page }) => {
   await page.goto("/design");
+  await page.getByRole("button", { name: /^Tokens/ }).click();   // the panel starts folded
   const panel = page.getByRole("dialog", { name: "Design tokens" });
   const row = (name: string) => panel.getByRole("textbox", { name, exact: true }).or(panel.getByRole("spinbutton", { name, exact: true }));
   await panel.getByRole("button", { name: "Pick" }).click();
@@ -67,10 +71,12 @@ test("tweaks are kept after a reload until Reset all; Copy changes gives them as
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/design");
+  await page.getByRole("button", { name: /^Tokens/ }).click();   // the panel starts folded
   const panel = page.getByRole("dialog", { name: "Design tokens" });
   await panel.getByRole("textbox", { name: "--color-border", exact: true }).fill("#9d927f");
 
   await page.reload();
+  await page.getByRole("button", { name: /^Tokens/ }).click();   // the panel starts folded
   await expect(panel.getByRole("textbox", { name: "--color-border", exact: true })).toHaveValue("#9d927f");
   await expect(panel.getByText("1 changed")).toBeVisible();
 
@@ -82,5 +88,6 @@ test("tweaks are kept after a reload until Reset all; Copy changes gives them as
   await panel.getByRole("button", { name: "Reset all" }).click();
   await expect(panel.getByRole("textbox", { name: "--color-border", exact: true })).toHaveValue("#333333");
   await page.reload();
+  await page.getByRole("button", { name: /^Tokens/ }).click();   // the panel starts folded
   await expect(panel.getByRole("button", { name: "Copy changes" })).toBeDisabled();
 });

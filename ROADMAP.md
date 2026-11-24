@@ -512,7 +512,9 @@ styles. Removing the folder and its route removes the page, and nothing else cha
   moving or adding a specimen is moving or adding a line.
 - **Watch out:** many styles are scoped under `.nsc-studio`, a full-screen grid with
   `overflow: hidden`. Specimens sit in an `.nsc-studio.is-specimen` wrapper that resets the grid,
-  height and overflow, and nothing else. Development only (the build leaves the page out).
+  height and overflow, and nothing else. Development only at first (the build left the page out);
+  *later* public on the live site, linked from the home page's Settings, its token panel folded at
+  first.
 - **Check:** every section renders with no console errors; the page scrolls to the end; dark mode
   shows the dark tokens. `e2e/design.spec.ts`.
 

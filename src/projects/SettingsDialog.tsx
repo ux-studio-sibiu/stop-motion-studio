@@ -1,6 +1,7 @@
 "use client";
 
-import { Download, FolderDown, Sparkles, X } from "lucide-react";
+import Link from "next/link";
+import { Download, FolderDown, Palette, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { exportAllArchives } from "@/adapters/archive/projectArchive";
 import { appRepository } from "@/adapters/storage/appRepository";
@@ -13,7 +14,8 @@ import { useModalDialog } from "./useModalDialog";
 // The home page's settings, in a modal <dialog> (focus kept inside, Escape or the X closes it): how
 // much of this device's storage the studio uses; a backup of every animation in one .zip (Load
 // project restores it); the demo animations, added again (projects/demos.ts); whether the studio
-// works offline here (step 32), with the browser's Install offer when there is one.
+// works offline here (step 32), with the browser's Install offer when there is one; and a link to
+// the design system page (/design), every part of the interface.
 export function SettingsDialog({ open, version, animations, onClose }: { open: boolean; version: unknown; animations: number; onClose: () => void }) {
   const dialog = useModalDialog(open);
   const { ready, canInstall } = useOffline();
@@ -63,6 +65,7 @@ export function SettingsDialog({ open, version, animations, onClose }: { open: b
           {note && <p className={`settings-note${note.problem ? " is-problem" : ""}`} role="status">{note.text}</p>}
           {ready && <p className="offline-note">The studio is saved on this device: it works without the internet too.</p>}
           {canInstall && <button type="button" className="icon-button settings-action" onClick={() => install()}><Download size={18} aria-hidden="true" />Install the studio</button>}
+          <Link className="design-link" href="/design"><Palette size={16} aria-hidden="true" />Design system</Link>
         </>
       )}
     </dialog>
