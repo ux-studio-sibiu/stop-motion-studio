@@ -11,7 +11,7 @@ import { remembered } from "@/studio/remembered";
 // animations of this browser, to open, change or delete.
 //
 // Added once per browser, on the first visit to the home page (addDemosOnce), after the page is
-// showing; deleted ones don't come back by themselves. Settings has a button to add them again.
+// showing; deleted ones don't come back.
 // Kept out of the offline worker's first download (core/offline/precache.ts): once added, they're
 // in the browser's storage anyway.
 
@@ -19,7 +19,7 @@ const DEMOS = "/demos/demos.zip";
 
 // Adds the demos as new animations; how many came. Throws if the file can't be fetched (offline)
 // or isn't a backup.
-export async function addDemos(): Promise<number> {
+async function addDemos(): Promise<number> {
   const response = await fetch(DEMOS);
   if (!response.ok) throw new Error(`${DEMOS}: ${response.status}`);
   const { restored } = await importArchives(appRepository(), await response.blob(), { decode: decodePicture });

@@ -489,7 +489,7 @@
 }
 
 // The settings window: its title with an X in the corner, the storage line (and its bar, wider
-// here), then its actions one under another: Download all animations, Install the studio.
+// here), then its actions one under another: Download all animations, Install for offline use.
 .nsc-settings-dialog {
   position: relative;
   width: min(24rem, calc(100vw - 2rem));
@@ -519,16 +519,13 @@
 
   .offline-note { font-size: var(--text-hint); }
 
-  // The way to the design system page: a quiet link under the actions.
+  // The way to the design system page, at the bottom, in the ink colour.
   .design-link {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    color: var(--color-muted);
+    display: inline-block;
+    color: var(--color-ink);
     font-size: var(--text-hint);
     font-weight: 700;
 
-    &:hover { color: var(--color-ink); }
     &:focus-visible { outline: var(--line-width) solid var(--color-focus); outline-offset: 2px; }
   }
 }

@@ -653,7 +653,7 @@ inside the band.
   Names, Paper animation) with the photos re-saved at JPEG quality 80 (8.5 MB to 4.2 MB, still
   1280×720). On a browser's first visit to the home page, once the page shows, it's restored like
   any backup (`src/projects/demos.ts`), remembered (`demos-added`) only once it's in; deleted demos
-  don't come back. Settings has **Add the demo animations**. Kept out of the offline worker's first
+  don't come back (a Settings button to add them again was tried, then removed). Kept out of the offline worker's first
   download. Tests start without them (`withDemos` in `e2e/fixtures.ts`); `projects.spec` checks
   them. To change the demos: make a new backup, re-save its photos, replace the file and deploy
   (browsers that had the old ones keep them).
@@ -797,7 +797,7 @@ inside the band.
   the latest; code chunks (hashed) come from the cache. A new worker takes over at once. Only a page
   opened from the stored copy shows an **Update** notice when a newer version arrives; it reloads
   when pressed, never by itself. Settings says when the studio works offline, with
-  an **Install the studio** button where the browser offers one. The worker runs only in the
+  an **Install for offline use** button where the browser offers one. The worker runs only in the
   production build; `npm start` moved to port 3100 so its worker never answers for `npm run dev`.
   `e2e/offline.spec.ts` (production build only) goes offline after one visit, opens the studio,
   takes pictures and saves a GIF; online, a changed page shows at once and no notice appears; a page

@@ -164,7 +164,7 @@ test("Settings shows how much space is used, in a window that its X and Escape s
   await page.getByRole("button", { name: "Settings" }).click();
   const dialog = page.getByRole("dialog", { name: "Settings" });
   await expect(dialog.getByRole("region", { name: "Storage on this device" })).toContainText(/Using .+ of about .+ on this device/);
-  await expect(dialog.getByRole("link", { name: "Design system" })).toHaveAttribute("href", "/design");
+  await expect(dialog.getByRole("link", { name: "View Design System" })).toHaveAttribute("href", "/design");   // at the bottom
   await dialog.getByRole("button", { name: "Close" }).click();
   await expect(dialog).toBeHidden();
   await page.getByRole("button", { name: "Settings" }).click();
@@ -564,16 +564,6 @@ test.describe("demo animations", () => {
     await page.reload();
     await expect(projects.card("Arlequin")).toBeVisible();
     await expect(projects.cards()).toHaveCount(2);
-  });
-
-  test("Settings adds them again", async ({ projects, page }) => {
-    await projects.open();
-    await expect(projects.cards()).toHaveCount(3, { timeout: 20_000 });
-    await page.getByRole("button", { name: "Settings" }).click();
-    const dialog = page.getByRole("dialog", { name: "Settings" });
-    await dialog.getByRole("button", { name: "Add the demo animations" }).click();
-    await expect(dialog.getByRole("status")).toHaveText("Added 3 demo animations", { timeout: 20_000 });
-    await expect(projects.cards()).toHaveCount(6);
   });
 
   test("a demo opens in the studio with all its pictures", async ({ projects, studio, page }) => {
